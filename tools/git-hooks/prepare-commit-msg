@@ -1,0 +1,15 @@
+#!/bin/sh
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+# Jira 이슈 키 추출: 예) feature/S14P11A705-33-wireframe -> S14P11A705-33
+# 패턴: 대문자/숫자 2자 이상 + '-' + 숫자
+ISSUE_KEY=$(echo "$BRANCH" | grep -oE '[A-Z0-9]{2,}-[0-9]+' | head -n 1)
+
+MSG_FILE="$1"
+
+# 이미 이슈키로 시작하면 패스
+if [ -n "$ISSUE_KEY" ] && ! grep -q "^$ISSUE_KEY" "$MSG_FILE"; then
+  # 첫 줄 앞에 이슈키 삽입
+  sed -i.bak "1s/^/$ISSUE_KEY /" "$MSG_FILE"
+  rm -f "$MSG_FILE.bak"
+fi
