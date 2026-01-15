@@ -10,6 +10,6 @@ MSG_FILE="$1"
 # 이미 이슈키로 시작하면 패스
 if [ -n "$ISSUE_KEY" ] && ! grep -q "^$ISSUE_KEY" "$MSG_FILE"; then
   # 첫 줄 앞에 이슈키 삽입
-  sed -i.bak "1s/^/$ISSUE_KEY /" "$MSG_FILE"
+  sed -i.bak "1s/^/$ISSUE_KEY : /" "$MSG_FILE"
   rm -f "$MSG_FILE.bak"
 fi
