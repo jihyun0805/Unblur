@@ -1,16 +1,96 @@
 services:
-  mysql:
-    image: 'mysql:latest'
+  postgres:
+    image: postgres:16
+    container_name: unblur-postgres
     environment:
-      - 'MYSQL_DATABASE=mydatabase'
-      - 'MYSQL_PASSWORD=secret'
-      - 'MYSQL_ROOT_PASSWORD=verysecret'
-      - 'MYSQL_USER=myuser'
+      POSTGRES_DB: ${POSTGRES_DB:-unblur}
+      POSTGRES_USER: ${POSTGRES_USER:-unblur}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Qv7!mX2$kP9#vL4@}
     ports:
-      - '3306'
-  neo4j:
-    image: 'neo4j:latest'
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - unblur-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-app} -d ${POSTGRES_DB:-app}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: unblur-minio
     environment:
-      - 'NEO4J_AUTH=neo4j/notverysecret'
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio1234}
+    command: server /data --console-address ":9001"
     ports:
-      - '7687'
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - unblur-net
+
+  kurento:
+    image: kurento/kurento-media-server:7.0.1
+    container_name: unblur-kurento
+    environment:
+      KMS_MIN_PORT: ${KMS_MIN_PORT:-49160}
+      KMS_MAX_PORT: ${KMS_MAX_PORT:-49200}
+      KMS_STUN_IP: ${TURN_PUBLIC_IP:-127.0.0.1}
+      KMS_STUN_PORT: ${TURN_STUN_PORT:-3478}
+      KMS_TURN_URL: ${TURN_USER:-user}:${TURN_PASSWORD:-pass}@${TURN_PUBLIC_IP:-127.0.0.1}:${TURN_TURN_PORT:-3478}?transport=udp
+    ports:
+      - "8888:8888"
+      - "49160-49200:49160-49200/udp"
+    networks:
+      - unblur-net
+
+  coturn:
+    image: coturn/coturn:4.6.2
+    container_name: unblur-coturn
+    environment:
+      TURN_REALM: ${TURN_REALM:-example.com}
+      TURN_USER: ${TURN_USER:-user}
+      TURN_PASSWORD: ${TURN_PASSWORD:-pass}
+      TURN_PUBLIC_IP: ${TURN_PUBLIC_IP:-127.0.0.1}
+      TURN_LISTEN_PORT: ${TURN_LISTEN_PORT:-3478}
+      TURN_MIN_PORT: ${TURN_MIN_PORT:-50000}
+      TURN_MAX_PORT: ${TURN_MAX_PORT:-50100}
+    ports:
+      - "3478:3478/udp"
+      - "3478:3478/tcp"
+      - "50000-50100:50000-50100/udp"
+    command:
+      - --no-cli
+      - --no-tls
+      - --no-dtls
+      - --fingerprint
+      - --lt-cred-mech
+      - --realm=${TURN_REALM:-example.com}
+      - --user=${TURN_USER:-user}:${TURN_PASSWORD:-pass}
+      - --external-ip=${TURN_PUBLIC_IP:-127.0.0.1}
+      - --min-port=${TURN_MIN_PORT:-50000}
+      - --max-port=${TURN_MAX_PORT:-50100}
+      - --listening-port=${TURN_LISTEN_PORT:-3478}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "turnutils_stunclient 127.0.0.1 >/dev/null 2>&1"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - unblur-net
+
+networks:
+  unblur-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  minio_data:
