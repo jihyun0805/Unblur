@@ -1,0 +1,53 @@
+stages:
+  - build
+  - deploy
+
+variables:
+  DOCKER_TLS_CERTDIR: ""
+  DOCKER_DRIVER: overlay2
+  BE_IMAGE: rovin000/s14p11a705-be
+  FE_IMAGE: rovin000/s14p11a705-fe
+  IMAGE_TAG: "master-${CI_COMMIT_SHORT_SHA}"
+
+default:
+  image: docker:24.0.9
+  services:
+    - docker:24.0.9-dind
+
+build_be:
+  stage: build
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "master"'
+  script:
+    - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+    - docker build -t "$BE_IMAGE:$IMAGE_TAG" -t "$BE_IMAGE:latest" BE
+    - docker push "$BE_IMAGE:$IMAGE_TAG"
+    - docker push "$BE_IMAGE:latest"
+
+build_fe:
+  stage: build
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "master"'
+  script:
+    - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+    - docker build -t "$FE_IMAGE:$IMAGE_TAG" -t "$FE_IMAGE:latest" FE
+    - docker push "$FE_IMAGE:$IMAGE_TAG"
+    - docker push "$FE_IMAGE:latest"
+
+deploy_master:
+  stage: deploy
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "master"'
+  before_script:
+    - apk add --no-cache openssh-client rsync
+    - mkdir -p ~/.ssh
+    - echo "$DEPLOY_SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa
+    - ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+  script:
+    - |
+      ssh "$DEPLOY_USER@$DEPLOY_HOST" \
+      "export BE_IMAGE=$BE_IMAGE FE_IMAGE=$FE_IMAGE IMAGE_TAG=$IMAGE_TAG; \
+       docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_TOKEN; \
+       docker compose -f /opt/unblur/infra/docker-compose.yml pull be fe; \
+       docker compose -f /opt/unblur/infra/docker-compose.yml up -d be fe"
