@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { ArrowLeft, Check } from "lucide-react"
-import { BackgroundLayout } from "@/components/common/background-layout"
 
 interface MBTITestPageProps {
   onBack: () => void
@@ -141,7 +140,17 @@ export function MBTITestPage({ onBack, onComplete }: MBTITestPageProps) {
   const canGoNext = currentAnswer !== undefined
 
   return (
-    <BackgroundLayout className="flex items-center justify-center">
+    <div className="min-h-screen relative flex items-center justify-center">
+      {/* Sunset Background */}
+      <div className="fixed inset-0 z-0">
+        <img
+          src="/sunset-ocean.jpg"
+          alt="Sunset background"
+          className="w-full h-full object-cover opacity-35"
+        />
+        <div className="absolute inset-0 bg-white/30" />
+      </div>
+
       {/* Overlay */}
       <div className="absolute inset-0 bg-background/50 backdrop-blur-sm z-0" />
 
@@ -203,6 +212,6 @@ export function MBTITestPage({ onBack, onComplete }: MBTITestPageProps) {
           </CardContent>
         </Card>
       </div>
-    </BackgroundLayout>
+    </div>
   )
 }
