@@ -4,14 +4,13 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { LoginModal } from "@/components/auth/login-modal"
 import { RegisterModal } from "@/components/auth/register-modal"
-import { Users, Clock, Shield, Eye, MessageCircle, Menu, X, Heart, Zap, User2 } from "lucide-react"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Users, Clock, Shield, Eye, MessageCircle, Heart, Zap, User2 } from "lucide-react"
 import Image from "next/image"
+import { Header } from "@/components/common/header"
 
 export function LandingPage() {
   const [showLogin, setShowLogin] = useState(false)
   const [showRegister, setShowRegister] = useState(false)
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   return (
     <div className="min-h-screen relative">
@@ -29,60 +28,11 @@ export function LandingPage() {
 
       {/* Content */}
       <div className="relative z-10">
-        {/* Header - 투명하고 감성적 */}
-        <header className="fixed top-0 left-0 right-0 z-50 bg-transparent backdrop-blur-md border-b border-border/30">
-          <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Image src="/logo.png" alt="Unblur Logo" width={40} height={40} className="object-contain" style={{ filter: 'brightness(0) saturate(100%) invert(25%) sepia(5%) saturate(0%) hue-rotate(0deg) brightness(95%) contrast(90%)' }} />
-              <span className="font-bold text-xl text-foreground">Unblur</span>
-            </div>
-
-            {/* Desktop buttons */}
-            <div className="hidden sm:flex items-center gap-3">
-              <Button variant="ghost" onClick={() => setShowLogin(true)} className="text-foreground">
-                로그인
-              </Button>
-              <Button
-                onClick={() => setShowRegister(true)}
-                className="bg-primary text-primary-foreground hover:bg-primary/90"
-              >
-                시작하기
-              </Button>
-            </div>
-
-            {/* Mobile menu */}
-            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-              <SheetTrigger asChild className="sm:hidden">
-                <Button variant="ghost" size="icon">
-                  {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-64 bg-card/95 backdrop-blur-md">
-                <nav className="flex flex-col gap-3 mt-8">
-                  <Button
-                    variant="ghost"
-                    className="justify-start"
-                    onClick={() => {
-                      setShowLogin(true)
-                      setMobileMenuOpen(false)
-                    }}
-                  >
-                    로그인
-                  </Button>
-                  <Button
-                    className="bg-primary text-primary-foreground hover:bg-primary/90"
-                    onClick={() => {
-                      setShowRegister(true)
-                      setMobileMenuOpen(false)
-                    }}
-                  >
-                    시작하기
-                  </Button>
-                </nav>
-              </SheetContent>
-            </Sheet>
-          </div>
-        </header>
+        {/* Header */}
+        <Header
+          onLoginClick={() => setShowLogin(true)}
+          onRegisterClick={() => setShowRegister(true)}
+        />
 
         {/* Hero Section */}
         <section className="pt-32 sm:pt-40 pb-16 sm:pb-24 px-4">

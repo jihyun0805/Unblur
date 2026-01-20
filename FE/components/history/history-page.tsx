@@ -3,12 +3,19 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
-import { ArrowLeft, Calendar, Clock, MessageCircle, Filter, Thermometer, Heart } from "lucide-react"
+import { Calendar, Clock, MessageCircle, Filter, Thermometer, Heart } from "lucide-react"
 import { ChatModal } from "./chat-modal"
 import { PartnerProfileModal } from "./partner-profile-modal"
+import { Header } from "@/components/common/header"
+import { useAuth } from "@/contexts/auth-context"
 
 interface HistoryPageProps {
-  onBack: () => void
+  onBack?: () => void
+  onHomeClick?: () => void
+  onHistoryClick?: () => void
+  onProfileClick?: () => void
+  onMbtiClick?: () => void
+  onLogout?: () => void
 }
 
 interface HistoryItem {
@@ -85,7 +92,15 @@ const getRoundHearts = (rounds: number) => {
   );
 };
 
-export function HistoryPage({ onBack }: HistoryPageProps) {
+export function HistoryPage({ 
+  onBack, 
+  onHomeClick, 
+  onHistoryClick, 
+  onProfileClick, 
+  onMbtiClick, 
+  onLogout 
+}: HistoryPageProps) {
+  const { user } = useAuth()
   const [history, setHistory] = useState<HistoryItem[]>(MOCK_HISTORY)
   const [filter, setFilter] = useState<FilterType>("all")
   const [selectedChat, setSelectedChat] = useState<HistoryItem | null>(null)
@@ -134,17 +149,25 @@ export function HistoryPage({ onBack }: HistoryPageProps) {
         <div className="absolute inset-0 bg-white/30" />
       </div>
 
-      <main className="relative z-10 pt-20 pb-10 px-4">
-        <div className="max-w-3xl mx-auto">
-          <div className="flex items-center gap-4 mb-8">
-            <Button variant="ghost" size="icon" onClick={onBack}>
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div>
+      <div className="relative z-10">
+        {/* Header */}
+        {user && (
+          <Header
+            onHomeClick={onHomeClick || onBack}
+            onHistoryClick={onHistoryClick}
+            onProfileClick={onProfileClick}
+            onMbtiClick={onMbtiClick}
+            onLogout={onLogout}
+            currentView="history"
+          />
+        )}
+
+        <main className="pt-20 pb-10 px-4">
+          <div className="max-w-3xl mx-auto">
+            <div className="mb-8">
               <h1 className="text-2xl font-bold">소개팅 이력</h1>
               <p className="text-muted-foreground text-sm">지금까지의 만남을 확인해보세요</p>
             </div>
-          </div>
 
           {/* Summary */}
           <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6">
@@ -286,7 +309,8 @@ export function HistoryPage({ onBack }: HistoryPageProps) {
             }}
         />
       )}
-      </main>
+        </main>
+      </div>
     </div>
   )
 }
