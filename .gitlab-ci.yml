@@ -42,7 +42,9 @@ deploy_master:
     - apk add --no-cache openssh-client rsync
     - mkdir -p ~/.ssh
     - |
-      if [ -f "$DEPLOY_SSH_KEY" ]; then
+      if [ -n "$DEPLOY_SSH_KEY_B64" ]; then
+        echo "$DEPLOY_SSH_KEY_B64" | base64 -d > ~/.ssh/id_rsa
+      elif [ -f "$DEPLOY_SSH_KEY" ]; then
         tr -d '\r' < "$DEPLOY_SSH_KEY" > ~/.ssh/id_rsa
       else
         echo "$DEPLOY_SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
