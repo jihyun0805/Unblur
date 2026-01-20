@@ -10,12 +10,19 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
-import { ArrowLeft, Loader2, User, Trash2, Pencil, Save, X, Thermometer } from "lucide-react"
+import { Loader2, User, Trash2, Pencil, Save, X, Thermometer } from "lucide-react"
 import { SURVEY_QUESTIONS } from "@/lib/survey-questions"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Header } from "@/components/common/header"
+import { BackgroundLayout } from "@/components/common/background-layout"
 
 interface ProfilePageProps {
-  onBack: () => void
+  onBack?: () => void
+  onHomeClick?: () => void
+  onHistoryClick?: () => void
+  onProfileClick?: () => void
+  onMbtiClick?: () => void
+  onLogout?: () => void
 }
 
 const MBTI_TYPES = [
@@ -25,7 +32,14 @@ const MBTI_TYPES = [
   "ISTP", "ISFP", "ESTP", "ESFP",
 ]
 
-export function ProfilePage({ onBack }: ProfilePageProps) {
+export function ProfilePage({ 
+  onBack, 
+  onHomeClick, 
+  onHistoryClick, 
+  onProfileClick, 
+  onMbtiClick, 
+  onLogout 
+}: ProfilePageProps) {
   const { user, logout, updateUser } = useAuth()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
@@ -39,7 +53,19 @@ export function ProfilePage({ onBack }: ProfilePageProps) {
     mbti: user?.mbti || "",
   })
 
-  const [surveyData, setSurveyData] = useState({
+  const [surveyData, setSurveyData] = useState<{
+    smoking: string
+    drinking: string
+    dealbreakers: string[]
+    dateStyle: string
+    contactStyle: string
+    conflictStyle: string
+    spending: string
+    priority: string
+    agePreference: string[]
+    distancePreference: string
+    interests: string[]
+  }>({
     smoking: user?.surveyData?.smoking || "",
     drinking: user?.surveyData?.drinking || "",
     dealbreakers: user?.surveyData?.dealbreakers || [],
@@ -61,7 +87,19 @@ export function ProfilePage({ onBack }: ProfilePageProps) {
         mbti: user.mbti || "",
       })
       if (user.surveyData) {
-        setSurveyData(user.surveyData)
+        setSurveyData({
+          smoking: user.surveyData.smoking || "",
+          drinking: user.surveyData.drinking || "",
+          dealbreakers: user.surveyData.dealbreakers || [],
+          dateStyle: user.surveyData.dateStyle || "",
+          contactStyle: user.surveyData.contactStyle || "",
+          conflictStyle: user.surveyData.conflictStyle || "",
+          spending: user.surveyData.spending || "",
+          priority: user.surveyData.priority || "",
+          agePreference: user.surveyData.agePreference || [],
+          distancePreference: user.surveyData.distancePreference || "",
+          interests: user.surveyData.interests || [],
+        })
       }
     }
   }, [user])
@@ -135,18 +173,25 @@ export function ProfilePage({ onBack }: ProfilePageProps) {
   }
 
   return (
-    <main className="min-h-screen bg-background pt-20 pb-10 px-4">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
-          <Button variant="ghost" size="icon" onClick={onBack}>
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold">마이페이지</h1>
-            <p className="text-muted-foreground text-sm">내 정보를 관리하고 수정하세요</p>
-          </div>
-        </div>
+    <BackgroundLayout>
+      {/* Header */}
+      {user && (
+        <Header
+          onHomeClick={onHomeClick || onBack}
+          onHistoryClick={onHistoryClick}
+          onProfileClick={onProfileClick}
+          onMbtiClick={onMbtiClick}
+          onLogout={onLogout}
+          currentView="profile"
+        />
+      )}
+
+      <main className="pt-20 pb-10 px-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="mb-8">
+              <h1 className="text-2xl font-bold">마이페이지</h1>
+              <p className="text-muted-foreground text-sm">내 정보를 관리하고 수정하세요</p>
+            </div>
 
         {/* Profile Header */}
         <Card className="mb-6">
@@ -501,7 +546,7 @@ export function ProfilePage({ onBack }: ProfilePageProps) {
                               if (surveyData.interests.includes(opt.value)) {
                                 setSurveyData({
                                   ...surveyData,
-                                  interests: surveyData.interests.filter((i) => i !== opt.value),
+                                  interests: surveyData.interests.filter((i: string) => i !== opt.value),
                                 })
                               } else if (surveyData.interests.length < 5) {
                                 setSurveyData({
@@ -527,7 +572,19 @@ export function ProfilePage({ onBack }: ProfilePageProps) {
                     variant="outline"
                     onClick={() => {
                       if (user?.surveyData) {
-                        setSurveyData(user.surveyData)
+                        setSurveyData({
+                          smoking: user.surveyData.smoking || "",
+                          drinking: user.surveyData.drinking || "",
+                          dealbreakers: user.surveyData.dealbreakers || [],
+                          dateStyle: user.surveyData.dateStyle || "",
+                          contactStyle: user.surveyData.contactStyle || "",
+                          conflictStyle: user.surveyData.conflictStyle || "",
+                          spending: user.surveyData.spending || "",
+                          priority: user.surveyData.priority || "",
+                          agePreference: user.surveyData.agePreference || [],
+                          distancePreference: user.surveyData.distancePreference || "",
+                          interests: user.surveyData.interests || [],
+                        })
                       }
                       setEditingSurvey(false)
                     }}
@@ -659,6 +716,7 @@ export function ProfilePage({ onBack }: ProfilePageProps) {
           </div>
         </DialogContent>
       </Dialog>
-    </main>
+      </main>
+    </BackgroundLayout>
   )
 }

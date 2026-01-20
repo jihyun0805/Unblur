@@ -2,6 +2,20 @@
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 
+interface SurveyData {
+  smoking?: string
+  drinking?: string
+  dealbreakers?: string[]
+  dateStyle?: string
+  contactStyle?: string
+  conflictStyle?: string
+  spending?: string
+  priority?: string
+  agePreference?: string[]
+  distancePreference?: string
+  interests?: string[]
+}
+
 interface User {
   id: string
   nickname: string
@@ -12,6 +26,7 @@ interface User {
   bio?: string
   mbti?: string
   temperature: number
+  surveyData?: SurveyData
 }
 
 interface AuthContextType {

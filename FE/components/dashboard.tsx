@@ -12,25 +12,14 @@ import { SessionRoom } from "@/components/session/session-room"
 import { HistoryPage } from "@/components/history/history-page"
 import { ProfilePage } from "@/components/profile/profile-page"
 import { ProfileModal } from "@/components/profile/profile-modal"
-import { Zap, History, User, LogOut, Users, Menu, X, Thermometer, Brain, UserPlus } from "lucide-react"
+import { Zap, Users, Thermometer, UserPlus } from "lucide-react"
 import { MBTITestPage } from "@/components/mbti/mbti-test-page"
 import { OneOnOneModal } from "@/components/matching/one-on-one-modal"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { UnblurLogo } from "@/components/ui/unblur-logo"
 import { useToast } from "@/components/ui/use-toast"
+import { Header } from "@/components/common/header"
+import { BackgroundLayout } from "@/components/common/background-layout"
 
 type View = "home" | "history" | "session" | "profile" | "mbti"
-type DashboardHeaderProps = {
-  user: any
-  onLogout: () => void
-  onProfileClick: () => void
-  onHistoryClick: () => void
-  onHomeClick: () => void
-  onMbtiClick: () => void
-  currentView: View
-  mobileMenuOpen: boolean
-  setMobileMenuOpen: (open: boolean) => void
-}
 
 export function Dashboard() {
   const { user, logout } = useAuth()
@@ -40,7 +29,6 @@ export function Dashboard() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const [showProfile, setShowProfile] = useState(false) // Declare setShowProfile variable
   const [currentSession, setCurrentSession] = useState<string | null>(null)
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [notifications, setNotifications] = useState<Array<{ id: string; type: string; from: string }>>([])
   const { toast } = useToast()
 
@@ -89,7 +77,6 @@ export function Dashboard() {
 
   const handleNavigate = (newView: View) => {
     setView(newView)
-    setMobileMenuOpen(false)
   }
 
   if (view === "session" && currentSession) {
@@ -98,29 +85,41 @@ export function Dashboard() {
 
   if (view === "history") {
     return (
-      <div className="min-h-screen bg-background">
-        <DashboardHeader
-          user={user}
-          onLogout={() => setShowLogoutConfirm(true)}
-          onProfileClick={() => handleNavigate("profile")}
-          onHistoryClick={() => handleNavigate("history")}
-          onHomeClick={() => handleNavigate("home")}
-          onMbtiClick={() => handleNavigate("mbti")}
-          currentView={view}
-          mobileMenuOpen={mobileMenuOpen}
-          setMobileMenuOpen={setMobileMenuOpen}
-        />
-        <HistoryPage onBack={() => setView("home")} />
-      </div>
+      <HistoryPage 
+        onBack={() => setView("home")}
+        onHomeClick={() => handleNavigate("home")}
+        onHistoryClick={() => handleNavigate("history")}
+        onProfileClick={() => handleNavigate("profile")}
+        onMbtiClick={() => handleNavigate("mbti")}
+        onLogout={() => setShowLogoutConfirm(true)}
+      />
     )
   }
 
   if (view === "profile") {
-    return <ProfilePage onBack={() => setView("home")} />
+    return (
+      <ProfilePage 
+        onBack={() => setView("home")}
+        onHomeClick={() => handleNavigate("home")}
+        onHistoryClick={() => handleNavigate("history")}
+        onProfileClick={() => setShowProfile(true)}
+        onMbtiClick={() => handleNavigate("mbti")}
+        onLogout={() => setShowLogoutConfirm(true)}
+      />
+    )
   }
 
   if (view === "mbti") {
-    return <MBTITestPage onBack={() => setView("home")} />
+    return (
+      <MBTITestPage 
+        onBack={() => setView("home")} 
+        onComplete={(mbti) => {
+          // MBTI 테스트 완료 시 처리
+          console.log("MBTI 결과:", mbti)
+          setView("home")
+        }}
+      />
+    )
   }
 
   const getTemperatureColor = (temp: number) => {
@@ -132,31 +131,17 @@ export function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen relative">
-      {/* Sunset Background */}
-      <div className="fixed inset-0 z-0">
-        <img
-          src="/sunset-ocean.jpg"
-          alt="Sunset background"
-          className="w-full h-full object-cover opacity-35"
-        />
-        <div className="absolute inset-0 bg-white/30" />
-      </div>
-      
-      <div className="relative z-10">
-        <DashboardHeader
-          user={user}
-          onLogout={() => setShowLogoutConfirm(true)}
-          onProfileClick={() => setShowProfile(true)}
-          onHistoryClick={() => handleNavigate("history")}
-          onHomeClick={() => handleNavigate("home")}
-          onMbtiClick={() => handleNavigate("mbti")}
-          currentView={view}
-          mobileMenuOpen={mobileMenuOpen}
-          setMobileMenuOpen={setMobileMenuOpen}
-        />
+    <BackgroundLayout>
+      <Header
+        onLogout={() => setShowLogoutConfirm(true)}
+        onProfileClick={() => handleNavigate("profile")}
+        onHistoryClick={() => handleNavigate("history")}
+        onHomeClick={() => handleNavigate("home")}
+        onMbtiClick={() => handleNavigate("mbti")}
+        currentView={view === "session" ? undefined : view}
+      />
 
-        <main className="pt-20 pb-10 px-4">
+      <main className="pt-20 pb-10 px-4">
           <div className="max-w-4xl mx-auto">
             {/* Welcome Section */}
             <div className="text-center mb-8 sm:mb-10">
@@ -314,141 +299,7 @@ export function Dashboard() {
             </div>
           </DialogContent>
         </Dialog>
-      </div>
-    </div>
+    </BackgroundLayout>
   )
 }
 
-function DashboardHeader({
-  user,
-  onLogout,
-  onProfileClick,
-  onHistoryClick,
-  onHomeClick,
-  onMbtiClick,
-  currentView,
-  mobileMenuOpen,
-  setMobileMenuOpen,
-}: DashboardHeaderProps) {
-
-  return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-transparent backdrop-blur-md border-b border-border/30">
-      <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-        <button onClick={onHomeClick} className="flex items-center gap-3">
-          <img 
-            src="/logo.png" 
-            alt="Unblur Logo" 
-            className="w-10 h-10 object-contain" 
-            style={{ filter: 'brightness(0) saturate(100%) invert(25%) sepia(5%) saturate(0%) hue-rotate(0deg) brightness(95%) contrast(90%)' }} 
-          />
-          <span className="font-bold text-xl text-foreground hidden sm:inline">
-            Unblur
-          </span>
-        </button>
-
-        <nav className="hidden sm:flex items-center gap-2">
-          <Button 
-            variant={currentView === "mbti" ? "secondary" : "ghost"} 
-            size="sm" 
-            onClick={onMbtiClick}
-            className="group relative"
-          >
-            <Brain className="w-4 h-4" />
-            <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-popover text-popover-foreground text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-              MBTI 테스트
-            </span>
-          </Button>
-          <Button 
-            variant={currentView === "history" ? "secondary" : "ghost"} 
-            size="sm" 
-            onClick={onHistoryClick}
-            className="group relative"
-          >
-            <History className="w-4 h-4" />
-            <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-popover text-popover-foreground text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-              이력
-            </span>
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={onProfileClick}
-            className="group relative"
-          >
-            <User className="w-4 h-4" />
-            <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-popover text-popover-foreground text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-              프로필
-            </span>
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={onLogout}
-            className="group relative"
-          >
-            <LogOut className="w-4 h-4" />
-            <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-popover text-popover-foreground text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-              로그아웃
-            </span>
-          </Button>
-        </nav>
-
-        <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-          <SheetTrigger asChild className="sm:hidden">
-            <Button variant="ghost" size="icon">
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right" className="w-64">
-            <nav className="flex flex-col gap-2 mt-8">
-              <Button
-                variant={currentView === "mbti" ? "secondary" : "ghost"}
-                className="justify-start"
-                onClick={() => {
-                  onMbtiClick()
-                  setMobileMenuOpen(false)
-                }}
-              >
-                <Brain className="w-4 h-4 mr-2" />
-                MBTI 테스트
-              </Button>
-              <Button
-                variant={currentView === "history" ? "secondary" : "ghost"}
-                className="justify-start"
-                onClick={() => {
-                  onHistoryClick()
-                  setMobileMenuOpen(false)
-                }}
-              >
-                <History className="w-4 h-4 mr-2" />
-                이력
-              </Button>
-              <Button
-                variant="ghost"
-                className="justify-start"
-                onClick={() => {
-                  onProfileClick()
-                  setMobileMenuOpen(false)
-                }}
-              >
-                <User className="w-4 h-4 mr-2" />
-                프로필
-              </Button>
-              <Button
-                variant="ghost"
-                className="justify-start text-destructive"
-                onClick={() => {
-                  onLogout()
-                  setMobileMenuOpen(false)
-                }}
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                로그아웃
-              </Button>
-            </nav>
-          </SheetContent>
-        </Sheet>
-      </div>
-    </header>
-  )
-}
