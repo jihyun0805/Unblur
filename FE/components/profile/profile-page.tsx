@@ -13,17 +13,6 @@ import { useToast } from "@/hooks/use-toast"
 import { Loader2, User, Trash2, Pencil, Save, X, Thermometer } from "lucide-react"
 import { SURVEY_QUESTIONS } from "@/lib/survey-questions"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Header } from "@/components/common/header"
-import { BackgroundLayout } from "@/components/common/background-layout"
-
-interface ProfilePageProps {
-  onBack?: () => void
-  onHomeClick?: () => void
-  onHistoryClick?: () => void
-  onProfileClick?: () => void
-  onMbtiClick?: () => void
-  onLogout?: () => void
-}
 
 const MBTI_TYPES = [
   "INTJ", "INTP", "ENTJ", "ENTP",
@@ -32,14 +21,7 @@ const MBTI_TYPES = [
   "ISTP", "ISFP", "ESTP", "ESFP",
 ]
 
-export function ProfilePage({ 
-  onBack, 
-  onHomeClick, 
-  onHistoryClick, 
-  onProfileClick, 
-  onMbtiClick, 
-  onLogout 
-}: ProfilePageProps) {
+export function ProfilePage() {
   const { user, logout, updateUser } = useAuth()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
@@ -173,21 +155,8 @@ export function ProfilePage({
   }
 
   return (
-    <BackgroundLayout>
-      {/* Header */}
-      {user && (
-        <Header
-          onHomeClick={onHomeClick || onBack}
-          onHistoryClick={onHistoryClick}
-          onProfileClick={onProfileClick}
-          onMbtiClick={onMbtiClick}
-          onLogout={onLogout}
-          currentView="profile"
-        />
-      )}
-
-      <main className="pt-20 pb-10 px-4">
-          <div className="max-w-4xl mx-auto">
+    <>
+      <div className="max-w-4xl mx-auto">
             <div className="mb-8">
               <h1 className="text-2xl font-bold">마이페이지</h1>
               <p className="text-muted-foreground text-sm">내 정보를 관리하고 수정하세요</p>
@@ -716,7 +685,6 @@ export function ProfilePage({
           </div>
         </DialogContent>
       </Dialog>
-      </main>
-    </BackgroundLayout>
+    </>
   )
 }
