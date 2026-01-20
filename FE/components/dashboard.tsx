@@ -89,7 +89,7 @@ export function Dashboard() {
         onBack={() => setView("home")}
         onHomeClick={() => handleNavigate("home")}
         onHistoryClick={() => handleNavigate("history")}
-        onProfileClick={() => setShowProfile(true)}
+        onProfileClick={() => handleNavigate("profile")}
         onMbtiClick={() => handleNavigate("mbti")}
         onLogout={() => setShowLogoutConfirm(true)}
       />
@@ -299,7 +299,6 @@ export function Dashboard() {
             </div>
           </DialogContent>
         </Dialog>
-      </main>
     </BackgroundLayout>
   )
 }

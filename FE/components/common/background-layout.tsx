@@ -19,9 +19,6 @@ export function BackgroundLayout({
   className = "",
   useNextImage = false,
 }: BackgroundLayoutProps) {
-  // Tailwind의 동적 클래스 생성을 위해 opacity 값을 직접 사용
-  const opacityClass = `opacity-[${imageOpacity}%]`
-
   return (
     <div className={`min-h-screen relative ${className}`}>
       {/* Background Image */}
@@ -31,14 +28,16 @@ export function BackgroundLayout({
             src={imageSrc}
             alt="Background"
             fill
-            className={`object-cover ${opacityClass}`}
+            className="object-cover"
+            style={{ opacity: imageOpacity / 100 }}
             priority
           />
         ) : (
           <img
             src={imageSrc}
             alt="Background"
-            className={`w-full h-full object-cover ${opacityClass}`}
+            className="w-full h-full object-cover"
+            style={{ opacity: imageOpacity / 100 }}
           />
         )}
         <div className={`absolute inset-0 ${overlayClassName}`} />
