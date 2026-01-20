@@ -43,7 +43,7 @@ deploy_master:
     - mkdir -p ~/.ssh
     - |
       if [ -f "$DEPLOY_SSH_KEY" ]; then
-        cp "$DEPLOY_SSH_KEY" ~/.ssh/id_rsa
+        tr -d '\r' < "$DEPLOY_SSH_KEY" > ~/.ssh/id_rsa
       else
         echo "$DEPLOY_SSH_KEY" | tr -d '\r' > ~/.ssh/id_rsa
       fi
