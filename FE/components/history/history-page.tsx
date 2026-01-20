@@ -7,6 +7,7 @@ import { Calendar, Clock, MessageCircle, Filter, Thermometer, Heart } from "luci
 import { ChatModal } from "./chat-modal"
 import { PartnerProfileModal } from "./partner-profile-modal"
 import { Header } from "@/components/common/header"
+import { BackgroundLayout } from "@/components/common/background-layout"
 import { useAuth } from "@/contexts/auth-context"
 
 interface HistoryPageProps {
@@ -138,31 +139,20 @@ export function HistoryPage({
   }
 
   return (
-    <div className="min-h-screen relative">
-      {/* Sunset Background */}
-      <div className="fixed inset-0 z-0">
-        <img
-          src="/sunset-ocean.jpg"
-          alt="Sunset background"
-          className="w-full h-full object-cover opacity-35"
+    <BackgroundLayout>
+      {/* Header */}
+      {user && (
+        <Header
+          onHomeClick={onHomeClick || onBack}
+          onHistoryClick={onHistoryClick}
+          onProfileClick={onProfileClick}
+          onMbtiClick={onMbtiClick}
+          onLogout={onLogout}
+          currentView="history"
         />
-        <div className="absolute inset-0 bg-white/30" />
-      </div>
+      )}
 
-      <div className="relative z-10">
-        {/* Header */}
-        {user && (
-          <Header
-            onHomeClick={onHomeClick || onBack}
-            onHistoryClick={onHistoryClick}
-            onProfileClick={onProfileClick}
-            onMbtiClick={onMbtiClick}
-            onLogout={onLogout}
-            currentView="history"
-          />
-        )}
-
-        <main className="pt-20 pb-10 px-4">
+      <main className="pt-20 pb-10 px-4">
           <div className="max-w-3xl mx-auto">
             <div className="mb-8">
               <h1 className="text-2xl font-bold">소개팅 이력</h1>
@@ -309,8 +299,7 @@ export function HistoryPage({
             }}
         />
       )}
-        </main>
-      </div>
-    </div>
+      </main>
+    </BackgroundLayout>
   )
 }

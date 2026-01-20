@@ -17,6 +17,7 @@ import { MBTITestPage } from "@/components/mbti/mbti-test-page"
 import { OneOnOneModal } from "@/components/matching/one-on-one-modal"
 import { useToast } from "@/components/ui/use-toast"
 import { Header } from "@/components/common/header"
+import { BackgroundLayout } from "@/components/common/background-layout"
 
 type View = "home" | "history" | "session" | "profile" | "mbti"
 
@@ -130,28 +131,17 @@ export function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen relative">
-      {/* Sunset Background */}
-      <div className="fixed inset-0 z-0">
-        <img
-          src="/sunset-ocean.jpg"
-          alt="Sunset background"
-          className="w-full h-full object-cover opacity-35"
-        />
-        <div className="absolute inset-0 bg-white/30" />
-      </div>
-      
-      <div className="relative z-10">
-        <Header
-          onLogout={() => setShowLogoutConfirm(true)}
-          onProfileClick={() => handleNavigate("profile")}
-          onHistoryClick={() => handleNavigate("history")}
-          onHomeClick={() => handleNavigate("home")}
-          onMbtiClick={() => handleNavigate("mbti")}
-          currentView={view === "session" ? undefined : view}
-        />
+    <BackgroundLayout>
+      <Header
+        onLogout={() => setShowLogoutConfirm(true)}
+        onProfileClick={() => handleNavigate("profile")}
+        onHistoryClick={() => handleNavigate("history")}
+        onHomeClick={() => handleNavigate("home")}
+        onMbtiClick={() => handleNavigate("mbti")}
+        currentView={view === "session" ? undefined : view}
+      />
 
-        <main className="pt-20 pb-10 px-4">
+      <main className="pt-20 pb-10 px-4">
           <div className="max-w-4xl mx-auto">
             {/* Welcome Section */}
             <div className="text-center mb-8 sm:mb-10">
@@ -309,8 +299,8 @@ export function Dashboard() {
             </div>
           </DialogContent>
         </Dialog>
-      </div>
-    </div>
+      </main>
+    </BackgroundLayout>
   )
 }
 

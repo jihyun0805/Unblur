@@ -7,32 +7,23 @@ import { RegisterModal } from "@/components/auth/register-modal"
 import { Users, Clock, Shield, Eye, MessageCircle, Heart, Zap, User2 } from "lucide-react"
 import Image from "next/image"
 import { Header } from "@/components/common/header"
+import { BackgroundLayout } from "@/components/common/background-layout"
 
 export function LandingPage() {
   const [showLogin, setShowLogin] = useState(false)
   const [showRegister, setShowRegister] = useState(false)
 
   return (
-    <div className="min-h-screen relative">
-      {/* Sunset Background with Opacity */}
-      <div className="fixed inset-0 z-0">
-        <Image
-          src="/sunset-ocean.jpg"
-          alt="Sunset background"
-          fill
-          className="object-cover opacity-30"
-          priority
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/50 via-background/30 to-background/50" />
-      </div>
-
-      {/* Content */}
-      <div className="relative z-10">
-        {/* Header */}
-        <Header
-          onLoginClick={() => setShowLogin(true)}
-          onRegisterClick={() => setShowRegister(true)}
-        />
+    <BackgroundLayout
+      imageOpacity={30}
+      overlayClassName="bg-gradient-to-b from-background/50 via-background/30 to-background/50"
+      useNextImage={true}
+    >
+      {/* Header */}
+      <Header
+        onLoginClick={() => setShowLogin(true)}
+        onRegisterClick={() => setShowRegister(true)}
+      />
 
         {/* Hero Section */}
         <section className="pt-32 sm:pt-40 pb-16 sm:pb-24 px-4">
@@ -265,25 +256,24 @@ export function LandingPage() {
             <p className="text-sm text-muted-foreground">© 2026 Unblur. All rights reserved.</p>
           </div>
         </footer>
-      </div>
 
-      {/* Modals */}
-      <LoginModal
-        open={showLogin}
-        onOpenChange={setShowLogin}
-        onSwitchToRegister={() => {
-          setShowLogin(false)
-          setShowRegister(true)
-        }}
-      />
-      <RegisterModal
-        open={showRegister}
-        onOpenChange={setShowRegister}
-        onSwitchToLogin={() => {
-          setShowRegister(false)
-          setShowLogin(true)
-        }}
-      />
-    </div>
+        {/* Modals */}
+        <LoginModal
+          open={showLogin}
+          onOpenChange={setShowLogin}
+          onSwitchToRegister={() => {
+            setShowLogin(false)
+            setShowRegister(true)
+          }}
+        />
+        <RegisterModal
+          open={showRegister}
+          onOpenChange={setShowRegister}
+          onSwitchToLogin={() => {
+            setShowRegister(false)
+            setShowLogin(true)
+          }}
+        />
+    </BackgroundLayout>
   )
 }

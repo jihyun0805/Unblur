@@ -14,6 +14,7 @@ import { Loader2, User, Trash2, Pencil, Save, X, Thermometer } from "lucide-reac
 import { SURVEY_QUESTIONS } from "@/lib/survey-questions"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Header } from "@/components/common/header"
+import { BackgroundLayout } from "@/components/common/background-layout"
 
 interface ProfilePageProps {
   onBack?: () => void
@@ -172,31 +173,20 @@ export function ProfilePage({
   }
 
   return (
-    <div className="min-h-screen relative">
-      {/* Sunset Background */}
-      <div className="fixed inset-0 z-0">
-        <img
-          src="/sunset-ocean.jpg"
-          alt="Sunset background"
-          className="w-full h-full object-cover opacity-35"
+    <BackgroundLayout>
+      {/* Header */}
+      {user && (
+        <Header
+          onHomeClick={onHomeClick || onBack}
+          onHistoryClick={onHistoryClick}
+          onProfileClick={onProfileClick}
+          onMbtiClick={onMbtiClick}
+          onLogout={onLogout}
+          currentView="profile"
         />
-        <div className="absolute inset-0 bg-white/30" />
-      </div>
+      )}
 
-      <div className="relative z-10">
-        {/* Header */}
-        {user && (
-          <Header
-            onHomeClick={onHomeClick || onBack}
-            onHistoryClick={onHistoryClick}
-            onProfileClick={onProfileClick}
-            onMbtiClick={onMbtiClick}
-            onLogout={onLogout}
-            currentView="profile"
-          />
-        )}
-
-        <main className="pt-20 pb-10 px-4">
+      <main className="pt-20 pb-10 px-4">
           <div className="max-w-4xl mx-auto">
             <div className="mb-8">
               <h1 className="text-2xl font-bold">마이페이지</h1>
@@ -726,8 +716,7 @@ export function ProfilePage({
           </div>
         </DialogContent>
       </Dialog>
-        </main>
-      </div>
-    </div>
+      </main>
+    </BackgroundLayout>
   )
 }
