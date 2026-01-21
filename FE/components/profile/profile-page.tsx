@@ -319,22 +319,22 @@ export function ProfilePage() {
               <p className="text-muted-foreground text-sm">내 정보를 관리하고 수정하세요</p>
             </div>
 
-        <div className="grid gap-6 lg:grid-cols-[320px_1fr] items-stretch">
+        <div className="flex flex-col gap-4">
           {/* Profile Summary */}
-          <Card className="py-4 lg:h-full lg:self-stretch">
-            <CardContent className="pt-6 lg:h-full flex flex-col justify-center">
-              <div className="flex flex-col items-center text-center gap-5">
+          <Card>
+            <CardContent className="py-0 flex items-center gap-5">
+              <div className="flex items-center gap-5">
                 <div className="w-28 h-28 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                   <User className="w-12 h-12 text-primary" />
                 </div>
-                <div className="space-y-3">
-                  <h2 className="text-2xl font-bold">{user?.nickname}</h2>
-                  <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                <div className="space-y-3 text-left">
+                  <h2 className="text-xl font-semibold">{user?.nickname}</h2>
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
                     <span>{user?.age}세</span>
                     <span>{user?.gender === "male" ? "남성" : "여성"}</span>
                     <span>{user?.region}</span>
                   </div>
-                  <div className="flex items-center justify-center gap-2">
+                  <div className="flex items-center gap-2">
                     <span className={`font-semibold ${getTemperatureColor(user?.temperature || 36.5)}`}>
                       {Math.round(user?.temperature || 0)}%
                     </span>
@@ -345,20 +345,18 @@ export function ProfilePage() {
             </CardContent>
           </Card>
 
-          <div className="space-y-6 lg:space-y-0 lg:flex lg:flex-col lg:gap-6 lg:h-full">
-            {/* Basic Info Card */}
-            <Card className="gap-4">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>기본 정보</CardTitle>
-                    <CardDescription>닉네임, 소개, MBTI</CardDescription>
-                  </div>
-                  {!editingBasic && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
+          {/* Basic Info Card */}
+          <Card className="gap-3">
+            <CardHeader className="pb-1">
+              <div className="flex items-baseline justify-between">
+                <div>
+                  <CardTitle className="text-lg">기본 정보</CardTitle>
+                </div>
+                {!editingBasic && (
+                  <button
+                    type="button"
+                    className="text-sm text-muted-foreground hover:text-foreground"
+                    onClick={() => {
                     setPasswordData({
                       currentPassword: "",
                       newPassword: "",
@@ -367,65 +365,61 @@ export function ProfilePage() {
                     setNicknameAvailable(null)
                     setEditingBasic(true)
                   }}
-                    >
-                      <Pencil className="w-4 h-4 mr-2" />
-                      수정
-                    </Button>
+                  >
+                    수정하기
+                  </button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm font-semibold">닉네임</p>
+                  <p className="text-sm text-muted-foreground">{user?.nickname || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">한 줄 소개</p>
+                  <p className="text-sm text-muted-foreground">{user?.bio || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">MBTI</p>
+                  <p className="text-sm text-muted-foreground">{user?.mbti || "-"}</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {selectedInterestLabels.length > 0 ? (
+                    selectedInterestLabels.map((label) => (
+                      <Badge key={label} variant="secondary">
+                        {label}
+                      </Badge>
+                    ))
+                  ) : (
+                    <span className="text-sm font-semibold">선택한 관심사 없음</span>
                   )}
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-sm text-muted-foreground">닉네임</p>
-                    <p className="font-medium">{user?.nickname || "-"}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">한 줄 소개</p>
-                    <p className="font-medium">{user?.bio || "-"}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">MBTI</p>
-                    <p className="font-medium">{user?.mbti || "-"}</p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedInterestLabels.length > 0 ? (
-                      selectedInterestLabels.map((label) => (
-                        <Badge key={label} variant="secondary">
-                          {label}
-                        </Badge>
-                      ))
-                    ) : (
-                      <span className="text-sm text-muted-foreground">선택한 관심사 없음</span>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+              </div>
+            </CardContent>
+          </Card>
 
-            {/* Survey Data Card */}
-            <Card className="gap-4">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>성향 & 선호도</CardTitle>
-                    <CardDescription>회원가입 시 작성한 설문조사</CardDescription>
-                  </div>
-                  {!editingSurvey && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setEditingSurvey(true)}
-                    >
-                      <Pencil className="w-4 h-4 mr-2" />
-                      수정
-                    </Button>
-                  )}
+          {/* Survey Data Card */}
+          <Card className="gap-0 py-0">
+            <CardHeader className="py-4">
+              <div className="flex items-baseline justify-between">
+                <div>
+                  <CardTitle className="text-lg">성향 & 선호도</CardTitle>
+                  <CardDescription>회원가입 시 작성한 설문조사</CardDescription>
                 </div>
-              </CardHeader>
-              <CardContent className="pt-2" />
-            </Card>
-          </div>
+                {!editingSurvey && (
+                  <button
+                    type="button"
+                    className="text-sm text-muted-foreground hover:text-foreground"
+                    onClick={() => setEditingSurvey(true)}
+                  >
+                    수정하기
+                  </button>
+                )}
+              </div>
+            </CardHeader>
+          </Card>
         </div>
 
       </div>
@@ -439,8 +433,8 @@ export function ProfilePage() {
         setEditingBasic(true)
       }}>
         <DialogContent className="sm:max-w-lg bg-background max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-center">기본 정보 수정</DialogTitle>
+          <DialogHeader className="pb-1">
+            <DialogTitle className="text-center text-base font-medium text-muted-foreground">기본 정보 수정</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -544,7 +538,7 @@ export function ProfilePage() {
                 저장
               </Button>
             </div>
-            <div className="pt-4 border-t border-border flex justify-end">
+            <div className="pt-1 border-t border-border flex justify-end">
               <Button
                 variant="ghost"
                 size="sm"
@@ -931,8 +925,8 @@ export function ProfilePage() {
       {/* Delete Confirmation Dialog */}
       <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <DialogContent className="sm:max-w-sm bg-background">
-          <DialogHeader>
-            <DialogTitle className="text-center">계정 삭제</DialogTitle>
+          <DialogHeader className="pb-1">
+            <DialogTitle className="text-center text-base font-medium text-muted-foreground">계정 삭제</DialogTitle>
           </DialogHeader>
           <div className="py-4 text-center">
             <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4">
