@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { X, Heart, Loader2 } from "lucide-react"
 
@@ -252,13 +252,21 @@ const QUESTIONS = [
 ]
 
 export function BalanceGameOverlay({ onClose }: BalanceGameOverlayProps) {
+  const questions = useMemo(() => {
+    const shuffled = [...QUESTIONS]
+    for (let i = shuffled.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+    }
+    return shuffled
+  }, [])
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [myChoice, setMyChoice] = useState<"A" | "B" | null>(null)
   const [partnerChoice, setPartnerChoice] = useState<"A" | "B" | null>(null)
   const [isWaiting, setIsWaiting] = useState(false)
   const [showResult, setShowResult] = useState(false)
 
-  const question = QUESTIONS[currentQuestion]
+  const question = questions[currentQuestion]
 
   const handleChoice = (choice: "A" | "B") => {
     setMyChoice(choice)
@@ -292,9 +300,6 @@ export function BalanceGameOverlay({ onClose }: BalanceGameOverlayProps) {
         <div className="p-4 border-b border-border flex items-center justify-between">
           <h3 className="font-semibold">밸런스 게임</h3>
           <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">
-              {currentQuestion + 1} / {QUESTIONS.length}
-            </span>
             <button onClick={onClose}>
               <X className="w-5 h-5 text-muted-foreground" />
             </button>

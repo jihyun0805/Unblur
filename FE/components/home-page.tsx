@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { MatchingModal } from "@/components/matching/matching-modal"
 import { OneOnOneModal } from "@/components/matching/one-on-one-modal"
+import { CameraTestModal } from "@/components/matching/camera-test-modal"
 import { Zap, Thermometer, UserPlus } from "lucide-react"
 
 export function HomePage() {
@@ -15,6 +16,8 @@ export function HomePage() {
   const { toast } = useToast()
   const [showMatching, setShowMatching] = useState(false)
   const [showOneOnOne, setShowOneOnOne] = useState(false)
+  const [showCameraTest, setShowCameraTest] = useState(false)
+  const [pendingSessionId, setPendingSessionId] = useState<string | null>(null)
 
   const handleMatchFound = (sessionId: string) => {
     setShowMatching(false)
@@ -27,7 +30,13 @@ export function HomePage() {
         title: "1:1 채팅 수락!",
         description: "상대방이 채팅 요청을 수락했습니다. 채팅방으로 이동하시겠습니까?",
         action: (
-          <Button size="sm" onClick={() => router.push(`/session/${userId}`)}>
+          <Button
+            size="sm"
+            onClick={() => {
+              setPendingSessionId(userId)
+              setShowCameraTest(true)
+            }}
+          >
             입장하기
           </Button>
         ),
@@ -117,6 +126,17 @@ export function HomePage() {
 
       <MatchingModal open={showMatching} onOpenChange={setShowMatching} onMatchFound={handleMatchFound} />
       <OneOnOneModal open={showOneOnOne} onOpenChange={setShowOneOnOne} onRequestChat={handleRequestChat} />
+      <CameraTestModal
+        open={showCameraTest}
+        onOpenChange={setShowCameraTest}
+        onReady={() => {
+          if (pendingSessionId) {
+            router.push(`/session/${pendingSessionId}`)
+            setPendingSessionId(null)
+          }
+          setShowCameraTest(false)
+        }}
+      />
     </>
   )
 }
