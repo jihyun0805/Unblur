@@ -23,7 +23,7 @@ const MBTI_TYPES = [
 ]
 
 export function ProfilePage() {
-  const { user, logout, updateUser } = useAuth()
+  const { user, updateUser, deleteAccount } = useAuth()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
