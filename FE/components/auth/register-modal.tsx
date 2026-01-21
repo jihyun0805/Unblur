@@ -60,6 +60,14 @@ export function RegisterModal({ open, onOpenChange, onSwitchToLogin }: RegisterM
     priority: "",
     agePreference: [] as string[],
     distancePreference: "",
+    smokingSelf: "",
+    smokingPartner: "",
+    drinkingSelf: "",
+    drinkingPartner: "",
+    religionSelf: "",
+    religionPartner: "",
+    petSelf: "",
+    petPartner: "",
     interests: [] as string[],
   })
   const [showPassword, setShowPassword] = useState(false)
@@ -268,7 +276,31 @@ export function RegisterModal({ open, onOpenChange, onSwitchToLogin }: RegisterM
     setStep(5)
   }
 
-  const handleStep5Submit = async (e: React.FormEvent) => {
+  const handleStep5Submit = (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (
+      !formData.smokingSelf ||
+      !formData.smokingPartner ||
+      !formData.drinkingSelf ||
+      !formData.drinkingPartner ||
+      !formData.religionSelf ||
+      !formData.religionPartner ||
+      !formData.petSelf ||
+      !formData.petPartner
+    ) {
+      toast({
+        title: "입력 오류",
+        description: "모든 질문에 답변해주세요.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setStep(6)
+  }
+
+  const handleStep6Submit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (formData.interests.length === 0) {
@@ -298,6 +330,14 @@ export function RegisterModal({ open, onOpenChange, onSwitchToLogin }: RegisterM
         priority: formData.priority,
         agePreference: formData.agePreference,
         distancePreference: formData.distancePreference,
+        smokingSelf: formData.smokingSelf,
+        smokingPartner: formData.smokingPartner,
+        drinkingSelf: formData.drinkingSelf,
+        drinkingPartner: formData.drinkingPartner,
+        religionSelf: formData.religionSelf,
+        religionPartner: formData.religionPartner,
+        petSelf: formData.petSelf,
+        petPartner: formData.petPartner,
         interests: formData.interests,
       },
     })
@@ -328,6 +368,14 @@ export function RegisterModal({ open, onOpenChange, onSwitchToLogin }: RegisterM
         priority: "",
         agePreference: [],
         distancePreference: "",
+        smokingSelf: "",
+        smokingPartner: "",
+        drinkingSelf: "",
+        drinkingPartner: "",
+        religionSelf: "",
+        religionPartner: "",
+        petSelf: "",
+        petPartner: "",
         interests: [],
       })
       setUsernameAvailable(null)
@@ -357,11 +405,11 @@ export function RegisterModal({ open, onOpenChange, onSwitchToLogin }: RegisterM
         onOpenChange(open)
       }}
     >
-      <DialogContent className="sm:max-w-md bg-background max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-lg bg-background max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-center">회원가입</DialogTitle>
           <div className="flex items-center justify-center gap-2 pt-2">
-            {[1, 2, 3, 4, 5].map((s) => (
+            {[1, 2, 3, 4, 5, 6].map((s) => (
               <div key={s} className={`w-8 h-1 rounded-full ${step >= s ? "bg-primary" : "bg-muted"}`} />
             ))}
           </div>
@@ -590,10 +638,10 @@ export function RegisterModal({ open, onOpenChange, onSwitchToLogin }: RegisterM
           </form>
         )}
 
-        {/* Step 3: Phase 1. 나의 연애 DNA (About Me) */}
+        {/* Step 3: Phase 1. 나의 분위기 (Vibe Check) */}
         {step === 3 && (
           <form onSubmit={handleStep3Submit} className="space-y-4 mt-4">
-            <h3 className="font-semibold text-center">Phase 1. 나의 연애 DNA (About Me)</h3>
+            <h3 className="font-semibold text-center">Phase 1. 나의 분위기 (Vibe Check)</h3>
 
             <div className="space-y-2">
               <Label>{SURVEY_QUESTIONS.dateStyle.question}</Label>
@@ -670,10 +718,10 @@ export function RegisterModal({ open, onOpenChange, onSwitchToLogin }: RegisterM
           </form>
         )}
 
-        {/* Step 4: Phase 2. 내가 찾는 그 사람 (My Ideal Type) */}
+        {/* Step 4: Phase 2. 매칭 조건 (My Type) */}
         {step === 4 && (
           <form onSubmit={handleStep4Submit} className="space-y-4 mt-4">
-            <h3 className="font-semibold text-center">Phase 2. 내가 찾는 그 사람 (My Ideal Type)</h3>
+            <h3 className="font-semibold text-center">Phase 2. 매칭 조건 (My Type)</h3>
 
             <div className="space-y-2">
               <Label>{SURVEY_QUESTIONS.priority.question}</Label>
@@ -741,10 +789,194 @@ export function RegisterModal({ open, onOpenChange, onSwitchToLogin }: RegisterM
           </form>
         )}
 
-        {/* Step 5: Phase 3. 우리의 연결고리 (Interest Tags) */}
+        {/* Step 5: Phase 3. 현실 필터 (The Real Deal) */}
         {step === 5 && (
-          <form onSubmit={handleStep5Submit} className="space-y-4 mt-4">
-            <h3 className="font-semibold text-center">Phase 3. 우리의 연결고리 (Interest Tags)</h3>
+          <form onSubmit={handleStep5Submit} className="space-y-6 mt-4">
+            <h3 className="font-semibold text-center">Phase 3. 현실 필터 (The Real Deal)</h3>
+
+            <div className="space-y-5">
+              <div className="hidden sm:grid sm:grid-cols-[120px_1fr_1fr] text-xs text-muted-foreground text-center">
+                <span />
+                <span>나의 상태</span>
+                <span>상대 허용 범위</span>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-[120px_1fr_1fr] sm:items-center">
+                <p className="text-sm font-semibold sm:text-center">Q8. 흡연</p>
+                <div className="space-y-2 sm:space-y-0 sm:flex sm:justify-center">
+                  <Label className="sm:hidden">{SURVEY_QUESTIONS.smokingSelf.question}</Label>
+                  <Select
+                    value={formData.smokingSelf}
+                    onValueChange={(value) => setFormData({ ...formData, smokingSelf: value })}
+                  >
+                    <SelectTrigger className="bg-input h-10 sm:w-56">
+                      <SelectValue placeholder="선택하세요" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SURVEY_QUESTIONS.smokingSelf.options.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 sm:space-y-0 sm:flex sm:justify-center">
+                  <Label className="sm:hidden">{SURVEY_QUESTIONS.smokingPartner.question}</Label>
+                  <Select
+                    value={formData.smokingPartner}
+                    onValueChange={(value) => setFormData({ ...formData, smokingPartner: value })}
+                  >
+                    <SelectTrigger className="bg-input h-10 sm:w-56">
+                      <SelectValue placeholder="선택하세요" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SURVEY_QUESTIONS.smokingPartner.options.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-[120px_1fr_1fr] sm:items-center">
+                <p className="text-sm font-semibold sm:text-center">Q9. 음주</p>
+                <div className="space-y-2 sm:space-y-0 sm:flex sm:justify-center">
+                  <Label className="sm:hidden">{SURVEY_QUESTIONS.drinkingSelf.question}</Label>
+                  <Select
+                    value={formData.drinkingSelf}
+                    onValueChange={(value) => setFormData({ ...formData, drinkingSelf: value })}
+                  >
+                    <SelectTrigger className="bg-input h-10 sm:w-56">
+                      <SelectValue placeholder="선택하세요" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SURVEY_QUESTIONS.drinkingSelf.options.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 sm:space-y-0 sm:flex sm:justify-center">
+                  <Label className="sm:hidden">{SURVEY_QUESTIONS.drinkingPartner.question}</Label>
+                  <Select
+                    value={formData.drinkingPartner}
+                    onValueChange={(value) => setFormData({ ...formData, drinkingPartner: value })}
+                  >
+                    <SelectTrigger className="bg-input h-10 sm:w-56">
+                      <SelectValue placeholder="선택하세요" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SURVEY_QUESTIONS.drinkingPartner.options.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-[120px_1fr_1fr] sm:items-center">
+                <p className="text-sm font-semibold sm:text-center">Q10. 종교</p>
+                <div className="space-y-2 sm:space-y-0 sm:flex sm:justify-center">
+                  <Label className="sm:hidden">{SURVEY_QUESTIONS.religionSelf.question}</Label>
+                  <Select
+                    value={formData.religionSelf}
+                    onValueChange={(value) => setFormData({ ...formData, religionSelf: value })}
+                  >
+                    <SelectTrigger className="bg-input h-10 sm:w-56">
+                      <SelectValue placeholder="선택하세요" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SURVEY_QUESTIONS.religionSelf.options.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 sm:space-y-0 sm:flex sm:justify-center">
+                  <Label className="sm:hidden">{SURVEY_QUESTIONS.religionPartner.question}</Label>
+                  <Select
+                    value={formData.religionPartner}
+                    onValueChange={(value) => setFormData({ ...formData, religionPartner: value })}
+                  >
+                    <SelectTrigger className="bg-input h-10 sm:w-56">
+                      <SelectValue placeholder="선택하세요" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SURVEY_QUESTIONS.religionPartner.options.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-[120px_1fr_1fr] sm:items-center">
+                <p className="text-sm font-semibold sm:text-center">Q11. 반려동물</p>
+                <div className="space-y-2 sm:space-y-0 sm:flex sm:justify-center">
+                  <Label className="sm:hidden">{SURVEY_QUESTIONS.petSelf.question}</Label>
+                  <Select
+                    value={formData.petSelf}
+                    onValueChange={(value) => setFormData({ ...formData, petSelf: value })}
+                  >
+                    <SelectTrigger className="bg-input h-10 sm:w-56">
+                      <SelectValue placeholder="선택하세요" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SURVEY_QUESTIONS.petSelf.options.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 sm:space-y-0 sm:flex sm:justify-center">
+                  <Label className="sm:hidden">{SURVEY_QUESTIONS.petPartner.question}</Label>
+                  <Select
+                    value={formData.petPartner}
+                    onValueChange={(value) => setFormData({ ...formData, petPartner: value })}
+                  >
+                    <SelectTrigger className="bg-input h-10 sm:w-56">
+                      <SelectValue placeholder="선택하세요" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SURVEY_QUESTIONS.petPartner.options.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <Button type="button" variant="outline" onClick={() => setStep(4)} className="flex-1">
+                이전
+              </Button>
+              <Button type="submit" className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90">
+                다음
+              </Button>
+            </div>
+          </form>
+        )}
+
+        {/* Step 6: Phase 4. 관심사 태그 (Talk Topics) */}
+        {step === 6 && (
+          <form onSubmit={handleStep6Submit} className="space-y-4 mt-4">
+            <h3 className="font-semibold text-center">Phase 4. 관심사 태그 (Talk Topics)</h3>
 
             <div className="space-y-2">
               <Label>{SURVEY_QUESTIONS.interests.question} (최대 5개)</Label>
@@ -779,7 +1011,7 @@ export function RegisterModal({ open, onOpenChange, onSwitchToLogin }: RegisterM
             </div>
 
             <div className="flex gap-3">
-              <Button type="button" variant="outline" onClick={() => setStep(4)} className="flex-1">
+              <Button type="button" variant="outline" onClick={() => setStep(5)} className="flex-1">
                 이전
               </Button>
               <Button
