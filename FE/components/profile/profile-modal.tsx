@@ -36,10 +36,11 @@ const MBTI_TYPES = [
 ]
 
 export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
-  const { user, logout, updateUser } = useAuth()
+  const { user, updateUser, deleteAccount } = useAuth()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deletePassword, setDeletePassword] = useState("")
   const [isEditing, setIsEditing] = useState(false)
   const [formData, setFormData] = useState({
     nickname: user?.nickname || "",
@@ -61,8 +62,15 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
     if (!open) {
       setIsEditing(false)
       setShowDeleteConfirm(false)
+      setDeletePassword("")
     }
   }, [open])
+
+  useEffect(() => {
+    if (!showDeleteConfirm) {
+      setDeletePassword("")
+    }
+  }, [showDeleteConfirm])
 
   const handleSave = async () => {
     setIsLoading(true)
@@ -88,15 +96,32 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
   }
 
   const handleDelete = async () => {
+    if (!deletePassword) {
+      toast({
+        title: "?? ??",
+        description: "????? ??????.",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 500))
+    const success = await deleteAccount(deletePassword)
     setIsLoading(false)
 
+    if (!success) {
+      toast({
+        title: "???? ??",
+        description: "????? ???? ????.",
+        variant: "destructive",
+      })
+      return
+    }
+
     toast({
-      title: "계정 삭제 완료",
-      description: "계정이 성공적으로 삭제되었습니다.",
+      title: "?? ?? ??",
+      description: "??? ????? ???????.",
     })
-    logout()
     onOpenChange(false)
   }
 
@@ -241,6 +266,17 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
             </div>
             <h3 className="text-lg font-semibold mb-2">정말 탈퇴하시겠어요?</h3>
             <p className="text-muted-foreground text-sm mb-6">탈퇴 시 모든 데이터가 삭제되며 복구할 수 없습니다.</p>
+            <div className="space-y-2 text-left mb-6">
+              <Label htmlFor="delete-password">비밀번호</Label>
+              <Input
+                id="delete-password"
+                type="password"
+                placeholder="비밀번호를 입력하세요"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                className="bg-input"
+              />
+            </div>
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => setShowDeleteConfirm(false)} className="flex-1">
                 취소

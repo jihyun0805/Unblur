@@ -34,8 +34,8 @@ export function RatingModal({ open, onComplete, partnerNickname }: RatingModalPr
   const displayRating = hoveredRating || rating
 
   return (
-    <Dialog open={open}>
-      <DialogContent className="sm:max-w-md bg-background" hideClose>
+    <Dialog open={open} onOpenChange={() => {}}>
+      <DialogContent className="sm:max-w-md bg-background" showCloseButton={false}>
         <div className="py-4 text-center">
           {!submitted ? (
             <>

@@ -4,13 +4,13 @@ import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { AlertTriangle, Heart } from "lucide-react"
 
-interface ConfirmLeaveModalProps {
+interface EndCallConfirmModalProps {
   open: boolean
-  onConfirmLeave: () => void
-  onContinue: () => void
+  onConfirm: () => void
+  onCancel: () => void
 }
 
-export function ConfirmLeaveModal({ open, onConfirmLeave, onContinue }: ConfirmLeaveModalProps) {
+export function EndCallConfirmModal({ open, onConfirm, onCancel }: EndCallConfirmModalProps) {
   return (
     <Dialog open={open}>
       <DialogContent className="sm:max-w-md bg-background" showCloseButton={false}>
@@ -18,19 +18,15 @@ export function ConfirmLeaveModal({ open, onConfirmLeave, onContinue }: ConfirmL
           <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
             <AlertTriangle className="w-8 h-8 text-amber-600" />
           </div>
-          <h2 className="text-xl font-bold mb-2">상대방이 대화를 원해요!</h2>
-          <p className="text-muted-foreground mb-6">
-            상대방은 아직 대화를 계속하고 싶어해요.
-            <br />
-            정말 대화를 종료하시겠어요?
-          </p>
+          <h2 className="text-xl font-bold mb-2">정말 대화를 종료할까요?</h2>
+          <p className="text-muted-foreground mb-6">마지막 라운드입니다. 그래도 나가시겠어요?</p>
 
           <div className="space-y-3">
-            <Button onClick={onContinue} className="w-full py-6 bg-primary text-primary-foreground hover:bg-primary/90">
+            <Button onClick={onCancel} className="w-full py-6 bg-primary text-primary-foreground hover:bg-primary/90">
               <Heart className="w-5 h-5 mr-2" />
-              다시 생각해볼게요
+              좀 더 얘기해볼게요
             </Button>
-            <Button variant="outline" onClick={onConfirmLeave} className="w-full py-6 bg-transparent">
+            <Button variant="outline" onClick={onConfirm} className="w-full py-6 bg-transparent">
               그래도 나갈게요
             </Button>
           </div>

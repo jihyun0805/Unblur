@@ -48,7 +48,7 @@ export function RoundVoteModal({ open, currentRound, onResult }: RoundVoteModalP
 
   return (
     <Dialog open={open}>
-      <DialogContent className="sm:max-w-md bg-background" hideClose>
+      <DialogContent className="sm:max-w-md bg-background" showCloseButton={false}>
         <div className="py-4 text-center">
           <h2 className="text-xl font-bold mb-2">{ROUND_NAMES[currentRound]} 종료!</h2>
           <p className="text-muted-foreground mb-6">

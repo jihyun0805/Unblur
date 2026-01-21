@@ -1,11 +1,9 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+import { apiFetch, clearAuthToken, getAuthToken, setAuthToken } from "@/lib/api"
 
 interface SurveyData {
-  smoking?: string
-  drinking?: string
-  dealbreakers?: string[]
   dateStyle?: string
   contactStyle?: string
   conflictStyle?: string
@@ -18,6 +16,7 @@ interface SurveyData {
 
 interface User {
   id: string
+  username: string
   nickname: string
   age: number
   gender: "male" | "female"
@@ -32,9 +31,10 @@ interface User {
 interface AuthContextType {
   user: User | null
   isLoading: boolean
-  login: (username: string, password: string) => Promise<boolean>
+  login: (username: string, password: string, rememberMe?: boolean) => Promise<boolean>
   register: (data: RegisterData) => Promise<boolean>
   logout: () => void
+  deleteAccount: (password: string) => Promise<boolean>
   updateUser: (data: Partial<User>) => void
   updateTemperature: (rating: number) => void
 }
@@ -47,6 +47,7 @@ interface RegisterData {
   age: number
   gender: "male" | "female"
   region: string
+  surveyData?: SurveyData
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -54,6 +55,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 const MOCK_USERS: { [key: string]: User & { password: string } } = {
   demo: {
     id: "1",
+    username: "demo",
     nickname: "민수",
     age: 28,
     gender: "male",
@@ -71,23 +73,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const token = localStorage.getItem("auth_token")
-    const savedUser = localStorage.getItem("user")
-    if (token && savedUser) {
-      setUser(JSON.parse(savedUser))
+    const loadUser = async () => {
+      const token = getAuthToken()
+      if (!token) {
+        setIsLoading(false)
+        return
+      }
+      try {
+        const response = await apiFetch("/api/v1/users/me")
+        const userData = (await response.json()) as User
+        setUser(userData)
+        localStorage.setItem("user", JSON.stringify(userData))
+      } catch {
+        clearAuthToken()
+        setUser(null)
+      } finally {
+        setIsLoading(false)
+      }
     }
-    setIsLoading(false)
+
+    loadUser()
   }, [])
 
-  const login = async (username: string, password: string): Promise<boolean> => {
+  const login = async (username: string, password: string, rememberMe = false): Promise<boolean> => {
     await new Promise((resolve) => setTimeout(resolve, 500))
 
     const mockUser = MOCK_USERS[username]
-    if (mockUser && mockUser.password === password) {
-      const { password: _, ...userData } = mockUser
+    const storedUser = localStorage.getItem("mock_registered_user")
+    const registeredUser = storedUser ? (JSON.parse(storedUser) as User & { password: string }) : null
+    const candidate = mockUser ?? (registeredUser?.username === username ? registeredUser : null)
+
+    if (candidate && candidate.password === password) {
+      const { password: _, ...userData } = candidate
       setUser(userData)
-      localStorage.setItem("auth_token", "mock_jwt_token")
+      setAuthToken("mock_jwt_token")
       localStorage.setItem("user", JSON.stringify(userData))
+      localStorage.setItem("mock_user_password", password)
       return true
     }
     return false
@@ -96,26 +117,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (data: RegisterData): Promise<boolean> => {
     await new Promise((resolve) => setTimeout(resolve, 500))
 
-    const newUser: User = {
+    const newUser: User & { password: string } = {
       id: Date.now().toString(),
+      username: data.username,
       nickname: data.nickname,
       age: data.age,
       gender: data.gender,
       region: data.region,
       birthDate: data.birthDate,
+      surveyData: data.surveyData,
       temperature: 36.5,
+      password: data.password,
     }
 
-    setUser(newUser)
-    localStorage.setItem("auth_token", "mock_jwt_token")
-    localStorage.setItem("user", JSON.stringify(newUser))
+    localStorage.setItem("mock_registered_user", JSON.stringify(newUser))
+    localStorage.setItem("mock_user_password", data.password)
     return true
   }
 
   const logout = () => {
     setUser(null)
-    localStorage.removeItem("auth_token")
-    localStorage.removeItem("user")
+    clearAuthToken()
+    localStorage.removeItem("mock_user_password")
   }
 
   const updateUser = (data: Partial<User>) => {
@@ -136,8 +159,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+
+  const deleteAccount = async (password: string): Promise<boolean> => {
+    await new Promise((resolve) => setTimeout(resolve, 500))
+
+    if (!user?.username) {
+      return false
+    }
+
+    const mockUser = MOCK_USERS[user.username]
+    if (mockUser) {
+      if (mockUser.password !== password) {
+        return false
+      }
+    } else {
+      const savedPassword = localStorage.getItem("mock_user_password")
+      if (!savedPassword || savedPassword !== password) {
+        return false
+      }
+    }
+
+    logout()
+    return true
+  }
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout, updateUser, updateTemperature }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, logout, deleteAccount, updateUser, updateTemperature }}>
       {children}
     </AuthContext.Provider>
   )
