@@ -3,9 +3,19 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { Thermometer, MessageCircle, Heart, Calendar } from "lucide-react"
+import { Thermometer, MessageCircle, Heart, Calendar, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { getTemperatureColor, getTemperatureLabel } from "./utils"
+
+interface PartnerProfileModalPartner {
+  partnerNickname?: string
+  age?: number
+  gender?: string
+  region?: string
+  birthDate?: string
+  bio?: string
+  mbti?: string
+}
 
 interface PartnerProfileModalProps {
   open: boolean
