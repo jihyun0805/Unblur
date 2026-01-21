@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-unblur}
       POSTGRES_USER: ${POSTGRES_USER:-unblur}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Qv7!mX2$kP9#vL4@}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-unblur}
     ports:
       - "5432:5432"
     volumes:
@@ -13,7 +13,7 @@ services:
     networks:
       - unblur-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-app} -d ${POSTGRES_DB:-app}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-unblur} -d ${POSTGRES_DB:-unblur}"]
       interval: 10s
       timeout: 5s
       retries: 5
