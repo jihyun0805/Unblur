@@ -1,108 +1,70 @@
 "use client"
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
-import { Thermometer, MessageCircle, Heart, Calendar } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { User } from "lucide-react"
+import type { HistoryItem } from "@/lib/history-types"
+
+type PartnerProfileModalPartner = Omit<HistoryItem, "id">
 
 interface PartnerProfileModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  partner: {
-    nickname: string
-    partnerTemp: number
-    date: string
-    duration: string
-    rounds: number
-    chatEnabled: boolean
-  }
+  partner: PartnerProfileModalPartner
 }
 
 export function PartnerProfileModal({ open, onOpenChange, partner }: PartnerProfileModalProps) {
-  const getTemperatureColor = (temp: number) => {
-    if (temp >= 40) return "text-red-500"
-    if (temp >= 38) return "text-orange-500"
-    if (temp >= 36) return "text-green-500"
-    if (temp >= 34) return "text-blue-500"
-    return "text-blue-700"
-  }
-
-  const getTemperatureLabel = (temp: number) => {
-    if (temp >= 40) return "매우 따뜻한 매너"
-    if (temp >= 38) return "따뜻한 매너"
-    if (temp >= 36) return "보통 매너"
-    if (temp >= 34) return "조금 차가운 매너"
-    return "차가운 매너"
-  }
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md bg-background">
+      <DialogContent className="sm:max-w-md bg-background max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-center">프로필</DialogTitle>
+          <DialogTitle className="text-2xl font-bold">프로필</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
-          {/* Avatar and Name */}
-          <div className="flex flex-col items-center gap-3">
-            <Avatar className="w-20 h-20">
-              <AvatarFallback className="text-2xl bg-primary/20 text-primary">
-                {partner.nickname[0]}
-              </AvatarFallback>
-            </Avatar>
-            <div className="text-center">
-              <h3 className="text-xl font-bold">{partner.nickname}</h3>
-              <div className="flex items-center justify-center gap-2 mt-2">
-                <Thermometer className={`w-4 h-4 ${getTemperatureColor(partner.partnerTemp)}`} />
-                <span className={`text-lg font-semibold ${getTemperatureColor(partner.partnerTemp)}`}>
-                  {partner.partnerTemp.toFixed(1)}°
-                </span>
-                <span className="text-sm text-muted-foreground">
-                  {getTemperatureLabel(partner.partnerTemp)}
-                </span>
-              </div>
+        <div className="space-y-4 mt-4">
+          {/* Avatar (profile-modal과 동일) */}
+          <div className="flex justify-center">
+            <div className="w-24 h-24 rounded-full bg-primary flex items-center justify-center">
+              <User className="w-12 h-12 text-primary-foreground" />
             </div>
           </div>
 
-          {/* Meeting Info */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm">만난 날짜</span>
-              </div>
-              <span className="font-medium">{partner.date}</span>
+          {/* Info Display - 나이, 성별, 지역, 생년월일 (profile-modal과 동일 그리드) */}
+          <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-card">
+            <div>
+              <p className="text-xs text-muted-foreground">나이</p>
+              <p className="font-medium">{partner.age != null ? `${partner.age}세` : "-"}</p>
             </div>
-
-            <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
-              <div className="flex items-center gap-2">
-                <Heart className="w-4 h-4 text-red-500" />
-                <span className="text-sm">진행 라운드</span>
-              </div>
-              <span className="font-medium">{partner.rounds}/4 라운드</span>
+            <div>
+              <p className="text-xs text-muted-foreground">성별</p>
+              <p className="font-medium">
+                {partner.gender === "male" ? "남성" : partner.gender === "female" ? "여성" : "-"}
+              </p>
             </div>
-
-            <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
-              <div className="flex items-center gap-2">
-                <MessageCircle className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm">채팅 상태</span>
-              </div>
-              <Badge variant={partner.chatEnabled ? "default" : "secondary"} className={partner.chatEnabled ? "bg-green-600 text-white" : ""}>
-                {partner.chatEnabled ? "ON" : "OFF"}
-              </Badge>
+            <div>
+              <p className="text-xs text-muted-foreground">지역</p>
+              <p className="font-medium">{partner.region || "-"}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">생년월일</p>
+              <p className="font-medium">{partner.birthDate || "-"}</p>
             </div>
           </div>
 
-          {/* Actions */}
-          {partner.chatEnabled && (
-            <div className="flex gap-2">
-              <Button className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90">
-                <MessageCircle className="w-4 h-4 mr-2" />
-                채팅하기
-              </Button>
+          {/* 읽기 전용 - 닉네임, 한 줄 소개, MBTI (profile-modal과 동일) */}
+          <div className="space-y-4 p-4 rounded-xl bg-card">
+            <div>
+              <p className="text-xs text-muted-foreground">닉네임</p>
+              <p className="font-medium">{partner.partnerNickname || "-"}</p>
             </div>
-          )}
+            <div>
+              <p className="text-xs text-muted-foreground">한 줄 소개</p>
+              <p className="font-medium">{partner.bio || "-"}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">MBTI</p>
+              <p className="font-medium">{partner.mbti || "-"}</p>
+            </div>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
