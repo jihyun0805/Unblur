@@ -5,15 +5,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Send, Heart } from "lucide-react"
+import type { HistoryItem } from "@/lib/history-types"
+
+type ChatModalPartner = Pick<HistoryItem, "id" | "partnerNickname" | "date">
 
 interface ChatModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  partner: {
-    id: string
-    partnerNickname: string
-    date: string
-  }
+  partner: ChatModalPartner
+  isBlocked?: boolean
 }
 
 interface Message {
@@ -32,7 +32,7 @@ const MOCK_MESSAGES: Message[] = [
   { id: "5", sender: "partner", text: "토요일 오후 괜찮아요!", timestamp: "14:35" },
 ]
 
-export function ChatModal({ open, onOpenChange, partner }: ChatModalProps) {
+export function ChatModal({ open, onOpenChange, partner, isBlocked = false }: ChatModalProps) {
   const [messages, setMessages] = useState<Message[]>(MOCK_MESSAGES)
   const [newMessage, setNewMessage] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -112,25 +112,29 @@ export function ChatModal({ open, onOpenChange, partner }: ChatModalProps) {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input */}
+        {/* Input / 차단 시 문구 */}
         <div className="p-4 border-t border-border">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault()
-              handleSendMessage()
-            }}
-            className="flex gap-2"
-          >
-            <Input
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="메시지를 입력하세요..."
-              className="bg-input flex-1"
-            />
-            <Button type="submit" size="icon" className="bg-primary text-primary-foreground flex-shrink-0">
-              <Send className="w-4 h-4" />
-            </Button>
-          </form>
+          {isBlocked ? (
+            <p className="text-sm text-muted-foreground text-center">차단된 상대입니다.</p>
+          ) : (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                handleSendMessage()
+              }}
+              className="flex gap-2"
+            >
+              <Input
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                placeholder="메시지를 입력하세요..."
+                className="bg-input flex-1"
+              />
+              <Button type="submit" size="icon" className="bg-primary text-primary-foreground flex-shrink-0">
+                <Send className="w-4 h-4" />
+              </Button>
+            </form>
+          )}
         </div>
       </DialogContent>
     </Dialog>
