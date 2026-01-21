@@ -30,6 +30,7 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springframework.boot:spring-boot-starter-websocket'
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 	developmentOnly 'org.springframework.boot:spring-boot-docker-compose'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
@@ -44,6 +45,8 @@ dependencies {
 
 	// PostgreSQL
 	runtimeOnly 'org.postgresql:postgresql'
+	// Prometheus
+	runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
 
 	// Junit
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

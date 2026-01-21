@@ -26,6 +26,7 @@ export function ProfilePage() {
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deletePassword, setDeletePassword] = useState("")
   const [editingBasic, setEditingBasic] = useState(false)
   const [editingSurvey, setEditingSurvey] = useState(false)
   
@@ -36,9 +37,6 @@ export function ProfilePage() {
   })
 
   const [surveyData, setSurveyData] = useState<{
-    smoking: string
-    drinking: string
-    dealbreakers: string[]
     dateStyle: string
     contactStyle: string
     conflictStyle: string
@@ -48,9 +46,6 @@ export function ProfilePage() {
     distancePreference: string
     interests: string[]
   }>({
-    smoking: user?.surveyData?.smoking || "",
-    drinking: user?.surveyData?.drinking || "",
-    dealbreakers: user?.surveyData?.dealbreakers || [],
     dateStyle: user?.surveyData?.dateStyle || "",
     contactStyle: user?.surveyData?.contactStyle || "",
     conflictStyle: user?.surveyData?.conflictStyle || "",
@@ -70,9 +65,6 @@ export function ProfilePage() {
       })
       if (user.surveyData) {
         setSurveyData({
-          smoking: user.surveyData.smoking || "",
-          drinking: user.surveyData.drinking || "",
-          dealbreakers: user.surveyData.dealbreakers || [],
           dateStyle: user.surveyData.dateStyle || "",
           contactStyle: user.surveyData.contactStyle || "",
           conflictStyle: user.surveyData.conflictStyle || "",
@@ -85,6 +77,12 @@ export function ProfilePage() {
       }
     }
   }, [user])
+
+  useEffect(() => {
+    if (!showDeleteConfirm) {
+      setDeletePassword("")
+    }
+  }, [showDeleteConfirm])
 
   const handleSaveBasic = async () => {
     setIsLoading(true)
@@ -115,15 +113,33 @@ export function ProfilePage() {
   }
 
   const handleDelete = async () => {
+    if (!deletePassword) {
+      toast({
+        title: "?? ??",
+        description: "????? ??????.",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 500))
+    const success = await deleteAccount(deletePassword)
     setIsLoading(false)
 
+    if (!success) {
+      toast({
+        title: "???? ??",
+        description: "????? ???? ????.",
+        variant: "destructive",
+      })
+      return
+    }
+
     toast({
-      title: "계정 삭제 완료",
-      description: "계정이 성공적으로 삭제되었습니다.",
+      title: "?? ?? ??",
+      description: "??? ????? ???????.",
     })
-    logout()
+    setShowDeleteConfirm(false)
   }
 
   const toggleArrayItem = (array: string[], item: string) => {
@@ -235,7 +251,7 @@ export function ProfilePage() {
                   <Label>MBTI</Label>
                   <Select value={basicData.mbti} onValueChange={(value) => setBasicData({ ...basicData, mbti: value })}>
                     <SelectTrigger className="bg-input">
-                      <SelectValue placeholder="MBTI를 선택하세요" />
+                        <SelectValue placeholder="선택하세요" />
                     </SelectTrigger>
                     <SelectContent>
                       {MBTI_TYPES.map((type) => (
@@ -319,67 +335,8 @@ export function ProfilePage() {
             {editingSurvey ? (
               <div className="space-y-6">
                 <div className="space-y-4">
-                  <h3 className="font-semibold text-sm">기본 성향</h3>
-                  
-                  <div className="space-y-2">
-                    <Label>{SURVEY_QUESTIONS.smoking.question}</Label>
-                    <Select value={surveyData.smoking} onValueChange={(value) => setSurveyData({ ...surveyData, smoking: value })}>
-                      <SelectTrigger className="bg-input">
-                        <SelectValue placeholder="선택하세요" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SURVEY_QUESTIONS.smoking.options.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <h3 className="font-semibold text-sm">Phase 1. 나의 연애 DNA (About Me)</h3>
 
-                  <div className="space-y-2">
-                    <Label>{SURVEY_QUESTIONS.drinking.question}</Label>
-                    <Select value={surveyData.drinking} onValueChange={(value) => setSurveyData({ ...surveyData, drinking: value })}>
-                      <SelectTrigger className="bg-input">
-                        <SelectValue placeholder="선택하세요" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SURVEY_QUESTIONS.drinking.options.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>{SURVEY_QUESTIONS.dealbreakers.question}</Label>
-                    <div className="space-y-2">
-                      {SURVEY_QUESTIONS.dealbreakers.options.map((opt) => (
-                        <div key={opt.value} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`edit-${opt.value}`}
-                            checked={surveyData.dealbreakers.includes(opt.value)}
-                            onCheckedChange={() =>
-                              setSurveyData({
-                                ...surveyData,
-                                dealbreakers: toggleArrayItem(surveyData.dealbreakers, opt.value),
-                              })
-                            }
-                          />
-                          <label htmlFor={`edit-${opt.value}`} className="text-sm cursor-pointer">
-                            {opt.label}
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="font-semibold text-sm">데이트 & 연애 스타일</h3>
-                  
                   <div className="space-y-2">
                     <Label>{SURVEY_QUESTIONS.dateStyle.question}</Label>
                     <Select value={surveyData.dateStyle} onValueChange={(value) => setSurveyData({ ...surveyData, dateStyle: value })}>
@@ -446,8 +403,8 @@ export function ProfilePage() {
                 </div>
 
                 <div className="space-y-4">
-                  <h3 className="font-semibold text-sm">상대방 선호도</h3>
-                  
+                  <h3 className="font-semibold text-sm">Phase 2. 내가 찾는 그 사람 (My Ideal Type)</h3>
+
                   <div className="space-y-2">
                     <Label>{SURVEY_QUESTIONS.priority.question}</Label>
                     <Select value={surveyData.priority} onValueChange={(value) => setSurveyData({ ...surveyData, priority: value })}>
@@ -502,6 +459,10 @@ export function ProfilePage() {
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-sm">Phase 3. 우리의 연결고리 (Interest Tags)</h3>
 
                   <div className="space-y-2">
                     <Label>{SURVEY_QUESTIONS.interests.question} (최대 5개)</Label>
@@ -542,9 +503,6 @@ export function ProfilePage() {
                     onClick={() => {
                       if (user?.surveyData) {
                         setSurveyData({
-                          smoking: user.surveyData.smoking || "",
-                          drinking: user.surveyData.drinking || "",
-                          dealbreakers: user.surveyData.dealbreakers || [],
                           dateStyle: user.surveyData.dateStyle || "",
                           contactStyle: user.surveyData.contactStyle || "",
                           conflictStyle: user.surveyData.conflictStyle || "",
@@ -560,7 +518,7 @@ export function ProfilePage() {
                     className="flex-1"
                   >
                     <X className="w-4 h-4 mr-2" />
-                    취소
+                    저장
                   </Button>
                   <Button
                     onClick={handleSaveSurvey}
@@ -572,32 +530,14 @@ export function ProfilePage() {
                     ) : (
                       <Save className="w-4 h-4 mr-2" />
                     )}
-                    저장
+                    ??
                   </Button>
                 </div>
               </div>
             ) : (
               <div className="space-y-6">
                 <div className="space-y-3">
-                  <h3 className="font-semibold text-sm text-muted-foreground">기본 성향</h3>
-                  <div className="grid gap-2">
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">{SURVEY_QUESTIONS.smoking.question}</span>
-                      <span className="text-sm font-medium">{getAnswerLabel("smoking", surveyData.smoking)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">{SURVEY_QUESTIONS.drinking.question}</span>
-                      <span className="text-sm font-medium">{getAnswerLabel("drinking", surveyData.drinking)}</span>
-                    </div>
-                    <div>
-                      <span className="text-sm text-muted-foreground">{SURVEY_QUESTIONS.dealbreakers.question}</span>
-                      <p className="text-sm font-medium mt-1">{getAnswerLabel("dealbreakers", surveyData.dealbreakers)}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <h3 className="font-semibold text-sm text-muted-foreground">데이트 & 연애 스타일</h3>
+                  <h3 className="font-semibold text-sm text-muted-foreground">Phase 1. 나의 연애 DNA (About Me)</h3>
                   <div className="grid gap-2">
                     <div className="flex justify-between">
                       <span className="text-sm text-muted-foreground">{SURVEY_QUESTIONS.dateStyle.question}</span>
@@ -619,7 +559,7 @@ export function ProfilePage() {
                 </div>
 
                 <div className="space-y-3">
-                  <h3 className="font-semibold text-sm text-muted-foreground">상대방 선호도</h3>
+                  <h3 className="font-semibold text-sm text-muted-foreground">Phase 2. 내가 찾는 그 사람 (My Ideal Type)</h3>
                   <div className="grid gap-2">
                     <div className="flex justify-between">
                       <span className="text-sm text-muted-foreground">{SURVEY_QUESTIONS.priority.question}</span>
@@ -633,6 +573,12 @@ export function ProfilePage() {
                       <span className="text-sm text-muted-foreground">{SURVEY_QUESTIONS.distancePreference.question}</span>
                       <span className="text-sm font-medium">{getAnswerLabel("distancePreference", surveyData.distancePreference)}</span>
                     </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-sm text-muted-foreground">Phase 3. 우리의 연결고리 (Interest Tags)</h3>
+                  <div className="grid gap-2">
                     <div>
                       <span className="text-sm text-muted-foreground">{SURVEY_QUESTIONS.interests.question}</span>
                       <p className="text-sm font-medium mt-1">{getAnswerLabel("interests", surveyData.interests)}</p>
@@ -674,6 +620,17 @@ export function ProfilePage() {
             </div>
             <h3 className="text-lg font-semibold mb-2">정말 탈퇴하시겠어요?</h3>
             <p className="text-muted-foreground text-sm mb-6">탈퇴 시 모든 데이터가 삭제되며 복구할 수 없습니다.</p>
+            <div className="space-y-2 text-left mb-6">
+              <Label htmlFor="delete-password">비밀번호</Label>
+              <Input
+                id="delete-password"
+                type="password"
+                placeholder="비밀번호를 입력하세요"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                className="bg-input"
+              />
+            </div>
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => setShowDeleteConfirm(false)} className="flex-1">
                 취소
