@@ -15,7 +15,7 @@ import { HistoryError } from "./history-error"
 
 export function HistoryPage() {
   const { user } = useAuth()
-  const { history, isLoading, error, refetch, blockPartner, blockedIds } = useHistory()
+  const { history, isLoading, error, refetch, blockPartner, unblockPartner, blockedIds } = useHistory()
   const [selectedChat, setSelectedChat] = useState<HistoryItem | null>(null)
   const [selectedProfile, setSelectedProfile] = useState<HistoryItem | null>(null)
 
@@ -53,6 +53,7 @@ export function HistoryPage() {
               onProfileClick={setSelectedProfile}
               onChatClick={setSelectedChat}
               onBlock={blockPartner}
+              onUnblock={unblockPartner}
               isBlocked={blockedIds.includes(item.id)}
             />
           ))}
@@ -66,6 +67,7 @@ export function HistoryPage() {
           open={!!selectedChat}
           onOpenChange={(open) => !open && setSelectedChat(null)}
           partner={selectedChat}
+          isBlocked={blockedIds.includes(selectedChat.id)}
         />
       )}
 
@@ -74,12 +76,13 @@ export function HistoryPage() {
           open={!!selectedProfile}
           onOpenChange={(open) => !open && setSelectedProfile(null)}
           partner={{
-            nickname: selectedProfile.partnerNickname,
-            partnerTemp: selectedProfile.partnerTemp,
-            date: selectedProfile.date,
-            duration: selectedProfile.duration,
-            rounds: selectedProfile.rounds,
-            chatEnabled: selectedProfile.chatEnabled,
+            partnerNickname: selectedProfile.partnerNickname,
+            age: selectedProfile.age,
+            gender: selectedProfile.gender,
+            region: selectedProfile.region,
+            birthDate: selectedProfile.birthDate,
+            bio: selectedProfile.bio,
+            mbti: selectedProfile.mbti,
           }}
         />
       )}
