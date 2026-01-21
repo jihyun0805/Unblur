@@ -1,10 +1,11 @@
 "use client"
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { User } from "lucide-react"
-import type { HistoryItem } from "@/lib/history-types"
-
-type PartnerProfileModalPartner = Omit<HistoryItem, "id">
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
+import { Thermometer, MessageCircle, Heart, Calendar } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { getTemperatureColor, getTemperatureLabel } from "./utils"
 
 interface PartnerProfileModalProps {
   open: boolean
