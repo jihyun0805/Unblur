@@ -4,30 +4,19 @@ import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
-import {
-  Mic,
-  MicOff,
-  Video,
-  VideoOff,
-  PhoneOff,
-  MessageCircle,
-  Gamepad2,
-  Send,
-  Clock,
-  X,
-  Lightbulb,
-} from "lucide-react"
+import { Mic, MicOff, PhoneOff, MessageCircle, Gamepad2, Send, Clock, X, Lightbulb } from "lucide-react"
 import { BalanceGameOverlay } from "@/components/session/balance-game-overlay"
 import { RoundVoteModal } from "@/components/session/round-vote-modal"
 import { RatingModal } from "@/components/session/rating-modal"
 import { ConfirmLeaveModal } from "@/components/session/confirm-leave-modal"
+import { EndCallConfirmModal } from "@/components/session/end-call-confirm-modal"
 
 interface SessionRoomProps {
   sessionId: string
   onLeave: () => void
 }
 
-const ROUND_TIMES = [2, 2, 2, Number.POSITIVE_INFINITY] // seconds
+const ROUND_TIMES = [10, 10, 5, Number.POSITIVE_INFINITY] // seconds
 const BLUR_LEVELS = [20, 10, 3, 0] // px
 const ROUND_NAMES = ["1라운드", "2라운드", "3라운드", "최종 라운드"]
 
@@ -43,12 +32,12 @@ export function SessionRoom({ sessionId, onLeave }: SessionRoomProps) {
   const [currentRound, setCurrentRound] = useState(0)
   const [timeLeft, setTimeLeft] = useState(ROUND_TIMES[0])
   const [isMuted, setIsMuted] = useState(false)
-  const [isVideoOff, setIsVideoOff] = useState(false)
   const [showChat, setShowChat] = useState(false)
   const [showGame, setShowGame] = useState(false)
   const [showVote, setShowVote] = useState(false)
   const [showRating, setShowRating] = useState(false)
   const [showConfirmLeave, setShowConfirmLeave] = useState(false)
+  const [showEndConfirm, setShowEndConfirm] = useState(false)
   const [pendingLeave, setPendingLeave] = useState(false)
   const [messages, setMessages] = useState<{ id: string; sender: string; text: string }[]>([])
   const [newMessage, setNewMessage] = useState("")
@@ -60,7 +49,7 @@ export function SessionRoom({ sessionId, onLeave }: SessionRoomProps) {
 
   // Timer logic
   useEffect(() => {
-    if (currentRound >= 3 || showVote || showGame || showRating || showConfirmLeave) return
+    if (currentRound >= 3 || showVote || showGame || showRating || showConfirmLeave || showEndConfirm) return
 
     const interval = setInterval(() => {
       setTimeLeft((prev) => {
@@ -73,7 +62,7 @@ export function SessionRoom({ sessionId, onLeave }: SessionRoomProps) {
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [currentRound, showVote, showGame, showRating, showConfirmLeave])
+  }, [currentRound, showVote, showGame, showRating, showConfirmLeave, showEndConfirm])
 
   // Silence detection - 5초 이상 정적 시 질문 카드 표시
   useEffect(() => {
@@ -177,8 +166,7 @@ export function SessionRoom({ sessionId, onLeave }: SessionRoomProps) {
   }
 
   const handleLeave = () => {
-    // 나가기 버튼 클릭 시 평가 모달로 이동
-    setShowRating(true)
+    setShowEndConfirm(true)
   }
 
   const blurLevel = BLUR_LEVELS[currentRound]
@@ -197,6 +185,16 @@ export function SessionRoom({ sessionId, onLeave }: SessionRoomProps) {
             >
               {formatTime(timeLeft)}
             </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsMuted(!isMuted)}
+              className={`ml-1 h-8 w-8 rounded-full ${
+                isMuted ? "bg-red-500 hover:bg-red-600" : "bg-white/20 hover:bg-white/30"
+              }`}
+            >
+              {isMuted ? <MicOff className="h-4 w-4 text-white" /> : <Mic className="h-4 w-4 text-white" />}
+            </Button>
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -248,15 +246,9 @@ export function SessionRoom({ sessionId, onLeave }: SessionRoomProps) {
               className="absolute inset-0 flex items-center justify-center transition-all duration-1000"
               style={{ filter: `blur(${blurLevel}px)` }}
             >
-              {isVideoOff ? (
-                <div className="w-32 h-32 rounded-full bg-primary flex items-center justify-center">
-                  <VideoOff className="w-12 h-12 text-primary-foreground" />
-                </div>
-              ) : (
-                <div className="w-32 h-32 rounded-full bg-primary flex items-center justify-center">
-                  <span className="text-4xl">😊</span>
-                </div>
-              )}
+              <div className="w-32 h-32 rounded-full bg-primary flex items-center justify-center">
+                <span className="text-4xl">😊</span>
+              </div>
             </div>
             <div className="absolute bottom-4 left-4 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-sm">
               <span className="text-white text-sm">나</span>
@@ -272,7 +264,7 @@ export function SessionRoom({ sessionId, onLeave }: SessionRoomProps) {
 
       {/* Ice Breaker Toast */}
       {showIceBreaker && (
-        <div className="absolute bottom-28 left-1/2 -translate-x-1/2 z-30 animate-[slideUp_0.3s_ease-out]">
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30">
           <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-card shadow-lg max-w-md">
             <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
               <Lightbulb className="w-5 h-5 text-primary-foreground" />
@@ -333,35 +325,16 @@ export function SessionRoom({ sessionId, onLeave }: SessionRoomProps) {
         </div>
       )}
 
-      {/* Controls */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent">
-        <div className="max-w-md mx-auto flex items-center justify-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsMuted(!isMuted)}
-            className={`w-12 h-12 rounded-full ${isMuted ? "bg-red-500 hover:bg-red-600" : "bg-white/20 hover:bg-white/30"}`}
-          >
-            {isMuted ? <MicOff className="w-5 h-5 text-white" /> : <Mic className="w-5 h-5 text-white" />}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsVideoOff(!isVideoOff)}
-            className={`w-12 h-12 rounded-full ${isVideoOff ? "bg-red-500 hover:bg-red-600" : "bg-white/20 hover:bg-white/30"}`}
-          >
-            {isVideoOff ? <VideoOff className="w-5 h-5 text-white" /> : <Video className="w-5 h-5 text-white" />}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleLeave}
-            className="w-14 h-14 rounded-full bg-red-500 hover:bg-red-600"
-          >
-            <PhoneOff className="w-6 h-6 text-white" />
-          </Button>
-        </div>
-      </div>
+      {currentRound >= 3 && (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleLeave}
+          className="absolute bottom-6 right-36 z-20 h-11 w-11 rounded-full bg-red-500 hover:bg-red-600"
+        >
+          <PhoneOff className="h-5 w-5 text-white" />
+        </Button>
+      )}
 
       {/* Game Overlay */}
       {showGame && <BalanceGameOverlay onClose={() => setShowGame(false)} />}
@@ -373,6 +346,15 @@ export function SessionRoom({ sessionId, onLeave }: SessionRoomProps) {
         open={showConfirmLeave}
         onConfirmLeave={handleConfirmLeave}
         onContinue={handleContinueAfterConfirm}
+      />
+
+      <EndCallConfirmModal
+        open={showEndConfirm}
+        onCancel={() => setShowEndConfirm(false)}
+        onConfirm={() => {
+          setShowEndConfirm(false)
+          setShowRating(true)
+        }}
       />
 
       <RatingModal open={showRating} onComplete={handleRatingComplete} partnerNickname="상대방" />
