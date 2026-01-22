@@ -1,9 +1,10 @@
-package com.ssafy.unblur.domain.user.service;
+﻿package com.ssafy.unblur.domain.user.service;
 
 import com.ssafy.unblur.domain.user.dto.SignupDto;
 import com.ssafy.unblur.domain.user.model.User;
 import com.ssafy.unblur.domain.user.repository.UserRepository;
-import com.ssafy.unblur.common.exception.CustomException;
+import com.ssafy.unblur.common.exception.BaseException;
+import com.ssafy.unblur.common.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -24,8 +25,7 @@ public class UserService {
      * 비밀번호를 암호화하여 데이터베이스에 유저 정보를 저장합니다.</p>
      *
      * @param signUpDto 회원가입 정보 객체
-     * @throws CustomException.DuplicateEmailException    이메일 중복 시 발생
-     * @throws CustomException.DuplicateNicknameException 닉네임 중복 시 발생
+     * @throws BaseException 이메일/닉네임 중복 시 발생
      */
     @Transactional
     public String signUp(SignupDto signUpDto) {
@@ -41,7 +41,7 @@ public class UserService {
     private void validateDuplicateEmail(String email) {
         if (userRepository.existsByEmail(email)) {
             log.warn("중복된 이메일 입니다: {}", email);
-            throw new CustomException.DuplicateEmailException();
+            throw new BaseException(ErrorCode.DUPLICATE_EMAIL);
         }
     }
 
@@ -55,7 +55,7 @@ public class UserService {
     private void validateDuplicateNickname(String nickname) {
         if (userRepository.existsByNickname(nickname)) {
             log.warn("중복된 닉네임 입니다: {}", nickname);
-            throw new CustomException.DuplicateNicknameException();
+            throw new BaseException(ErrorCode.DUPLICATE_NICKNAME);
         }
     }
 
