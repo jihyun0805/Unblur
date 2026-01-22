@@ -151,3 +151,14 @@
     opacity: 1;
   }
 }
+
+@keyframes slideUpCentered {
+  from {
+    transform: translateX(-50%) translateY(1rem);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+}

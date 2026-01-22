@@ -11,6 +11,14 @@ interface SurveyData {
   priority?: string
   agePreference?: string[]
   distancePreference?: string
+  smokingSelf?: string
+  smokingPartner?: string
+  drinkingSelf?: string
+  drinkingPartner?: string
+  religionSelf?: string
+  religionPartner?: string
+  petSelf?: string
+  petPartner?: string
   interests?: string[]
 }
 
