@@ -1,22 +1,12 @@
 package com.ssafy.unblur.common.exception;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
-import com.fasterxml.jackson.annotation.JsonInclude;
-
-import java.time.Instant;
-
-@JsonInclude(JsonInclude.Include.NON_NULL)
 public record ErrorResponse(
-
-        String code,
+        boolean isSuccess,
+        int statusCode,
         String message,
-
-        @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX", timezone = "Asia/Seoul")
-        Instant timestamp,
-
-        String path
+        String code
 ) {
-    public ErrorResponse(ErrorCode errorCode, String path) {
-        this(errorCode.getCode(), errorCode.getMessage(), Instant.now(), path);
+    public ErrorResponse(ErrorCode errorCode) {
+        this(false, errorCode.getHttpStatus().value(), errorCode.getMessage(), errorCode.getCode());
     }
 }
