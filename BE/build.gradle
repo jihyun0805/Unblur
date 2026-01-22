@@ -23,6 +23,13 @@ configurations {
 repositories {
 	mavenCentral()
 }
+
+dependencyManagement {
+	imports {
+		mavenBom "io.netty:netty-bom:4.2.9.Final" // Kurento 7.3.x는 Netty 4.2.x API를 사용하므로, 호환성을 위해 Netty BOM을 추가
+	}
+}
+
 dependencies {
 	// Spring Boot
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
@@ -59,6 +66,9 @@ dependencies {
 	implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
 	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
 	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
+
+	// Kurento
+	implementation 'org.kurento:kurento-client:7.3.0'
 }
 
 
