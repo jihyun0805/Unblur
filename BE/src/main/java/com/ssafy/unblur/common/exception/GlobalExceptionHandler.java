@@ -46,7 +46,7 @@ public class GlobalExceptionHandler {
             logWarn(e.getErrorCode(), request, e.getMessage());
         }
 
-        ErrorResponse response = new ErrorResponse(e.getErrorCode(), request.getRequestURI());
+        ErrorResponse response = new ErrorResponse(e.getErrorCode());
         return ResponseEntity
                 .status(httpStatus)
                 .body(response);
@@ -79,7 +79,7 @@ public class GlobalExceptionHandler {
         String logDetail = summarizeInvalidInput(e);
         logInfo(request, logDetail);
 
-        ErrorResponse response = new ErrorResponse(ErrorCode.INVALID_INPUT_VALUE, request.getRequestURI());
+        ErrorResponse response = new ErrorResponse(ErrorCode.INVALID_INPUT_VALUE);
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(response);
@@ -88,7 +88,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException e, HttpServletRequest request) {
         logWarn(ErrorCode.ACCESS_DENIED, request, e.getMessage());
-        ErrorResponse response = new ErrorResponse(ErrorCode.ACCESS_DENIED, request.getRequestURI());
+        ErrorResponse response = new ErrorResponse(ErrorCode.ACCESS_DENIED);
         return ResponseEntity
                 .status(ErrorCode.ACCESS_DENIED.getHttpStatus())
                 .body(response);
@@ -100,7 +100,7 @@ public class GlobalExceptionHandler {
     })
     public ResponseEntity<ErrorResponse> handleDataIntegrityViolation(Exception e, HttpServletRequest request) {
         logError(ErrorCode.INTERNAL_SERVER_ERROR, request, e.getMessage(), e);
-        ErrorResponse response = new ErrorResponse(ErrorCode.INTERNAL_SERVER_ERROR, request.getRequestURI());
+        ErrorResponse response = new ErrorResponse(ErrorCode.INTERNAL_SERVER_ERROR);
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(response);
@@ -124,7 +124,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleException(Exception e, HttpServletRequest request) {
         logError(ErrorCode.INTERNAL_SERVER_ERROR, request, e.getMessage(), e);
 
-        ErrorResponse response = new ErrorResponse(ErrorCode.INTERNAL_SERVER_ERROR, request.getRequestURI());
+        ErrorResponse response = new ErrorResponse(ErrorCode.INTERNAL_SERVER_ERROR);
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(response);
