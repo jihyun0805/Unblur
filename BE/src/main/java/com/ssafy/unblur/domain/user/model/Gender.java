@@ -5,7 +5,7 @@ package com.ssafy.unblur.domain.user.model;
  */
 public enum Gender {
     /** 남성 */
-    male,
+    MALE,
     /** 여성 */
-    female
+    FEMALE
 }

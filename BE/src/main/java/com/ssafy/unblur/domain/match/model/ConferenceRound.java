@@ -67,7 +67,7 @@ public class ConferenceRound {
     private LocalDateTime endedAt;
 
     /**
-     * 진행 상태 (active/completed/extended).
+     * 진행 상태
      */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)

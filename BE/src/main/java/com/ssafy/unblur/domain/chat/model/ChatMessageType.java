@@ -5,7 +5,7 @@ package com.ssafy.unblur.domain.chat.model;
  */
 public enum ChatMessageType {
     /** 사용자 메시지 */
-    user,
+    USER,
     /** 시스템 메시지 */
-    system
+    SYSTEM
 }

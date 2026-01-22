@@ -5,11 +5,11 @@ package com.ssafy.unblur.domain.user.model;
  */
 public enum UserReportStatus {
     /** 접수됨 */
-    pending,
+    PENDING,
     /** 검토 중 */
-    reviewing,
+    REVIEWING,
     /** 처리 완료 */
-    resolved,
+    RESOLVED,
     /** 반려 */
-    rejected
+    REJECTED
 }

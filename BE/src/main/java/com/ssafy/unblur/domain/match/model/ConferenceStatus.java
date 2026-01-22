@@ -5,9 +5,9 @@ package com.ssafy.unblur.domain.match.model;
  */
 public enum ConferenceStatus {
     /** 대기 */
-    waiting,
+    WAITING,
     /** 진행 중 */
-    active,
+    ACTIVE,
     /** 완료 */
-    completed
+    COMPLETED
 }
