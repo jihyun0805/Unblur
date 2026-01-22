@@ -9,7 +9,5 @@ public enum ConferenceStatus {
     /** 진행 중 */
     active,
     /** 완료 */
-    completed,
-    /** 취소 */
-    cancelled
+    completed
 }
