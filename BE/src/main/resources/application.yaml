@@ -12,6 +12,14 @@ spring:
     hibernate:
       ddl-auto: create
 
+kurento:
+  ws:
+    uri: ws://localhost:8888/kurento
+
+rtc:
+  websocket:
+    url: ws://localhost:8080/ws/rtc
+
 management:
   endpoints:
     web:
