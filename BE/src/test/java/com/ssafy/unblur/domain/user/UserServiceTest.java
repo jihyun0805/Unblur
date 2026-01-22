@@ -1,10 +1,11 @@
-package com.ssafy.unblur.domain.user;
+﻿package com.ssafy.unblur.domain.user;
 
 import com.ssafy.unblur.domain.user.dto.SignupDto;
 import com.ssafy.unblur.domain.user.model.User;
 import com.ssafy.unblur.domain.user.repository.UserRepository;
 import com.ssafy.unblur.domain.user.service.UserService;
-import com.ssafy.unblur.common.exception.CustomException;
+import com.ssafy.unblur.common.exception.BaseException;
+import com.ssafy.unblur.common.exception.ErrorCode;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -65,9 +66,10 @@ class UserServiceTest {
         SignupDto dto2 = new SignupDto("same@ssafy.com", "pw1!", "user3");
 
         // then: DuplicateEmailException 예외가 발생한다
-        Assertions.assertThrows(CustomException.DuplicateEmailException.class, () -> {
+        BaseException ex = Assertions.assertThrows(BaseException.class, () -> {
             userService.signUp(dto2);
         });
+        Assertions.assertEquals(ErrorCode.DUPLICATE_EMAIL, ex.getErrorCode());
     }
 
     @Test
@@ -97,8 +99,10 @@ class UserServiceTest {
         SignupDto dto2 = new SignupDto("test2@ssafy.com", "pw1!", "kitty");
 
         // then: DuplicateNicknameException 예외가 발생한다
-        Assertions.assertThrows(CustomException.DuplicateNicknameException.class, () -> {
+        BaseException ex = Assertions.assertThrows(BaseException.class, () -> {
             userService.signUp(dto2);
         });
+        Assertions.assertEquals(ErrorCode.DUPLICATE_NICKNAME, ex.getErrorCode());
     }
 }
+
