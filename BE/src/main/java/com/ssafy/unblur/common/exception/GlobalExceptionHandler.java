@@ -1,4 +1,4 @@
-package com.ssafy.unblur.exception;
+package com.ssafy.unblur.common.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
