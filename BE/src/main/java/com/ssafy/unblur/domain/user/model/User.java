@@ -50,6 +50,14 @@ public class User {
     private String password;
 
     /**
+     * 인증 제공자 (LOCAL/GOOGLE/KAKAO/NAVER/APPLE).
+     */
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "auth_provider", nullable = false, length = 20)
+    private AuthProvider authProvider = AuthProvider.LOCAL;
+
+    /**
      * 닉네임 (UK).
      */
     @Column(nullable = false, length = 10)
