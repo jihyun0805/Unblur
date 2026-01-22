@@ -1,4 +1,4 @@
-package com.ssafy.unblur.exception;
+package com.ssafy.unblur.common.exception;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

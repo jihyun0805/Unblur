@@ -1,4 +1,4 @@
-package com.ssafy.unblur.exception;
+package com.ssafy.unblur.common.exception;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
