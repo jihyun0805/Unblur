@@ -1,6 +1,9 @@
-package com.ssafy.unblur.domain.user;
+package com.ssafy.unblur.domain.user.service;
 
-import com.ssafy.unblur.global.CustomException;
+import com.ssafy.unblur.domain.user.dto.SignupDto;
+import com.ssafy.unblur.domain.user.model.User;
+import com.ssafy.unblur.domain.user.repository.UserRepository;
+import com.ssafy.unblur.common.exception.CustomException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -21,8 +24,8 @@ public class UserService {
      * 비밀번호를 암호화하여 데이터베이스에 유저 정보를 저장합니다.</p>
      *
      * @param signUpDto 회원가입 정보 객체
-     * @throws com.ssafy.unblur.global.CustomException.DuplicateEmailException    이메일 중복 시 발생
-     * @throws com.ssafy.unblur.global.CustomException.DuplicateNicknameException 닉네임 중복 시 발생
+     * @throws CustomException.DuplicateEmailException    이메일 중복 시 발생
+     * @throws CustomException.DuplicateNicknameException 닉네임 중복 시 발생
      */
     @Transactional
     public String signUp(SignupDto signUpDto) {

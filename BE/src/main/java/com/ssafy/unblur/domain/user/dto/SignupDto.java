@@ -1,4 +1,4 @@
-package com.ssafy.unblur.domain.user;
+package com.ssafy.unblur.domain.user.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;

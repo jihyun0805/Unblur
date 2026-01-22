@@ -1,4 +1,4 @@
-package com.ssafy.unblur.domain.user;
+package com.ssafy.unblur.domain.user.model;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

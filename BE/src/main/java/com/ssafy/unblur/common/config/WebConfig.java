@@ -1,4 +1,4 @@
-package com.ssafy.unblur.global.Config;
+package com.ssafy.unblur.common.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;

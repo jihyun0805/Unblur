@@ -1,6 +1,6 @@
-package com.ssafy.unblur.domain.user;
+package com.ssafy.unblur.domain.user.model;
 
-import com.ssafy.unblur.global.CustomException;
+import com.ssafy.unblur.domain.user.dto.SignupDto;
 import jakarta.persistence.*;
 import lombok.*;
 

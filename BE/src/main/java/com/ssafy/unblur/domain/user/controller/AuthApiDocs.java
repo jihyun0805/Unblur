@@ -1,6 +1,8 @@
-package com.ssafy.unblur.domain.user;
+package com.ssafy.unblur.domain.user.controller;
 
-import com.ssafy.unblur.global.BaseResponse;
+import com.ssafy.unblur.domain.user.dto.SignupDto;
+import com.ssafy.unblur.domain.user.dto.SignupResponseDto;
+import com.ssafy.unblur.common.response.BaseResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;

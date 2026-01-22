@@ -1,6 +1,9 @@
-package com.ssafy.unblur.domain.user;
+package com.ssafy.unblur.domain.user.controller;
 
-import com.ssafy.unblur.global.BaseResponse;
+import com.ssafy.unblur.domain.user.dto.SignupDto;
+import com.ssafy.unblur.domain.user.dto.SignupResponseDto;
+import com.ssafy.unblur.domain.user.service.UserService;
+import com.ssafy.unblur.common.response.BaseResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

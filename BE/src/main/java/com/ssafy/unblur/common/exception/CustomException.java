@@ -1,4 +1,4 @@
-package com.ssafy.unblur.global;
+package com.ssafy.unblur.common.exception;
 
 public class CustomException {
 
