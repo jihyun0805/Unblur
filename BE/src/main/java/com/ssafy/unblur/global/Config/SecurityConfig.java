@@ -1,4 +1,4 @@
-package com.ssafy.unblur;
+package com.ssafy.unblur.global.Config;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;

@@ -61,37 +61,4 @@ public class UserService {
     public boolean isNicknameDuplicate(String nickname) {
         return userRepository.existsByNickname(nickname);
     }
-
-    /**
-     * 사용자의 닉네임을 변경합니다.
-     *
-     * @param email       사용자 식별 이메일
-     * @param newNickname 변경할 닉네임
-     */
-    @Transactional
-    public void updateNickname(String email, String newNickname) {
-        if (userRepository.existsByNickname(newNickname)) {
-            throw new CustomException.DuplicateNicknameException();
-        }
-
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다."));
-        user.updateNickname(newNickname);
-    }
-
-    /**
-     * 사용자의 비밀번호를 변경합니다.
-     *
-     * @param email       사용자 식별 이메일
-     * @param rawPassword 변경할 평문 비밀번호
-     */
-    @Transactional
-    public void updatePassword(String email, String rawPassword) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다"));
-
-        String encryptedPassword = bCryptPasswordEncoder.encode(rawPassword);
-
-        user.updatePassword(encryptedPassword);
-    }
 }

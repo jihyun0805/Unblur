@@ -16,7 +16,7 @@ public class CustomException {
 
     public static class DuplicateEmailException extends BaseException {
         public DuplicateEmailException() {
-            super("이미 사용중안 이메일입니다.");
+            super("이미 사용중인 이메일입니다.");
         }
     }
 

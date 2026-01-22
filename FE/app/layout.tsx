@@ -9,7 +9,7 @@ import { Toaster } from "@/components/ui/toaster"
 const _geist = Geist({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Unblur - 2030 세대를 위한 새로운 만남",
+  title: "Unblur",
   description:
     "블러 처리된 화면에서 시작하는 특별한 소개팅. 시간이 지날수록 서로를 알아가며, 진정한 대화를 나눠보세요.",
     generator: 'v0.app'

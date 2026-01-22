@@ -53,9 +53,6 @@ export function RegisterModal({ open, onOpenChange, onSwitchToLogin }: RegisterM
     gender: "" as "male" | "female" | "",
     region: "",
     // 설문조사 데이터
-    smoking: "",
-    drinking: "",
-    dealbreakers: [] as string[],
     dateStyle: "",
     contactStyle: "",
     conflictStyle: "",
@@ -77,16 +74,22 @@ export function RegisterModal({ open, onOpenChange, onSwitchToLogin }: RegisterM
   const validatePassword = (password: string) => {
     const hasLetter = /[a-zA-Z]/.test(password)
     const hasNumber = /[0-9]/.test(password)
-    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password)
+    const hasSpecial = /[!*^?_]/.test(password)
+    const isAllowedChars = /^[A-Za-z0-9!*^?_]*$/.test(password)
     const isValidLength = password.length >= 9 && password.length <= 16
     return {
       hasLetter,
       hasNumber,
       hasSpecial,
+      isAllowedChars,
       isValidLength,
-      isValid: hasLetter && hasNumber && hasSpecial && isValidLength,
+      isValid: hasLetter && hasNumber && hasSpecial && isAllowedChars && isValidLength,
     }
   }
+
+  const normalizeUsername = (value: string) => value.replace(/[^A-Za-z0-9]/g, "")
+  const normalizePassword = (value: string) => value.replace(/[^A-Za-z0-9!*^?_]/g, "")
+  const isUsernameValid = (value: string) => /^[A-Za-z0-9]+$/.test(value)
 
   const passwordValidation = validatePassword(formData.password)
 
@@ -111,6 +114,14 @@ export function RegisterModal({ open, onOpenChange, onSwitchToLogin }: RegisterM
       toast({
         title: "아이디 오류",
         description: "아이디는 4자 이상이어야 합니다.",
+        variant: "destructive",
+      })
+      return
+    }
+    if (!isUsernameValid(formData.username)) {
+      toast({
+        title: "아이디 오류",
+        description: "아이디는 영문과 숫자만 사용할 수 있습니다.",
         variant: "destructive",
       })
       return
@@ -163,6 +174,15 @@ export function RegisterModal({ open, onOpenChange, onSwitchToLogin }: RegisterM
       return
     }
 
+    if (!isUsernameValid(formData.username)) {
+      toast({
+        title: "아이디 오류",
+        description: "아이디는 영문과 숫자만 사용할 수 있습니다.",
+        variant: "destructive",
+      })
+      return
+    }
+
     if (usernameAvailable !== true) {
       toast({
         title: "아이디 확인 필요",
@@ -175,7 +195,7 @@ export function RegisterModal({ open, onOpenChange, onSwitchToLogin }: RegisterM
     if (!passwordValidation.isValid) {
       toast({
         title: "비밀번호 오류",
-        description: "비밀번호 조건을 확인해주세요.",
+        description: "9~16자, 영문+숫자+특수문자(!*^?_) 조건을 확인해주세요.",
         variant: "destructive",
       })
       return
@@ -221,7 +241,7 @@ export function RegisterModal({ open, onOpenChange, onSwitchToLogin }: RegisterM
   const handleStep3Submit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!formData.smoking || !formData.drinking || formData.dealbreakers.length === 0) {
+    if (!formData.dateStyle || !formData.contactStyle || !formData.conflictStyle || !formData.spending) {
       toast({
         title: "입력 오류",
         description: "모든 질문에 답변해주세요.",
@@ -236,7 +256,7 @@ export function RegisterModal({ open, onOpenChange, onSwitchToLogin }: RegisterM
   const handleStep4Submit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!formData.dateStyle || !formData.contactStyle || !formData.conflictStyle || !formData.spending) {
+    if (!formData.priority || formData.agePreference.length === 0 || !formData.distancePreference) {
       toast({
         title: "입력 오류",
         description: "모든 질문에 답변해주세요.",
@@ -250,15 +270,6 @@ export function RegisterModal({ open, onOpenChange, onSwitchToLogin }: RegisterM
 
   const handleStep5Submit = async (e: React.FormEvent) => {
     e.preventDefault()
-
-    if (!formData.priority || formData.agePreference.length === 0 || !formData.distancePreference) {
-      toast({
-        title: "입력 오류",
-        description: "모든 질문에 답변해주세요.",
-        variant: "destructive",
-      })
-      return
-    }
 
     if (formData.interests.length === 0) {
       toast({
@@ -280,9 +291,6 @@ export function RegisterModal({ open, onOpenChange, onSwitchToLogin }: RegisterM
       gender: formData.gender as "male" | "female",
       region: formData.region,
       surveyData: {
-        smoking: formData.smoking,
-        drinking: formData.drinking,
-        dealbreakers: formData.dealbreakers,
         dateStyle: formData.dateStyle,
         contactStyle: formData.contactStyle,
         conflictStyle: formData.conflictStyle,
@@ -298,7 +306,7 @@ export function RegisterModal({ open, onOpenChange, onSwitchToLogin }: RegisterM
     if (success) {
       toast({
         title: "회원가입 완료",
-        description: "환영합니다! 이제 소개팅을 시작해보세요.",
+        description: "로그인 화면으로 이동합니다.",
       })
       onOpenChange(false)
       setStep(1)
@@ -313,9 +321,6 @@ export function RegisterModal({ open, onOpenChange, onSwitchToLogin }: RegisterM
         birthDay: "",
         gender: "",
         region: "",
-        smoking: "",
-        drinking: "",
-        dealbreakers: [],
         dateStyle: "",
         contactStyle: "",
         conflictStyle: "",
@@ -326,6 +331,7 @@ export function RegisterModal({ open, onOpenChange, onSwitchToLogin }: RegisterM
         interests: [],
       })
       setUsernameAvailable(null)
+      onSwitchToLogin()
     }
   }
 
@@ -395,7 +401,8 @@ export function RegisterModal({ open, onOpenChange, onSwitchToLogin }: RegisterM
                   placeholder="4~16자"
                   value={formData.username}
                   onChange={(e) => {
-                    setFormData({ ...formData, username: e.target.value })
+                    const nextValue = normalizeUsername(e.target.value)
+                    setFormData({ ...formData, username: nextValue })
                     setUsernameAvailable(null)
                   }}
                   className="bg-input flex-1"
@@ -417,9 +424,9 @@ export function RegisterModal({ open, onOpenChange, onSwitchToLogin }: RegisterM
                 <Input
                   id="reg-password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="9~16자, 영문+숫자+특수문자"
+                  placeholder="9~16자, 영문+숫자+특수문자(!*^?_)"
                   value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, password: normalizePassword(e.target.value) })}
                   className="bg-input pr-10"
                   maxLength={16}
                 />
@@ -452,7 +459,7 @@ export function RegisterModal({ open, onOpenChange, onSwitchToLogin }: RegisterM
                   <span
                     className={`flex items-center gap-1 ${passwordValidation.hasSpecial ? "text-green-600" : "text-muted-foreground"}`}
                   >
-                    {passwordValidation.hasSpecial ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />} 특수문자
+                    {passwordValidation.hasSpecial ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />} 특수문자(!*^?_)
                   </span>
                 </div>
               )}
@@ -464,7 +471,7 @@ export function RegisterModal({ open, onOpenChange, onSwitchToLogin }: RegisterM
                 type="password"
                 placeholder="비밀번호를 다시 입력하세요"
                 value={formData.passwordConfirm}
-                onChange={(e) => setFormData({ ...formData, passwordConfirm: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, passwordConfirm: normalizePassword(e.target.value) })}
                 className="bg-input"
               />
               {formData.passwordConfirm && formData.password !== formData.passwordConfirm && (
@@ -583,81 +590,10 @@ export function RegisterModal({ open, onOpenChange, onSwitchToLogin }: RegisterM
           </form>
         )}
 
-        {/* Step 3: 본인 정보 & 상대 기피사항 */}
+        {/* Step 3: Phase 1. 나의 연애 DNA (About Me) */}
         {step === 3 && (
           <form onSubmit={handleStep3Submit} className="space-y-4 mt-4">
-            <h3 className="font-semibold text-center">기본 성향</h3>
-            
-            <div className="space-y-2">
-              <Label>{SURVEY_QUESTIONS.smoking.question}</Label>
-              <Select value={formData.smoking} onValueChange={(value) => setFormData({ ...formData, smoking: value })}>
-                <SelectTrigger className="bg-input">
-                  <SelectValue placeholder="선택하세요" />
-                </SelectTrigger>
-                <SelectContent>
-                  {SURVEY_QUESTIONS.smoking.options.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>{SURVEY_QUESTIONS.drinking.question}</Label>
-              <Select value={formData.drinking} onValueChange={(value) => setFormData({ ...formData, drinking: value })}>
-                <SelectTrigger className="bg-input">
-                  <SelectValue placeholder="선택하세요" />
-                </SelectTrigger>
-                <SelectContent>
-                  {SURVEY_QUESTIONS.drinking.options.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>{SURVEY_QUESTIONS.dealbreakers.question}</Label>
-              <div className="space-y-2">
-                {SURVEY_QUESTIONS.dealbreakers.options.map((opt) => (
-                  <div key={opt.value} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={opt.value}
-                      checked={formData.dealbreakers.includes(opt.value)}
-                      onCheckedChange={() =>
-                        setFormData({
-                          ...formData,
-                          dealbreakers: toggleArrayItem(formData.dealbreakers, opt.value),
-                        })
-                      }
-                    />
-                    <label htmlFor={opt.value} className="text-sm cursor-pointer">
-                      {opt.label}
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <Button type="button" variant="outline" onClick={() => setStep(2)} className="flex-1">
-                이전
-              </Button>
-              <Button type="submit" className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90">
-                다음
-              </Button>
-            </div>
-          </form>
-        )}
-
-        {/* Step 4: 데이트 & 연애 스타일 */}
-        {step === 4 && (
-          <form onSubmit={handleStep4Submit} className="space-y-4 mt-4">
-            <h3 className="font-semibold text-center">데이트 & 연애 스타일</h3>
+            <h3 className="font-semibold text-center">Phase 1. 나의 연애 DNA (About Me)</h3>
 
             <div className="space-y-2">
               <Label>{SURVEY_QUESTIONS.dateStyle.question}</Label>
@@ -724,7 +660,7 @@ export function RegisterModal({ open, onOpenChange, onSwitchToLogin }: RegisterM
             </div>
 
             <div className="flex gap-3">
-              <Button type="button" variant="outline" onClick={() => setStep(3)} className="flex-1">
+              <Button type="button" variant="outline" onClick={() => setStep(2)} className="flex-1">
                 이전
               </Button>
               <Button type="submit" className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90">
@@ -734,10 +670,10 @@ export function RegisterModal({ open, onOpenChange, onSwitchToLogin }: RegisterM
           </form>
         )}
 
-        {/* Step 5: 상대방 선호 & 관심사 */}
-        {step === 5 && (
-          <form onSubmit={handleStep5Submit} className="space-y-4 mt-4">
-            <h3 className="font-semibold text-center">상대방 선호 & 관심사</h3>
+        {/* Step 4: Phase 2. 내가 찾는 그 사람 (My Ideal Type) */}
+        {step === 4 && (
+          <form onSubmit={handleStep4Submit} className="space-y-4 mt-4">
+            <h3 className="font-semibold text-center">Phase 2. 내가 찾는 그 사람 (My Ideal Type)</h3>
 
             <div className="space-y-2">
               <Label>{SURVEY_QUESTIONS.priority.question}</Label>
@@ -793,6 +729,22 @@ export function RegisterModal({ open, onOpenChange, onSwitchToLogin }: RegisterM
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="flex gap-3">
+              <Button type="button" variant="outline" onClick={() => setStep(3)} className="flex-1">
+                이전
+              </Button>
+              <Button type="submit" className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90">
+                다음
+              </Button>
+            </div>
+          </form>
+        )}
+
+        {/* Step 5: Phase 3. 우리의 연결고리 (Interest Tags) */}
+        {step === 5 && (
+          <form onSubmit={handleStep5Submit} className="space-y-4 mt-4">
+            <h3 className="font-semibold text-center">Phase 3. 우리의 연결고리 (Interest Tags)</h3>
 
             <div className="space-y-2">
               <Label>{SURVEY_QUESTIONS.interests.question} (최대 5개)</Label>

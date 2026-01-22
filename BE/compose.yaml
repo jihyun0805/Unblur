@@ -3,9 +3,9 @@ services:
     image: postgres:16
     container_name: unblur-postgres
     environment:
-      POSTGRES_DB: unblur
-      POSTGRES_USER: unblur
-      POSTGRES_PASSWORD: unblur
+      POSTGRES_DB: ${POSTGRES_DB:-unblur}
+      POSTGRES_USER: ${POSTGRES_USER:-unblur}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-unblur}
     ports:
       - "5432:5432"
     volumes:
@@ -13,7 +13,7 @@ services:
     networks:
       - unblur-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U unblur -d unblur"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-unblur} -d ${POSTGRES_DB:-unblur}"]
       interval: 10s
       timeout: 5s
       retries: 5

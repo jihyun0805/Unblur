@@ -20,7 +20,7 @@ public class AuthController implements AuthApiDocs {
         String createdUserId = userService.signUp(signUpDto);
         SignupResponseDto responseDto = new SignupResponseDto(createdUserId);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(BaseResponse.success(201, "회원가입이 완료되었습니다.", responseDto)); // 201 Created 상태 코드로 응답
+                .body(BaseResponse.success(201, "회원가입이 완료되었습니다.", responseDto));
     }
 
     @Override

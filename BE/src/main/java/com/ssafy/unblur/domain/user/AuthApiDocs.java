@@ -13,6 +13,7 @@ public interface AuthApiDocs {
 
     /**
      * 새로운 사용자를 등록합니다.
+     *
      * @param signUpDto 회원가입에 필요한 정보(이메일, 비밀번호, 닉네임 등)
      * @return 성공 시 201 상태 코드와 함께 생성된 유저의 ID를 반환
      */
@@ -22,6 +23,7 @@ public interface AuthApiDocs {
 
     /**
      * 이메일 중복 여부를 확인합니다.
+     *
      * @param email 중복 확인할 이메일 주소
      * @return 성공 시 200 상태 코드와 함께 중복 여부(true: 중복)를 반환
      */
@@ -33,6 +35,7 @@ public interface AuthApiDocs {
 
     /**
      * 닉네임 중복 여부를 확인합니다.
+     *
      * @param nickname 중복 확인할 사용자의 닉네임
      * @return 성공 시 200 상태 코드와 함께 중복 여부(true: 중복)를 반환
      */

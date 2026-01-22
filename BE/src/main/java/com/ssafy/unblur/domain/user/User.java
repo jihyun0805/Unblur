@@ -57,32 +57,4 @@ public class User {
                 UserRole.USER
         );
     }
-
-    /**
-     * 닉네임 변경 시 내부적으로 공백, 길이 검사합니다.
-     *
-     * @param newNickname 변경할 닉네임
-     */
-    public void updateNickname(String newNickname) {
-        if (newNickname == null || newNickname.isBlank()) {
-            throw new CustomException.BlankNicknameException();
-        }
-
-        String strippedNickname = newNickname.strip();
-
-        if (strippedNickname.length() > 10) {
-            throw new CustomException.NicknameLengthException();
-        }
-        this.nickname = strippedNickname;
-    }
-
-    /**
-     * 사용자의 비밀번호를 새로운 값으로 변경합니다.
-     * <p>보안을 위해 반드시 서비스 레이어에서 암호화된 비밀번호를 전달해야 합니다.</p>
-     *
-     * @param newPassword 암호화가 완료된 새 비밀번호
-     */
-    public void updatePassword(String newPassword) {
-        this.password = newPassword;
-    }
 }

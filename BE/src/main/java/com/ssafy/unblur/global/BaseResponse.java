@@ -1,21 +1,14 @@
 package com.ssafy.unblur.global;
 
-import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
 
-@Getter
-@AllArgsConstructor
-@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY, getterVisibility = JsonAutoDetect.Visibility.NONE)
-public class BaseResponse<T> {
-    @JsonProperty("isSuccess")
-    private final boolean success;
-
-    private final int statusCode;
-    private final String message;
-    private final T data;
-
+public record BaseResponse<T>(
+        @JsonProperty("isSuccess")
+        boolean success,
+        int statusCode,
+        String message,
+        T data
+) {
     /**
      * 성공 응답을 생성합니다.
      *
@@ -25,5 +18,12 @@ public class BaseResponse<T> {
      */
     public static <T> BaseResponse<T> success(int statusCode, String message, T data) {
         return new BaseResponse<>(true, statusCode, message, data);
+    }
+
+    /**
+     * 에러 응답을 생성합니다.
+     */
+    public static <T> BaseResponse<T> fail(int statusCode, String message) {
+        return new BaseResponse<>(false, statusCode, message, null);
     }
 }

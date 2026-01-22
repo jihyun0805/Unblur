@@ -13,7 +13,7 @@ interface ConfirmLeaveModalProps {
 export function ConfirmLeaveModal({ open, onConfirmLeave, onContinue }: ConfirmLeaveModalProps) {
   return (
     <Dialog open={open}>
-      <DialogContent className="sm:max-w-md bg-background" hideClose>
+      <DialogContent className="sm:max-w-md bg-background" showCloseButton={false}>
         <div className="py-4 text-center">
           <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
             <AlertTriangle className="w-8 h-8 text-amber-600" />
