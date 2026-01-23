@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Loader2, Heart, X } from "lucide-react"
 
@@ -49,6 +49,7 @@ export function RoundVoteModal({ open, currentRound, onResult }: RoundVoteModalP
   return (
     <Dialog open={open}>
       <DialogContent className="sm:max-w-md bg-background" showCloseButton={false}>
+        <DialogTitle className="sr-only">{ROUND_NAMES[currentRound]} 종료</DialogTitle>
         <div className="py-4 text-center">
           <h2 className="text-xl font-bold mb-2">{ROUND_NAMES[currentRound]} 종료!</h2>
           <p className="text-muted-foreground mb-6">

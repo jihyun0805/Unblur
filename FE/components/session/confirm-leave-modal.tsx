@@ -1,6 +1,6 @@
 "use client"
 
-import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { AlertTriangle, Heart } from "lucide-react"
 
@@ -14,6 +14,7 @@ export function ConfirmLeaveModal({ open, onConfirmLeave, onContinue }: ConfirmL
   return (
     <Dialog open={open}>
       <DialogContent className="sm:max-w-md bg-background" showCloseButton={false}>
+        <DialogTitle className="sr-only">상대방이 대화를 원해요</DialogTitle>
         <div className="py-4 text-center">
           <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
             <AlertTriangle className="w-8 h-8 text-amber-600" />

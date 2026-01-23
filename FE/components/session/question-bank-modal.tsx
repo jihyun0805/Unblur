@@ -1,6 +1,6 @@
 "use client"
 
-import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { X } from "lucide-react"
 
 interface QuestionBankModalProps {
@@ -90,6 +90,7 @@ export function QuestionBankModal({ open, round, onClose }: QuestionBankModalPro
   return (
     <Dialog open={open}>
       <DialogContent className="sm:max-w-lg bg-background" showCloseButton={false}>
+        <DialogTitle className="sr-only">질문 사전</DialogTitle>
         <div className="flex items-center justify-between">
           <div>
             <h3 className="font-semibold">질문 사전</h3>
