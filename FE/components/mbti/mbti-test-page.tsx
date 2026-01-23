@@ -141,21 +141,9 @@ export function MBTITestPage({ onBack, onComplete }: MBTITestPageProps) {
 
   return (
     <div className="min-h-screen relative flex items-center justify-center">
-      {/* Sunset Background */}
-      <div className="fixed inset-0 z-0">
-        <img
-          src="/sunset-ocean.jpg"
-          alt="Sunset background"
-          className="w-full h-full object-cover opacity-35"
-        />
-        <div className="absolute inset-0 bg-white/30" />
-      </div>
-
-      {/* Overlay */}
-      <div className="absolute inset-0 bg-background/50 backdrop-blur-sm z-0" />
-
-      {/* Content */}
-      <div className="relative z-10 container max-w-2xl mx-auto px-4 py-8">
+      {/* Stronger overlay to reduce background distraction */}
+      <div className="absolute inset-0 bg-white/70 backdrop-blur-md" />
+      <div className="relative container max-w-2xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           <Button variant="ghost" size="icon" onClick={onBack} className="bg-card/50 backdrop-blur">
@@ -171,7 +159,7 @@ export function MBTITestPage({ onBack, onComplete }: MBTITestPageProps) {
         </div>
 
         {/* Question Card */}
-        <Card className="bg-card/80 backdrop-blur shadow-lg">
+        <Card className="bg-card/90 backdrop-blur shadow-lg">
           <CardHeader>
             <div className="text-sm text-muted-foreground mb-2">{currentCategory.category}</div>
             <CardTitle className="text-xl">{currentQuestion.question}</CardTitle>

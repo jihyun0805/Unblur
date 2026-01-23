@@ -51,7 +51,7 @@ export function LandingPage() {
                 size="lg"
                 variant="outline"
                 onClick={() => setShowLogin(true)}
-                className="w-full sm:w-auto px-8 py-6 text-lg bg-card/50 backdrop-blur-sm"
+                className="w-full sm:w-auto px-8 py-6 text-lg bg-card/50 backdrop-blur-sm border-transparent hover:bg-card/50 hover:text-foreground hover:border-transparent"
               >
                 이미 계정이 있어요
               </Button>
