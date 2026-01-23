@@ -1,12 +1,12 @@
 "use client"
 
 import type React from "react"
-import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Loader2 } from "lucide-react"
 import type { useRegisterForm } from "@/hooks/use-register-form"
+import { RegisterFormWrapper } from "./register-form-wrapper"
 
 interface RegisterStep8Props {
   formData: ReturnType<typeof useRegisterForm>["formData"]
@@ -42,12 +42,16 @@ export function RegisterStep8({ formData, updateFormData, isLoading, onPrev, onS
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 mt-4">
-      <div className="space-y-1">
-        <h3 className="font-semibold text-center">나를 더 잘 표현해주세요!</h3>
-        <p className="text-sm text-muted-foreground text-center">입력하지 않아도 가입 가능합니다</p>
-      </div>
-
+    <RegisterFormWrapper
+      title="나를 더 잘 표현해주세요!"
+      description="입력하지 않아도 가입 가능합니다"
+      onSubmit={handleSubmit}
+      onPrev={onPrev}
+      submitLabel="가입하기"
+      submitLoading={isLoading}
+      submitLoadingText="가입 중..."
+      className="space-y-6 mt-4"
+    >
       <div className="space-y-3">
         <Label htmlFor="mbti">MBTI</Label>
         <RadioGroup
@@ -86,26 +90,6 @@ export function RegisterStep8({ formData, updateFormData, isLoading, onPrev, onS
         />
         <p className="text-xs text-muted-foreground">{formData.bio.length}/50</p>
       </div>
-
-      <div className="flex gap-3">
-        <Button type="button" variant="outline" onClick={onPrev} className="flex-1">
-          이전
-        </Button>
-        <Button
-          type="submit"
-          className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              가입 중...
-            </>
-          ) : (
-            "가입하기"
-          )}
-        </Button>
-      </div>
-    </form>
+    </RegisterFormWrapper>
   )
 }

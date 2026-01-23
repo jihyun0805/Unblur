@@ -1,11 +1,10 @@
 "use client"
 
 import type React from "react"
-import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { SURVEY_QUESTIONS } from "@/lib/survey-questions"
 import type { useRegisterForm } from "@/hooks/use-register-form"
+import { RegisterFormWrapper } from "./register-form-wrapper"
+import { RadioGroupField } from "./radio-group-field"
 
 interface RegisterStep5Props {
   formData: ReturnType<typeof useRegisterForm>["formData"]
@@ -21,116 +20,43 @@ export function RegisterStep5({ formData, updateFormData, onNext, onPrev }: Regi
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-10 mt-4">
-      <div className="space-y-1">
-        <h3 className="font-semibold text-center">나는 어떤 사람인지 알려주세요!</h3>
-        <p className="text-sm text-muted-foreground text-center">매칭시에 사용되는 정보입니다. 타인에게는 노출되지 않습니다.</p>
-      </div>
+    <RegisterFormWrapper
+      title="나는 어떤 사람인지 알려주세요!"
+      description="매칭시에 사용되는 정보입니다. 타인에게는 노출되지 않습니다."
+      onSubmit={handleSubmit}
+      onPrev={onPrev}
+    >
+      <RadioGroupField
+        label={SURVEY_QUESTIONS.smokingSelf.question}
+        value={formData.smokingSelf}
+        options={SURVEY_QUESTIONS.smokingSelf.options}
+        onChange={(value) => updateFormData({ smokingSelf: value })}
+        fieldId="smokingSelf"
+      />
 
-      <div className="space-y-3">
-        <Label>{SURVEY_QUESTIONS.smokingSelf.question}</Label>
-        <RadioGroup
-          value={formData.smokingSelf}
-          onValueChange={(value) => updateFormData({ smokingSelf: value })}
-          className="flex flex-wrap gap-5"
-        >
-          {SURVEY_QUESTIONS.smokingSelf.options.map((opt) => (
-            <label
-              key={opt.value}
-              htmlFor={`smokingSelf-${opt.value}`}
-              className="flex items-center space-x-2 cursor-pointer"
-            >
-              <RadioGroupItem
-                value={opt.value}
-                id={`smokingSelf-${opt.value}`}
-                className="border-2 border-foreground/20 data-[state=checked]:border-primary"
-              />
-              <span className="text-sm font-normal">{opt.label}</span>
-            </label>
-          ))}
-        </RadioGroup>
-      </div>
+      <RadioGroupField
+        label={SURVEY_QUESTIONS.drinkingSelf.question}
+        value={formData.drinkingSelf}
+        options={SURVEY_QUESTIONS.drinkingSelf.options}
+        onChange={(value) => updateFormData({ drinkingSelf: value })}
+        fieldId="drinkingSelf"
+      />
 
-      <div className="space-y-3">
-        <Label>{SURVEY_QUESTIONS.drinkingSelf.question}</Label>
-        <RadioGroup
-          value={formData.drinkingSelf}
-          onValueChange={(value) => updateFormData({ drinkingSelf: value })}
-          className="flex flex-wrap gap-5"
-        >
-          {SURVEY_QUESTIONS.drinkingSelf.options.map((opt) => (
-            <label
-              key={opt.value}
-              htmlFor={`drinkingSelf-${opt.value}`}
-              className="flex items-center space-x-2 cursor-pointer"
-            >
-              <RadioGroupItem
-                value={opt.value}
-                id={`drinkingSelf-${opt.value}`}
-                className="border-2 border-foreground/20 data-[state=checked]:border-primary"
-              />
-              <span className="text-sm font-normal">{opt.label}</span>
-            </label>
-          ))}
-        </RadioGroup>
-      </div>
+      <RadioGroupField
+        label={SURVEY_QUESTIONS.religionSelf.question}
+        value={formData.religionSelf}
+        options={SURVEY_QUESTIONS.religionSelf.options}
+        onChange={(value) => updateFormData({ religionSelf: value })}
+        fieldId="religionSelf"
+      />
 
-      <div className="space-y-3">
-        <Label>{SURVEY_QUESTIONS.religionSelf.question}</Label>
-        <RadioGroup
-          value={formData.religionSelf}
-          onValueChange={(value) => updateFormData({ religionSelf: value })}
-          className="flex flex-wrap gap-5"
-        >
-          {SURVEY_QUESTIONS.religionSelf.options.map((opt) => (
-            <label
-              key={opt.value}
-              htmlFor={`religionSelf-${opt.value}`}
-              className="flex items-center space-x-2 cursor-pointer"
-            >
-              <RadioGroupItem
-                value={opt.value}
-                id={`religionSelf-${opt.value}`}
-                className="border-2 border-foreground/20 data-[state=checked]:border-primary"
-              />
-              <span className="text-sm font-normal">{opt.label}</span>
-            </label>
-          ))}
-        </RadioGroup>
-      </div>
-
-      <div className="space-y-3">
-        <Label>{SURVEY_QUESTIONS.petSelf.question}</Label>
-        <RadioGroup
-          value={formData.petSelf}
-          onValueChange={(value) => updateFormData({ petSelf: value })}
-          className="flex flex-wrap gap-5"
-        >
-          {SURVEY_QUESTIONS.petSelf.options.map((opt) => (
-            <label
-              key={opt.value}
-              htmlFor={`petSelf-${opt.value}`}
-              className="flex items-center space-x-2 cursor-pointer"
-            >
-              <RadioGroupItem
-                value={opt.value}
-                id={`petSelf-${opt.value}`}
-                className="border-2 border-foreground/20 data-[state=checked]:border-primary"
-              />
-              <span className="text-sm font-normal">{opt.label}</span>
-            </label>
-          ))}
-        </RadioGroup>
-      </div>
-
-      <div className="flex gap-3">
-        <Button type="button" variant="outline" onClick={onPrev} className="flex-1">
-          이전
-        </Button>
-        <Button type="submit" className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90">
-          다음
-        </Button>
-      </div>
-    </form>
+      <RadioGroupField
+        label={SURVEY_QUESTIONS.petSelf.question}
+        value={formData.petSelf}
+        options={SURVEY_QUESTIONS.petSelf.options}
+        onChange={(value) => updateFormData({ petSelf: value })}
+        fieldId="petSelf"
+      />
+    </RegisterFormWrapper>
   )
 }
