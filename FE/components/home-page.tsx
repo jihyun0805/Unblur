@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { MatchingModal } from "@/components/matching/matching-modal"
 import { OneOnOneModal } from "@/components/matching/one-on-one-modal"
 import { CameraTestModal } from "@/components/matching/camera-test-modal"
-import { Zap, Thermometer, UserPlus } from "lucide-react"
+import { Zap, UserPlus } from "lucide-react"
 
 export function HomePage() {
   const { user } = useAuth()
@@ -52,6 +52,11 @@ export function HomePage() {
     return "text-blue-700"
   }
 
+  const getClarityPercent = (temp: number) => {
+    const percent = Math.round(((temp - 30) / 20) * 100)
+    return Math.max(0, Math.min(100, percent))
+  }
+
   return (
     <>
       <div className="max-w-4xl mx-auto">
@@ -59,11 +64,10 @@ export function HomePage() {
           <h1 className="text-2xl sm:text-3xl font-bold mb-2">안녕하세요, {user?.nickname}님!</h1>
           <p className="text-muted-foreground text-sm sm:text-base">오늘도 특별한 만남이 기다리고 있어요.</p>
           <div className="inline-flex items-center gap-2 mt-3 px-4 py-2 rounded-full bg-card">
-            <Thermometer className={`w-4 h-4 ${getTemperatureColor(user?.temperature || 36.5)}`} />
             <span className={`font-semibold ${getTemperatureColor(user?.temperature || 36.5)}`}>
-              {user?.temperature?.toFixed(1) || "36.5"}°C
+              {getClarityPercent(user?.temperature ?? 36.5)}%
             </span>
-            <span className="text-xs text-muted-foreground">매너 온도</span>
+            <span className="text-xs text-muted-foreground">선명도</span>
           </div>
         </div>
 

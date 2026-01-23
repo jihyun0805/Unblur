@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
+import { BackgroundLayout } from "@/components/common/background-layout"
 import { MainLayout } from "@/components/common/main-layout"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -45,7 +46,11 @@ export default function MainRouteLayout({ children }: { children: React.ReactNod
   return (
     <>
       {isSessionOrMbti ? (
-        children
+        pathname === "/mbti" ? (
+          <BackgroundLayout>{children}</BackgroundLayout>
+        ) : (
+          children
+        )
       ) : (
         <MainLayout onLogout={() => setShowLogoutConfirm(true)}>{children}</MainLayout>
       )}
