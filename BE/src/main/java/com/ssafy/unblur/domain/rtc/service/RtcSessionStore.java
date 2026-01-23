@@ -2,6 +2,7 @@ package com.ssafy.unblur.domain.rtc.service;
 
 import java.util.Optional;
 import java.util.UUID;
+
 import org.springframework.web.socket.WebSocketSession;
 
 /**
@@ -20,7 +21,7 @@ public interface RtcSessionStore {
      * 세션과 사용자 ID를 연결하는 메서드
      *
      * @param sessionId 세션 ID
-     * @param userId 사용자 ID
+     * @param userId    사용자 ID
      */
     void bindUser(String sessionId, UUID userId);
 

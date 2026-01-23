@@ -15,8 +15,8 @@ public interface KurentoRoomService {
      * 방에 사용자를 입장시키는 메서드
      *
      * @param conferenceId 방 ID
-     * @param userId 사용자 ID
-     * @param session WebSocket 세션
+     * @param userId       사용자 ID
+     * @param session      WebSocket 세션
      * @return 사용자 세션
      */
     UserSession join(UUID conferenceId, UUID userId, WebSocketSession session);
@@ -25,8 +25,8 @@ public interface KurentoRoomService {
      * SDP Offer를 처리하고 Answer를 반환하는 메서드
      *
      * @param conferenceId 방 ID
-     * @param userId 사용자 ID
-     * @param sdpOffer SDP Offer
+     * @param userId       사용자 ID
+     * @param sdpOffer     SDP Offer
      * @return SDP Answer
      */
     String processOffer(UUID conferenceId, UUID userId, String sdpOffer);
@@ -35,8 +35,8 @@ public interface KurentoRoomService {
      * ICE Candidate를 추가하는 메서드
      *
      * @param conferenceId 방 ID
-     * @param userId 사용자 ID
-     * @param candidate ICE Candidate
+     * @param userId       사용자 ID
+     * @param candidate    ICE Candidate
      */
     void addIceCandidate(UUID conferenceId, UUID userId, IceCandidate candidate);
 
@@ -44,7 +44,7 @@ public interface KurentoRoomService {
      * 방에서 사용자를 제거하는 메서드
      *
      * @param conferenceId 방 ID
-     * @param userId 사용자 ID
+     * @param userId       사용자 ID
      */
     void leave(UUID conferenceId, UUID userId);
 

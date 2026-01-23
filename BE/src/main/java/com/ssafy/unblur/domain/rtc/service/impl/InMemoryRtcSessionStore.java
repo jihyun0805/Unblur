@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketSession;
 
 /**
- * 인메모리 기반 WebSocket 세션 저장소 구현체.
+ * 인메모리 기반 WebSocket 세션 저장소 구현체
  */
 @Component
 @SuppressWarnings("resource")

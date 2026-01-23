@@ -105,7 +105,7 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
          * 방 생성자
          *
          * @param kurentoClient Kurento 클라이언트
-         * @param conferenceId 방 ID
+         * @param conferenceId  방 ID
          */
         Room(KurentoClient kurentoClient, UUID conferenceId) {
             this.conferenceId = conferenceId;
@@ -116,7 +116,7 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
         /**
          * 사용자 입장을 처리하는 메서드
          *
-         * @param userId 사용자 ID
+         * @param userId  사용자 ID
          * @param session WebSocket 세션
          * @return 사용자 세션
          */
@@ -131,7 +131,7 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
         /**
          * SDP Offer를 처리하고 Answer를 반환하는 메서드
          *
-         * @param userId 사용자 ID
+         * @param userId   사용자 ID
          * @param sdpOffer SDP Offer
          * @return SDP Answer
          */
@@ -153,7 +153,7 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
         /**
          * ICE Candidate를 추가하는 메서드
          *
-         * @param userId 사용자 ID
+         * @param userId    사용자 ID
          * @param candidate ICE Candidate
          */
         void addIceCandidate(UUID userId, IceCandidate candidate) {
