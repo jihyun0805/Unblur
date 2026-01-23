@@ -4,27 +4,36 @@ import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
-import { Mic, MicOff, PhoneOff, MessageCircle, Gamepad2, BookOpen, Send, Clock, X, Lightbulb } from "lucide-react"
+import { Mic, MicOff, PhoneOff, MessageCircle, Gamepad2, BookOpen, Send, Clock, X, Lightbulb, AlertCircle } from "lucide-react"
 import { BalanceGameOverlay } from "@/components/session/balance-game-overlay"
 import { RoundVoteModal } from "@/components/session/round-vote-modal"
 import { RatingModal } from "@/components/session/rating-modal"
 import { ConfirmLeaveModal } from "@/components/session/confirm-leave-modal"
 import { EndCallConfirmModal } from "@/components/session/end-call-confirm-modal"
 import { QuestionBankModal, getRoundQuestions } from "@/components/session/question-bank-modal"
+import { useWebRTC } from "@/hooks/use-webrtc"
 
 interface SessionRoomProps {
   sessionId: string
   onLeave: () => void
+  externalShowEndConfirm?: boolean
+  onExternalConfirmLeave?: () => void
+  onExternalCancelLeave?: () => void
 }
 
 const ROUND_TIMES = [10, 10, 5, Number.POSITIVE_INFINITY] // seconds
 const BLUR_LEVELS = [20, 10, 3, 0] // px
 const ROUND_NAMES = ["1라운드", "2라운드", "3라운드", "최종 라운드"]
 
-export function SessionRoom({ sessionId, onLeave }: SessionRoomProps) {
+export function SessionRoom({ 
+  sessionId, 
+  onLeave,
+  externalShowEndConfirm = false,
+  onExternalConfirmLeave,
+  onExternalCancelLeave,
+}: SessionRoomProps) {
   const [currentRound, setCurrentRound] = useState(0)
   const [timeLeft, setTimeLeft] = useState(ROUND_TIMES[0])
-  const [isMuted, setIsMuted] = useState(false)
   const [showChat, setShowChat] = useState(false)
   const [showGame, setShowGame] = useState(false)
   const [showVote, setShowVote] = useState(false)
@@ -41,6 +50,64 @@ export function SessionRoom({ sessionId, onLeave }: SessionRoomProps) {
   const { toast } = useToast()
   const chatEndRef = useRef<HTMLDivElement>(null)
   const lastIceBreakerRef = useRef("")
+
+  // WebRTC 비디오 refs
+  const localVideoRef = useRef<HTMLVideoElement | null>(null)
+  const remoteVideoRef = useRef<HTMLVideoElement | null>(null)
+
+  // WebRTC 훅 사용
+  const {
+    localStream,
+    remoteStream,
+    isConnected,
+    isConnecting,
+    error: webrtcError,
+    toggleMute,
+    isMuted,
+    toggleVideo,
+    isVideoEnabled,
+  } = useWebRTC({
+    sessionId,
+    localVideoRef,
+    remoteVideoRef,
+    enabled: true,
+    useMock: true, // 백엔드 미구현 시 mock 사용
+  })
+
+  // 로컬 스트림을 비디오 요소에 설정
+  useEffect(() => {
+    if (localStream && localVideoRef.current) {
+      localVideoRef.current.srcObject = localStream
+    }
+  }, [localStream])
+
+  // 원격 스트림을 비디오 요소에 설정
+  useEffect(() => {
+    if (remoteStream && remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = remoteStream
+    }
+  }, [remoteStream])
+
+  // WebRTC 에러 처리 및 사용자 피드백
+  useEffect(() => {
+    if (webrtcError) {
+      toast({
+        title: "연결 오류",
+        description: webrtcError,
+        variant: "destructive",
+      })
+    }
+  }, [webrtcError, toast])
+
+  // 연결 상태 변경 시 피드백
+  useEffect(() => {
+    if (isConnected) {
+      toast({
+        title: "연결 완료",
+        description: "상대방과의 연결이 성공적으로 설정되었습니다.",
+      })
+    }
+  }, [isConnected, toast])
 
   // Timer logic
   useEffect(() => {
@@ -192,7 +259,7 @@ export function SessionRoom({ sessionId, onLeave }: SessionRoomProps) {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setIsMuted(!isMuted)}
+              onClick={toggleMute}
               className={`ml-1 h-8 w-8 rounded-full ${
                 isMuted ? "bg-red-500 hover:bg-red-600" : "bg-white/20 hover:bg-white/30"
               }`}
@@ -225,52 +292,197 @@ export function SessionRoom({ sessionId, onLeave }: SessionRoomProps) {
             >
               <MessageCircle className="w-5 h-5" />
             </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLeave}
+              className="text-white hover:bg-red-500/20"
+            >
+              <PhoneOff className="w-5 h-5" />
+            </Button>
           </div>
         </div>
       </header>
 
-      {/* Video Grid - 양쪽 모두 블러 처리 */}
-      <div className="flex-1 p-4 pt-20 pb-24">
-        <div className="h-full max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Partner Video - 블러 적용 */}
-          <div className="relative rounded-2xl overflow-hidden bg-[#2a2a2a]">
-            <div
-              className="absolute inset-0 flex items-center justify-center transition-all duration-1000"
-              style={{ filter: `blur(${blurLevel}px)` }}
-            >
-              <div className="w-32 h-32 rounded-full bg-secondary flex items-center justify-center">
-                <span className="text-4xl">👤</span>
-              </div>
+      {/* Main Content Area - Video and Chat */}
+      <div className="flex-1 flex pt-20 pb-24 overflow-hidden">
+        {/* Video Grid - 양쪽 모두 블러 처리 */}
+        <div className={`flex-1 p-4 transition-all duration-300 ${showChat ? "pr-2" : ""}`}>
+          <div className="h-full max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Partner Video - 블러 적용 */}
+            <div className="relative rounded-2xl overflow-hidden bg-[#2a2a2a]">
+              {remoteStream ? (
+                <>
+                  <video
+                    ref={remoteVideoRef}
+                    autoPlay
+                    playsInline
+                    className="w-full h-full object-cover transition-all duration-1000"
+                    style={{ filter: `blur(${blurLevel}px)` }}
+                  />
+                  <div className="absolute bottom-4 left-4 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-sm">
+                    <span className="text-white text-sm">상대방</span>
+                  </div>
+                  {blurLevel > 0 && (
+                    <div className="absolute top-4 right-4 px-3 py-1.5 rounded-full bg-primary/80 backdrop-blur-sm">
+                      <span className="text-primary-foreground text-xs">블러 {blurLevel}px</span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div
+                    className="absolute inset-0 flex items-center justify-center transition-all duration-1000"
+                    style={{ filter: `blur(${blurLevel}px)` }}
+                  >
+                    <div className="w-32 h-32 rounded-full bg-secondary flex items-center justify-center">
+                      <span className="text-4xl">👤</span>
+                    </div>
+                  </div>
+                  <div className="absolute bottom-4 left-4 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-sm">
+                    <span className="text-white text-sm">상대방</span>
+                  </div>
+                  {isConnecting && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                      <div className="text-white text-sm">연결 중...</div>
+                    </div>
+                  )}
+                  {blurLevel > 0 && (
+                    <div className="absolute top-4 right-4 px-3 py-1.5 rounded-full bg-primary/80 backdrop-blur-sm">
+                      <span className="text-primary-foreground text-xs">블러 {blurLevel}px</span>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
-            <div className="absolute bottom-4 left-4 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-sm">
-              <span className="text-white text-sm">상대방</span>
+
+            {/* My Video - 나도 블러 적용 */}
+            <div className="relative rounded-2xl overflow-hidden bg-[#2a2a2a]">
+              <video
+                ref={localVideoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full h-full object-cover transition-all duration-1000"
+                style={{ filter: `blur(${blurLevel}px)`, display: localStream ? "block" : "none" }}
+              />
+              {localStream ? (
+                <>
+                  <div className="absolute bottom-4 left-4 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-sm">
+                    <span className="text-white text-sm">나</span>
+                  </div>
+                  {!isVideoEnabled && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                      <div className="text-white text-sm">카메라 꺼짐</div>
+                    </div>
+                  )}
+                  {blurLevel > 0 && (
+                    <div className="absolute top-4 right-4 px-3 py-1.5 rounded-full bg-primary/80 backdrop-blur-sm">
+                      <span className="text-primary-foreground text-xs">블러 {blurLevel}px</span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div
+                    className="absolute inset-0 flex items-center justify-center transition-all duration-1000"
+                    style={{ filter: `blur(${blurLevel}px)` }}
+                  >
+                    <div className="w-32 h-32 rounded-full bg-primary flex items-center justify-center">
+                      <span className="text-4xl">😊</span>
+                    </div>
+                  </div>
+                  <div className="absolute bottom-4 left-4 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-sm">
+                    <span className="text-white text-sm">나</span>
+                  </div>
+                  {isConnecting && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                      <div className="text-white text-sm">카메라 연결 중...</div>
+                    </div>
+                  )}
+                  {blurLevel > 0 && (
+                    <div className="absolute top-4 right-4 px-3 py-1.5 rounded-full bg-primary/80 backdrop-blur-sm">
+                      <span className="text-primary-foreground text-xs">블러 {blurLevel}px</span>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
-            {blurLevel > 0 && (
-              <div className="absolute top-4 right-4 px-3 py-1.5 rounded-full bg-primary/80 backdrop-blur-sm">
-                <span className="text-primary-foreground text-xs">블러 {blurLevel}px</span>
-              </div>
-            )}
           </div>
 
-          {/* My Video - 나도 블러 적용 */}
-          <div className="relative rounded-2xl overflow-hidden bg-[#2a2a2a]">
-            <div
-              className="absolute inset-0 flex items-center justify-center transition-all duration-1000"
-              style={{ filter: `blur(${blurLevel}px)` }}
-            >
-              <div className="w-32 h-32 rounded-full bg-primary flex items-center justify-center">
-                <span className="text-4xl">😊</span>
+          {/* WebRTC 에러 표시 */}
+          {webrtcError && (
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 max-w-md">
+              <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-destructive/90 backdrop-blur-sm text-white">
+                <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium">{webrtcError}</p>
+                </div>
+                <button
+                  onClick={() => {
+                    // 에러 메시지 닫기 (필요시 재연결 로직 추가 가능)
+                  }}
+                  className="text-white/80 hover:text-white"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
             </div>
-            <div className="absolute bottom-4 left-4 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-sm">
-              <span className="text-white text-sm">나</span>
-            </div>
-            {blurLevel > 0 && (
-              <div className="absolute top-4 right-4 px-3 py-1.5 rounded-full bg-primary/80 backdrop-blur-sm">
-                <span className="text-primary-foreground text-xs">블러 {blurLevel}px</span>
+          )}
+        </div>
+
+        {/* Chat Panel - 오른쪽 사이드바 */}
+        <div
+          className={`bg-background border-l border-border transition-all duration-300 overflow-hidden ${
+            showChat ? "w-80" : "w-0"
+          }`}
+        >
+          {showChat && (
+            <div className="h-full flex flex-col">
+              <div className="p-4 border-b border-border flex items-center justify-between flex-shrink-0">
+                <h3 className="font-semibold">채팅</h3>
+                <button
+                  onClick={() => setShowChat(false)}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
-            )}
-          </div>
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                {messages.map((msg) => (
+                  <div key={msg.id} className={`flex ${msg.sender === "me" ? "justify-end" : "justify-start"}`}>
+                    <div
+                      className={`max-w-[80%] px-3 py-2 rounded-xl text-sm ${
+                        msg.sender === "me" ? "bg-primary text-primary-foreground" : "bg-card"
+                      }`}
+                    >
+                      {msg.text}
+                    </div>
+                  </div>
+                ))}
+                <div ref={chatEndRef} />
+              </div>
+              <div className="p-4 border-t border-border flex-shrink-0">
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    handleSendMessage()
+                  }}
+                  className="flex gap-2"
+                >
+                  <Input
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    placeholder="메시지를 입력하세요..."
+                    className="bg-input"
+                  />
+                  <Button type="submit" size="icon" className="bg-primary text-primary-foreground">
+                    <Send className="w-4 h-4" />
+                  </Button>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -292,62 +504,6 @@ export function SessionRoom({ sessionId, onLeave }: SessionRoomProps) {
         </div>
       )}
 
-      {/* Chat Panel */}
-      {showChat && (
-        <div className="absolute right-4 bottom-28 top-20 w-80 bg-background rounded-2xl shadow-xl flex flex-col overflow-hidden z-20">
-          <div className="p-4 border-b border-border flex items-center justify-between">
-            <h3 className="font-semibold">채팅</h3>
-            <button onClick={() => setShowChat(false)}>
-              <X className="w-5 h-5 text-muted-foreground" />
-            </button>
-          </div>
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {messages.map((msg) => (
-              <div key={msg.id} className={`flex ${msg.sender === "me" ? "justify-end" : "justify-start"}`}>
-                <div
-                  className={`max-w-[80%] px-3 py-2 rounded-xl text-sm ${
-                    msg.sender === "me" ? "bg-primary text-primary-foreground" : "bg-card"
-                  }`}
-                >
-                  {msg.text}
-                </div>
-              </div>
-            ))}
-            <div ref={chatEndRef} />
-          </div>
-          <div className="p-4 border-t border-border">
-            <form
-              onSubmit={(e) => {
-                e.preventDefault()
-                handleSendMessage()
-              }}
-              className="flex gap-2"
-            >
-              <Input
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                placeholder="메시지를 입력하세요..."
-                className="bg-input"
-              />
-              <Button type="submit" size="icon" className="bg-primary text-primary-foreground">
-                <Send className="w-4 h-4" />
-              </Button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {currentRound >= 3 && (
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleLeave}
-          className="absolute bottom-6 right-36 z-20 h-11 w-11 rounded-full bg-red-500 hover:bg-red-600"
-        >
-          <PhoneOff className="h-5 w-5 text-white" />
-        </Button>
-      )}
-
       {/* Game Overlay */}
       {showGame && <BalanceGameOverlay onClose={() => setShowGame(false)} />}
 
@@ -361,11 +517,20 @@ export function SessionRoom({ sessionId, onLeave }: SessionRoomProps) {
       />
 
       <EndCallConfirmModal
-        open={showEndConfirm}
-        onCancel={() => setShowEndConfirm(false)}
+        open={showEndConfirm || externalShowEndConfirm}
+        onCancel={() => {
+          setShowEndConfirm(false)
+          onExternalCancelLeave?.()
+        }}
         onConfirm={() => {
           setShowEndConfirm(false)
-          setShowRating(true)
+          if (onExternalConfirmLeave) {
+            onExternalConfirmLeave()
+          } else if (currentRound >= 3) {
+            setShowRating(true)
+          } else {
+            onLeave()
+          }
         }}
       />
 
