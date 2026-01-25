@@ -1,6 +1,6 @@
-package com.ssafy.unblur.domain.user.model;
+package com.ssafy.unblur.domain.auth.model;
 
-import com.ssafy.unblur.domain.user.dto.SignupDto;
+import com.ssafy.unblur.domain.auth.dto.SignupDto;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.ColumnTransformer;

@@ -1,4 +1,4 @@
-package com.ssafy.unblur.domain.user.dto;
+package com.ssafy.unblur.domain.auth.dto;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;

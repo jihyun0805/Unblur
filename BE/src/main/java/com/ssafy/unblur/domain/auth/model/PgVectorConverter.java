@@ -1,9 +1,7 @@
-package com.ssafy.unblur.domain.user.model; // 패키지 경로를 확인해주세요
+package com.ssafy.unblur.domain.auth.model; // 패키지 경로를 확인해주세요
 
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
-import java.util.Arrays;
-import java.util.stream.Collectors;
 
 /**
  * pgvector 타입을 String 리터럴로 변환하여 저장하는 컨버터

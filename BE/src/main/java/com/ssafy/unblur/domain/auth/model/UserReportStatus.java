@@ -1,4 +1,4 @@
-package com.ssafy.unblur.domain.user.model;
+package com.ssafy.unblur.domain.auth.model;
 
 /**
  * 사용자 신고 처리 상태.

@@ -1,13 +1,13 @@
-package com.ssafy.unblur.domain.user.service;
+package com.ssafy.unblur.domain.auth.service;
 
 import com.ssafy.unblur.common.exception.BaseException;
 import com.ssafy.unblur.common.exception.ErrorCode;
 import com.ssafy.unblur.common.security.jwt.JWTUtil;
-import com.ssafy.unblur.domain.user.dto.TokenReissueResultDto;
-import com.ssafy.unblur.domain.user.model.RefreshToken;
-import com.ssafy.unblur.domain.user.model.User;
-import com.ssafy.unblur.domain.user.repository.RefreshTokenRepository;
-import com.ssafy.unblur.domain.user.repository.UserRepository;
+import com.ssafy.unblur.domain.auth.dto.TokenReissueResultDto;
+import com.ssafy.unblur.domain.auth.model.RefreshToken;
+import com.ssafy.unblur.domain.auth.model.User;
+import com.ssafy.unblur.domain.auth.repository.RefreshTokenRepository;
+import com.ssafy.unblur.domain.auth.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

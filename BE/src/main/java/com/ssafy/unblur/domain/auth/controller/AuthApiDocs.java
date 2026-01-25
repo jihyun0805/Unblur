@@ -1,17 +1,15 @@
-package com.ssafy.unblur.domain.user.controller;
+package com.ssafy.unblur.domain.auth.controller;
 
 import com.ssafy.unblur.common.response.BaseResponse;
-import com.ssafy.unblur.domain.user.dto.LoginRequestDto;
-import com.ssafy.unblur.domain.user.dto.LoginResponseDto;
-import com.ssafy.unblur.domain.user.dto.SignupDto;
-import com.ssafy.unblur.domain.user.dto.SignupResponseDto;
+import com.ssafy.unblur.domain.auth.dto.LoginRequestDto;
+import com.ssafy.unblur.domain.auth.dto.LoginResponseDto;
+import com.ssafy.unblur.domain.auth.dto.SignupDto;
+import com.ssafy.unblur.domain.auth.dto.SignupResponseDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;

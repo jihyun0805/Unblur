@@ -1,4 +1,4 @@
-package com.ssafy.unblur.domain.user.model;
+package com.ssafy.unblur.domain.auth.model;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;

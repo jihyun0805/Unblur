@@ -1,7 +1,7 @@
-package com.ssafy.unblur.domain.user.dto;
+package com.ssafy.unblur.domain.auth.dto;
 
-import com.ssafy.unblur.domain.user.model.AuthProvider;
-import com.ssafy.unblur.domain.user.model.Gender;
+import com.ssafy.unblur.domain.auth.model.AuthProvider;
+import com.ssafy.unblur.domain.auth.model.Gender;
 import jakarta.validation.constraints.*;
 import lombok.*;
 

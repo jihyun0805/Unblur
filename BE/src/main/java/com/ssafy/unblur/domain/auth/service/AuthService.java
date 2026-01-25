@@ -1,11 +1,11 @@
-package com.ssafy.unblur.domain.user.service;
+package com.ssafy.unblur.domain.auth.service;
 
 import com.ssafy.unblur.common.exception.BaseException;
 import com.ssafy.unblur.common.exception.ErrorCode;
-import com.ssafy.unblur.domain.user.dto.LoginRequestDto;
-import com.ssafy.unblur.domain.user.dto.SignupDto;
-import com.ssafy.unblur.domain.user.model.User;
-import com.ssafy.unblur.domain.user.repository.UserRepository;
+import com.ssafy.unblur.domain.auth.dto.LoginRequestDto;
+import com.ssafy.unblur.domain.auth.dto.SignupDto;
+import com.ssafy.unblur.domain.auth.model.User;
+import com.ssafy.unblur.domain.auth.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -17,7 +17,7 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class UserService {
+public class AuthService {
 
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder bCryptPasswordEncoder;

@@ -2,8 +2,6 @@ package com.ssafy.unblur.common.config;
 
 import com.ssafy.unblur.common.security.jwt.JWTFilter;
 import com.ssafy.unblur.common.security.jwt.JWTUtil;
-import com.ssafy.unblur.domain.user.repository.UserRepository;
-import com.ssafy.unblur.domain.user.service.RefreshTokenService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

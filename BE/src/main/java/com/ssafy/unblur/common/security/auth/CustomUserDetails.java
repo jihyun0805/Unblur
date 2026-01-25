@@ -1,6 +1,6 @@
 package com.ssafy.unblur.common.security.auth;
 
-import com.ssafy.unblur.domain.user.model.User;
+import com.ssafy.unblur.domain.auth.model.User;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;

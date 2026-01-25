@@ -1,11 +1,10 @@
-package com.ssafy.unblur.domain.user.dto;
+package com.ssafy.unblur.domain.auth.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 @Getter
 @AllArgsConstructor
-public class TokenReissueResultDto {
+public class LoginResponseDto {
     private String accessToken;
-    private String refreshToken;
 }

@@ -1,12 +1,12 @@
-package com.ssafy.unblur.domain.user.controller;
+package com.ssafy.unblur.domain.auth.controller;
 
 import com.ssafy.unblur.common.response.BaseResponse;
 import com.ssafy.unblur.common.security.jwt.JWTUtil;
 import com.ssafy.unblur.common.util.SecurityUtil;
-import com.ssafy.unblur.domain.user.dto.*;
-import com.ssafy.unblur.domain.user.model.User;
-import com.ssafy.unblur.domain.user.service.RefreshTokenService;
-import com.ssafy.unblur.domain.user.service.UserService;
+import com.ssafy.unblur.domain.auth.dto.*;
+import com.ssafy.unblur.domain.auth.model.User;
+import com.ssafy.unblur.domain.auth.service.AuthService;
+import com.ssafy.unblur.domain.auth.service.RefreshTokenService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class AuthController implements AuthApiDocs {
 
-    private final UserService userService;
+    private final AuthService authService;
     private final JWTUtil jwtUtil;
     private final RefreshTokenService refreshTokenService;
 
@@ -29,7 +29,7 @@ public class AuthController implements AuthApiDocs {
     @Override
     @PostMapping("/register")
     public ResponseEntity<BaseResponse<SignupResponseDto>> signUp(@Valid @RequestBody SignupDto signUpDto) {
-        String createdUserId = userService.signUp(signUpDto);
+        String createdUserId = authService.signUp(signUpDto);
         SignupResponseDto responseDto = new SignupResponseDto(createdUserId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(BaseResponse.success(201, "회원가입이 완료되었습니다.", responseDto));
@@ -39,7 +39,7 @@ public class AuthController implements AuthApiDocs {
     @GetMapping("/check-email")
     public ResponseEntity<BaseResponse<Boolean>> checkEmail(@RequestParam String email) {
         return ResponseEntity.ok(
-                BaseResponse.success(200, "OK", userService.isEmailDuplicate(email))
+                BaseResponse.success(200, "OK", authService.isEmailDuplicate(email))
         );
     }
 
@@ -47,7 +47,7 @@ public class AuthController implements AuthApiDocs {
     @GetMapping("/check-nickname")
     public ResponseEntity<BaseResponse<Boolean>> checkNickname(@RequestParam String nickname) {
         return ResponseEntity.ok(
-                BaseResponse.success(200, "OK", userService.isNicknameDuplicate(nickname))
+                BaseResponse.success(200, "OK", authService.isNicknameDuplicate(nickname))
         );
     }
 
@@ -57,7 +57,7 @@ public class AuthController implements AuthApiDocs {
             HttpServletResponse response
     ) {
 
-        User user = userService.login(loginRequest);
+        User user = authService.login(loginRequest);
 
         String accessToken = jwtUtil.createAccessToken(user.getEmail());
         String refreshToken = jwtUtil.createRefreshToken(user.getEmail());
@@ -94,7 +94,7 @@ public class AuthController implements AuthApiDocs {
     @PostMapping("/logout")
     public ResponseEntity<BaseResponse<Void>> logout(HttpServletResponse response) {
         SecurityUtil.getCurrentUserEmail().ifPresent(email -> {
-            userService.findUserByEmail(email).ifPresent(user -> {
+            authService.findUserByEmail(email).ifPresent(user -> {
                 refreshTokenService.deleteTokenByUser(user);
             });
         });
