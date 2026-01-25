@@ -163,6 +163,12 @@ public class User {
     private LocalDateTime updatedAt;
 
     /**
+     * 탈퇴 시각
+     */
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
+    /**
      * SignupDto와 암호화된 비밀번호를 받아 User 엔티티를 생성합니다.
      *
      * @param dto             회원가입 정보
@@ -178,5 +184,20 @@ public class User {
                 .gender(dto.getGender())
                 .authProvider(dto.getAuthProvider())
                 .build();
+    }
+
+    public void withdraw() {
+        this.active = false; // 어떤 필드를 사용할 지에 대해서는 논의 후 결정
+        this.deletedAt = LocalDateTime.now();
+        this.email = this.email + "_del_" + this.id.toString().substring(0, 8);
+        this.nickname = "탈퇴" + this.id.toString().substring(0, 7);
+        this.password = "DELETED";
+        this.intro = null;
+        this.detailedInfo = null;
+        this.interestTags = null;
+        this.interestsVector = null;
+        this.region = null;
+        this.mbti = null;
+        this.lastActiveAt = null;
     }
 }
