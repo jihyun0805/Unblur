@@ -2,6 +2,7 @@ package com.ssafy.unblur.domain.user.service;
 
 import com.ssafy.unblur.common.exception.BaseException;
 import com.ssafy.unblur.common.exception.ErrorCode;
+import com.ssafy.unblur.domain.user.dto.LoginRequestDto;
 import com.ssafy.unblur.domain.user.dto.SignupDto;
 import com.ssafy.unblur.domain.user.model.User;
 import com.ssafy.unblur.domain.user.repository.UserRepository;
@@ -10,6 +11,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -34,6 +37,30 @@ public class UserService {
 
         User savedUser = userRepository.save(user);
         return savedUser.getEmail();
+    }
+
+    /**
+     * 로그인 프로세스를 진행합니다.
+     * <p> 사용자 이메일을 기반으로 유저를 조회하고, 비밀번호를 검증합니다.
+     * 또한, 유저의 계정 활성화 상태를 확인합니다.</p>
+     *
+     * @param loginRequestDto 로그인 요청 DTO
+     * @return 인증된 User 객체
+     */
+    @Transactional
+    public User login(LoginRequestDto loginRequestDto) {
+        User user = userRepository.findByEmail(loginRequestDto.getEmail())
+                .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
+
+        if (!bCryptPasswordEncoder.matches(loginRequestDto.getPassword(), user.getPassword())) {
+            throw new BaseException(ErrorCode.INVALID_CREDENTIALS);
+        }
+
+        if (!user.isActive()) {
+            throw new BaseException(ErrorCode.INACTIVE_USER);
+        }
+
+        return user;
     }
 
     /**
@@ -72,5 +99,14 @@ public class UserService {
     @Transactional(readOnly = true)
     public boolean isNicknameDuplicate(String nickname) {
         return userRepository.existsByNickname(nickname);
+    }
+
+
+    /**
+     * 이메일로 사용자를 조회하여 Optional로 반환합니다.
+     */
+    @Transactional(readOnly = true)
+    public Optional<User> findUserByEmail(String email) {
+        return userRepository.findByEmail(email);
     }
 }

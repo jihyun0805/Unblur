@@ -1,16 +1,10 @@
 package com.ssafy.unblur.domain.user.controller;
 
-import com.ssafy.unblur.common.exception.BaseException;
-import com.ssafy.unblur.common.exception.ErrorCode;
 import com.ssafy.unblur.common.response.BaseResponse;
 import com.ssafy.unblur.common.security.jwt.JWTUtil;
-import com.ssafy.unblur.domain.user.dto.LoginRequestDto;
-import com.ssafy.unblur.domain.user.dto.LoginResponseDto;
-import com.ssafy.unblur.domain.user.dto.SignupDto;
-import com.ssafy.unblur.domain.user.dto.SignupResponseDto;
-import com.ssafy.unblur.domain.user.dto.TokenReissueResultDto;
+import com.ssafy.unblur.common.util.SecurityUtil;
+import com.ssafy.unblur.domain.user.dto.*;
 import com.ssafy.unblur.domain.user.model.User;
-import com.ssafy.unblur.domain.user.repository.UserRepository;
 import com.ssafy.unblur.domain.user.service.RefreshTokenService;
 import com.ssafy.unblur.domain.user.service.UserService;
 import jakarta.servlet.http.Cookie;
@@ -20,7 +14,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -28,8 +21,6 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class AuthController implements AuthApiDocs {
 
-    private final UserRepository userRepository;
-    private final BCryptPasswordEncoder passwordEncoder;
     private final UserService userService;
     private final JWTUtil jwtUtil;
     private final RefreshTokenService refreshTokenService;
@@ -61,23 +52,12 @@ public class AuthController implements AuthApiDocs {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<BaseResponse<Object>> login (
+    public ResponseEntity<BaseResponse<LoginResponseDto>> login(
             @RequestBody LoginRequestDto loginRequest,
             HttpServletResponse response
     ) {
 
-        User user = userRepository.findByEmail(loginRequest.getEmail())
-                .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
-        if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(BaseResponse.fail(401, "비밀번호가 일치하지 않습니다."));
-        }
-
-        // 계정 활성화 여부 체크
-        if (!user.isActive()) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(BaseResponse.fail(403, "비활성화된 계정입니다."));
-        }
+        User user = userService.login(loginRequest);
 
         String accessToken = jwtUtil.createAccessToken(user.getEmail());
         String refreshToken = jwtUtil.createRefreshToken(user.getEmail());
@@ -111,6 +91,21 @@ public class AuthController implements AuthApiDocs {
         );
     }
 
+    @PostMapping("/logout")
+    public ResponseEntity<BaseResponse<Void>> logout(HttpServletResponse response) {
+        SecurityUtil.getCurrentUserEmail().ifPresent(email -> {
+            userService.findUserByEmail(email).ifPresent(user -> {
+                refreshTokenService.deleteTokenByUser(user);
+            });
+        });
+
+        response.addCookie(clearRefreshTokenCookie());
+
+        return ResponseEntity.ok(
+                BaseResponse.success(200, "로그아웃 성공", null)
+        );
+    }
+
     private String extractRefreshTokenFromCookie(HttpServletRequest request) {
         Cookie[] cookies = request.getCookies();
         if (cookies == null) {
@@ -130,6 +125,15 @@ public class AuthController implements AuthApiDocs {
         cookie.setSecure(true);
         cookie.setPath("/");
         cookie.setMaxAge(14 * 24 * 60 * 60);
+        return cookie;
+    }
+
+    private Cookie clearRefreshTokenCookie() {
+        Cookie cookie = new Cookie("refresh_token", null);
+        cookie.setHttpOnly(true);
+        cookie.setSecure(true);
+        cookie.setPath("/");
+        cookie.setMaxAge(0);
         return cookie;
     }
 }

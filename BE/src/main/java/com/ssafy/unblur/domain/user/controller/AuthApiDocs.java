@@ -72,7 +72,7 @@ public interface AuthApiDocs {
     @ApiResponse(responseCode = "401", description = "비밀번호 불일치", content = @Content)
     @ApiResponse(responseCode = "403", description = "비활성화된 계정", content = @Content)
     @ApiResponse(responseCode = "404", description = "존재하지 않는 사용자", content = @Content)
-    ResponseEntity<BaseResponse<Object>> login(@RequestBody LoginRequestDto loginRequest, HttpServletResponse response);
+    ResponseEntity<BaseResponse<LoginResponseDto>> login(@RequestBody LoginRequestDto loginRequest, HttpServletResponse response);
 
     /**
      * Access Token을 재발행합니다.
@@ -90,5 +90,10 @@ public interface AuthApiDocs {
             @Parameter(hidden = true) HttpServletRequest request,
             @Parameter(hidden = true) HttpServletResponse response);
 
+
+    @Operation(summary = "로그아웃", description = "현재 사용자를 로그아웃 처리합니다. 클라이언트의 Refresh Token 쿠키를 삭제하고 서버의 Refresh Token을 무효화합니다.")
+    @ApiResponse(responseCode = "200", description = "로그아웃 성공", content = @Content(schema = @Schema(implementation = BaseResponse.class)))
+    @ApiResponse(responseCode = "401", description = "인증되지 않은 사용자", content = @Content(schema = @Schema(implementation = BaseResponse.class)))
+    ResponseEntity<BaseResponse<Void>> logout(HttpServletResponse response);
 }
 
