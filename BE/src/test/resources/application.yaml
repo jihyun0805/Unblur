@@ -2,6 +2,12 @@ spring:
   profiles:
     default: test
 
+  docker:
+    compose:
+      skip:
+        in-tests: false
+      file: compose.yaml
+
   datasource:
     url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:unblur}
     username: ${POSTGRES_USER:unblur}
@@ -11,6 +17,11 @@ spring:
   jpa:
     hibernate:
       ddl-auto: create
+
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:pgvector-init.sql
 
 kurento:
   ws:
