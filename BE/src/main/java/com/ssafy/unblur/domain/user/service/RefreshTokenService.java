@@ -112,6 +112,14 @@ public class RefreshTokenService {
         return new TokenReissueResultDto(newAccessToken, newRefreshToken);
     }
 
+    /**
+     * 로그아웃 시 토큰 삭제
+     */
+    @Transactional
+    public void deleteTokenByUser(User user) {
+        refreshTokenRepository.deleteByUser(user);
+    }
+
     private String hashToken(String token) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
