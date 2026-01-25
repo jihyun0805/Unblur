@@ -3,6 +3,7 @@ package com.ssafy.unblur.domain.user.model;
 import com.ssafy.unblur.domain.user.dto.SignupDto;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.ColumnTransformer;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -114,6 +115,10 @@ public class User {
      * 관심사/가치관 임베딩 벡터 (384차원).
      */
     @Convert(converter = PgVectorConverter.class)
+    @ColumnTransformer(
+            write = "?::vector",
+            read = "interests_vector::text"
+    )
     @Column(name = "interests_vector", columnDefinition = "vector(384)")
     private float[] interestsVector;
 
@@ -158,19 +163,6 @@ public class User {
     private LocalDateTime updatedAt;
 
     /**
-     * 회원가입 및 사용자 생성을 위한 생성자입니다.
-     *
-     * @param email    사용자 이메일 (로그인 ID)
-     * @param password 암호화된 비밀번호
-     * @param nickname 사용자 닉네임 (최대 10자)
-     */
-    public User(String email, String password, String nickname) {
-        this.email = email;
-        this.password = password;
-        this.nickname = nickname;
-    }
-
-    /**
      * SignupDto와 암호화된 비밀번호를 받아 User 엔티티를 생성합니다.
      *
      * @param dto             회원가입 정보
@@ -178,10 +170,13 @@ public class User {
      * @return 생성된 User 엔티티
      */
     public static User from(SignupDto dto, String encodedPassword) {
-        return new User(
-                dto.getEmail(),
-                encodedPassword,
-                dto.getNickname()
-        );
+        return User.builder()
+                .email(dto.getEmail())
+                .password(encodedPassword)
+                .nickname(dto.getNickname())
+                .birthDate(dto.getBirthDate())
+                .gender(dto.getGender())
+                .authProvider(dto.getAuthProvider())
+                .build();
     }
 }
