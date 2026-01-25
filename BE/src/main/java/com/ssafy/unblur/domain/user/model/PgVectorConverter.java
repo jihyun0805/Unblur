@@ -2,9 +2,6 @@ package com.ssafy.unblur.domain.user.model;
 
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
-import org.postgresql.util.PGobject;
-
-import java.sql.SQLException;
 
 /**
  * PostgreSQL pgvector 타입을 JPA에서 쉽게 다루기 위한 변환기.
@@ -17,7 +14,7 @@ import java.sql.SQLException;
  * </p>
  */
 @Converter(autoApply = false)
-public class PgVectorConverter implements AttributeConverter<float[], PGobject> {
+public class PgVectorConverter implements AttributeConverter<float[], String> {
 
     private static final int EXPECTED_DIMENSION = 384;
 
@@ -25,10 +22,10 @@ public class PgVectorConverter implements AttributeConverter<float[], PGobject> 
      * Java 배열을 pgvector 리터럴로 변환하는 메서드
      *
      * @param attribute 384차원 벡터
-     * @return pgvector 타입 PGobject
+     * @return pgvector 리터럴 문자열
      */
     @Override
-    public PGobject convertToDatabaseColumn(float[] attribute) {
+    public String convertToDatabaseColumn(float[] attribute) {
         if (attribute == null) {
             return null;
         }
@@ -37,32 +34,22 @@ public class PgVectorConverter implements AttributeConverter<float[], PGobject> 
             throw new IllegalArgumentException("interestsVector must have length " + EXPECTED_DIMENSION);
         }
 
-        PGobject pgObject = new PGobject();
-        pgObject.setType("vector");
-
-        try {
-            pgObject.setValue(toVectorLiteral(attribute));
-
-        } catch (SQLException e) {
-            throw new IllegalArgumentException("Failed to convert vector to PGobject", e);
-        }
-
-        return pgObject;
+        return toVectorLiteral(attribute);
     }
 
     /**
      * pgvector 리터럴을 Java 배열로 변환하는 메서드
      *
-     * @param dbData DB에서 읽은 pgvector
+     * @param dbData DB에서 읽은 pgvector 리터럴
      * @return 384차원 float 배열
      */
     @Override
-    public float[] convertToEntityAttribute(PGobject dbData) {
-        if (dbData == null || dbData.getValue() == null) {
+    public float[] convertToEntityAttribute(String dbData) {
+        if (dbData == null) {
             return null;
         }
 
-        return parseVector(dbData.getValue());
+        return parseVector(dbData);
     }
 
     /**

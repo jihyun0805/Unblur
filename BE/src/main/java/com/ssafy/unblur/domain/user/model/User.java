@@ -3,6 +3,7 @@ package com.ssafy.unblur.domain.user.model;
 import com.ssafy.unblur.domain.user.dto.SignupDto;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.ColumnTransformer;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -114,6 +115,7 @@ public class User {
      * 관심사/가치관 임베딩 벡터 (384차원).
      */
     @Convert(converter = PgVectorConverter.class)
+    @ColumnTransformer(write = "?::vector")
     @Column(name = "interests_vector", columnDefinition = "vector(384)")
     private float[] interestsVector;
 
