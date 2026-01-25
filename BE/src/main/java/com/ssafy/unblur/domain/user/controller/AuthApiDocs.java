@@ -1,6 +1,8 @@
 package com.ssafy.unblur.domain.user.controller;
 
 import com.ssafy.unblur.common.response.BaseResponse;
+import com.ssafy.unblur.domain.user.dto.LoginRequestDto;
+import com.ssafy.unblur.domain.user.dto.LoginResponseDto;
 import com.ssafy.unblur.domain.user.dto.SignupDto;
 import com.ssafy.unblur.domain.user.dto.SignupResponseDto;
 import io.swagger.v3.oas.annotations.Operation;
@@ -9,6 +11,7 @@ import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -55,5 +58,37 @@ public interface AuthApiDocs {
     ResponseEntity<BaseResponse<Boolean>> checkNickname(
             @Parameter(description = "중복 확인할 닉네임", example = "unblur")
             String nickname);
+
+    /**
+     * 사용자의 이메일과 비밀번호를 확인하여 로그인을 수행합니다.
+     * 로그인 성공 시 Access Token은 응답 바디와 헤더에, Refresh Token은 HttpOnly 쿠키에 담겨 발급됩니다.
+     *
+     * @param loginRequest 로그인 정보(이메일, 비밀번호)를 담은 DTO
+     * @param response     토큰 정보를 헤더와 쿠키에 설정하기 위한 HttpServletResponse
+     * @return 성공 시 200 상태 코드와 함께 Access Token 정보를 반환
+     */
+    @Operation(summary = "로그인", description = "이메일과 비밀번호로 로그인합니다. 성공 시 Access Token(Body/Header)과 Refresh Token(Cookie)을 발급합니다.")
+    @ApiResponse(responseCode = "200", description = "로그인 성공", content = @Content(schema = @Schema(implementation = LoginResponseDto.class)))
+    @ApiResponse(responseCode = "401", description = "비밀번호 불일치", content = @Content)
+    @ApiResponse(responseCode = "403", description = "비활성화된 계정", content = @Content)
+    @ApiResponse(responseCode = "404", description = "존재하지 않는 사용자", content = @Content)
+    ResponseEntity<BaseResponse<Object>> login(@RequestBody LoginRequestDto loginRequest, HttpServletResponse response);
+
+    /**
+     * Access Token을 재발행합니다.
+     * 쿠키에 담긴 Refresh Token을 검증하고 새로운 Access Token을 발급하며,
+     * Token Rotation 방식에 따라 Refresh Token도 함께 갱신합니다.
+     *
+     * @param request  Refresh Token 쿠키를 포함한 HttpServletRequest
+     * @param response 새로운 Access Token(Header)과 Refresh Token(Cookie)을 설정할 HttpServletResponse
+     * @return 성공 시 200 상태 코드와 함께 새로 생성된 Access Token을 반환
+     */
+    @Operation(summary = "토큰 재발급", description = "쿠키의 Refresh Token을 검증하여 Access Token과 Refresh Token을 모두 재발급(Rotation)합니다.")
+    @ApiResponse(responseCode = "200", description = "토큰 재발급 성공", content = @Content(schema = @Schema(implementation = LoginResponseDto.class)))
+    @ApiResponse(responseCode = "401", description = "유효하지 않거나 만료된 Refresh Token", content = @Content(schema = @Schema(implementation = BaseResponse.class)))
+    ResponseEntity<BaseResponse<LoginResponseDto>> reissue(
+            @Parameter(hidden = true) HttpServletRequest request,
+            @Parameter(hidden = true) HttpServletResponse response);
+
 }
 

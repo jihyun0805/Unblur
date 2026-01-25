@@ -4,15 +4,17 @@ import com.ssafy.unblur.common.exception.BaseException;
 import com.ssafy.unblur.common.exception.ErrorCode;
 import com.ssafy.unblur.common.response.BaseResponse;
 import com.ssafy.unblur.common.security.jwt.JWTUtil;
-import com.ssafy.unblur.domain.user.dto.LoginRequestDTO;
-import com.ssafy.unblur.domain.user.dto.LoginResponseDTO;
+import com.ssafy.unblur.domain.user.dto.LoginRequestDto;
+import com.ssafy.unblur.domain.user.dto.LoginResponseDto;
 import com.ssafy.unblur.domain.user.dto.SignupDto;
 import com.ssafy.unblur.domain.user.dto.SignupResponseDto;
+import com.ssafy.unblur.domain.user.dto.TokenReissueResultDto;
 import com.ssafy.unblur.domain.user.model.User;
 import com.ssafy.unblur.domain.user.repository.UserRepository;
 import com.ssafy.unblur.domain.user.service.RefreshTokenService;
 import com.ssafy.unblur.domain.user.service.UserService;
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -60,7 +62,7 @@ public class AuthController implements AuthApiDocs {
 
     @PostMapping("/login")
     public ResponseEntity<BaseResponse<Object>> login (
-            @RequestBody LoginRequestDTO loginRequest,
+            @RequestBody LoginRequestDto loginRequest,
             HttpServletResponse response
     ) {
 
@@ -86,11 +88,40 @@ public class AuthController implements AuthApiDocs {
         response.addHeader("Authorization", "Bearer " + accessToken);
         response.addCookie(createRefreshTokenCookie(refreshToken));
 
-        LoginResponseDTO loginResponse = new LoginResponseDTO(accessToken, null);
+        LoginResponseDto loginResponse = new LoginResponseDto(accessToken);
 
         return ResponseEntity.ok(
                 BaseResponse.success(200, "OK", loginResponse)
         );
+    }
+
+    @PostMapping("/reissue")
+    public ResponseEntity<BaseResponse<LoginResponseDto>> reissue(
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) {
+        String refreshToken = extractRefreshTokenFromCookie(request);
+        TokenReissueResultDto result = refreshTokenService.reissue(refreshToken);
+
+        response.addHeader("Authorization", "Bearer " + result.getAccessToken());
+        response.addCookie(createRefreshTokenCookie(result.getRefreshToken()));
+
+        return ResponseEntity.ok(
+                BaseResponse.success(200, "토큰 재발행 성공", new LoginResponseDto(result.getAccessToken()))
+        );
+    }
+
+    private String extractRefreshTokenFromCookie(HttpServletRequest request) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) {
+            return null;
+        }
+        for (Cookie cookie : cookies) {
+            if ("refresh_token".equals(cookie.getName())) {
+                return cookie.getValue();
+            }
+        }
+        return null;
     }
 
     private Cookie createRefreshTokenCookie(String refreshToken) {
