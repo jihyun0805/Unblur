@@ -54,7 +54,7 @@ public class SecurityConfig {
                                 "/api/v1/auth/reissue"
                         ).permitAll()
                         // 인증된 사용자만 접근 가능
-                        .requestMatchers("api/v1/auth/logout").authenticated()
+                        .requestMatchers("api/v1/auth/logout", "api/v1/users/withdraw").authenticated()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(new JWTFilter(jwtUtil), UsernamePasswordAuthenticationFilter.class)
