@@ -71,6 +71,14 @@ public class RefreshToken {
 
     public void revoke(String nextJti) {
         this.revokedAt = Instant.now();
-        this. replacedByJti = nextJti;
+        this.replacedByJti = nextJti;
+    }
+
+    public void update(String jti, String tokenHash, Instant expiresAt) {
+        this.jti = jti;
+        this.tokenHash = tokenHash;
+        this.expiresAt = expiresAt;
+        this.revokedAt = null;
+        this.replacedByJti = null;
     }
 }
