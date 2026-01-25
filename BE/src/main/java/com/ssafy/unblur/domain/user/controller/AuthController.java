@@ -1,13 +1,24 @@
 package com.ssafy.unblur.domain.user.controller;
 
+import com.ssafy.unblur.common.exception.BaseException;
+import com.ssafy.unblur.common.exception.ErrorCode;
+import com.ssafy.unblur.common.response.BaseResponse;
+import com.ssafy.unblur.common.security.jwt.JWTUtil;
+import com.ssafy.unblur.domain.user.dto.LoginRequestDTO;
+import com.ssafy.unblur.domain.user.dto.LoginResponseDTO;
 import com.ssafy.unblur.domain.user.dto.SignupDto;
 import com.ssafy.unblur.domain.user.dto.SignupResponseDto;
+import com.ssafy.unblur.domain.user.model.User;
+import com.ssafy.unblur.domain.user.repository.UserRepository;
+import com.ssafy.unblur.domain.user.service.RefreshTokenService;
 import com.ssafy.unblur.domain.user.service.UserService;
-import com.ssafy.unblur.common.response.BaseResponse;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -15,7 +26,12 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class AuthController implements AuthApiDocs {
 
+    private final UserRepository userRepository;
+    private final BCryptPasswordEncoder passwordEncoder;
     private final UserService userService;
+    private final JWTUtil jwtUtil;
+    private final RefreshTokenService refreshTokenService;
+
 
     @Override
     @PostMapping("/register")
@@ -40,5 +56,49 @@ public class AuthController implements AuthApiDocs {
         return ResponseEntity.ok(
                 BaseResponse.success(200, "OK", userService.isNicknameDuplicate(nickname))
         );
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<BaseResponse<Object>> login (
+            @RequestBody LoginRequestDTO loginRequest,
+            HttpServletResponse response
+    ) {
+
+        User user = userRepository.findByEmail(loginRequest.getEmail())
+                .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
+        if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(BaseResponse.fail(401, "비밀번호가 일치하지 않습니다."));
+        }
+
+        // 계정 활성화 여부 체크
+        if (!user.isActive()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(BaseResponse.fail(403, "비활성화된 계정입니다."));
+        }
+
+        String accessToken = jwtUtil.createAccessToken(user.getEmail());
+        String refreshToken = jwtUtil.createRefreshToken(user.getEmail());
+
+        refreshTokenService.saveRefreshToken(user, refreshToken, jwtUtil.getJti(refreshToken),
+                jwtUtil.getExpiration(refreshToken).toInstant());
+
+        response.addHeader("Authorization", "Bearer " + accessToken);
+        response.addCookie(createRefreshTokenCookie(refreshToken));
+
+        LoginResponseDTO loginResponse = new LoginResponseDTO(accessToken, null);
+
+        return ResponseEntity.ok(
+                BaseResponse.success(200, "OK", loginResponse)
+        );
+    }
+
+    private Cookie createRefreshTokenCookie(String refreshToken) {
+        Cookie cookie = new Cookie("refresh_token", refreshToken);
+        cookie.setHttpOnly(true);
+        cookie.setSecure(true);
+        cookie.setPath("/");
+        cookie.setMaxAge(14 * 24 * 60 * 60);
+        return cookie;
     }
 }
