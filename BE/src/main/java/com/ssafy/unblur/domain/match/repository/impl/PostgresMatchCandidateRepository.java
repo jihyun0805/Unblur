@@ -12,22 +12,12 @@ import java.util.UUID;
 
 /**
  * PostgreSQL 기반 매칭 후보 검색 레포지토리
+ * <p>
+ * 인메모리 큐에서 전달된 후보 ID 목록을 대상으로 pgvector 유사도 계산을 수행한다.
+ * </p>
  */
 public interface PostgresMatchCandidateRepository extends MatchCandidateRepository, Repository<User, UUID> {
 
-    /**
-     * PostgreSQL에서 매칭 후보를 검색하는 메서드
-     *
-     * @param userId            요청 사용자 ID
-     * @param vector            요청 사용자 벡터 리터럴
-     * @param candidateIds      후보 사용자 ID 목록
-     * @param gender            선호 성별
-     * @param region            선호 지역
-     * @param latestBirthDate   최대 생년월일 (ageMin 기준)
-     * @param earliestBirthDate 최소 생년월일 (ageMax 기준)
-     * @param limit             조회 수
-     * @return 후보 목록
-     */
     @Override
     @Query(
             value = """
