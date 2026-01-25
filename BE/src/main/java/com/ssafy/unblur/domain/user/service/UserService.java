@@ -1,10 +1,10 @@
-﻿package com.ssafy.unblur.domain.user.service;
+package com.ssafy.unblur.domain.user.service;
 
+import com.ssafy.unblur.common.exception.BaseException;
+import com.ssafy.unblur.common.exception.ErrorCode;
 import com.ssafy.unblur.domain.user.dto.SignupDto;
 import com.ssafy.unblur.domain.user.model.User;
 import com.ssafy.unblur.domain.user.repository.UserRepository;
-import com.ssafy.unblur.common.exception.BaseException;
-import com.ssafy.unblur.common.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -23,21 +23,23 @@ public class UserService {
      * 회원가입 프로세스를 진행합니다.
      * <p>이메일과 닉네임의 중복 여부를 최종적으로 확인한 후.
      * 비밀번호를 암호화하여 데이터베이스에 유저 정보를 저장합니다.</p>
-     *
-     * @param signUpDto 회원가입 정보 객체
-     * @throws BaseException 이메일/닉네임 중복 시 발생
      */
     @Transactional
     public String signUp(SignupDto signUpDto) {
         validateDuplicateEmail(signUpDto.getEmail());
-        validateDuplicateNickname(signUpDto.getNickname()); // 닉네임 중복 검사 추가
+        validateDuplicateNickname(signUpDto.getNickname());
 
-        User user = User.from(signUpDto, bCryptPasswordEncoder.encode(signUpDto.getPassword()));
+        String encodedPassword = bCryptPasswordEncoder.encode(signUpDto.getPassword());
+        User user = User.from(signUpDto, encodedPassword);
+
         User savedUser = userRepository.save(user);
         return savedUser.getEmail();
     }
 
-    // 이메일 중복 검사
+    /**
+     * '회원가입 버튼'을 눌렀을 때 실행됩니다.
+     * 이 때 중복이 발견되면 프로세스를 즉시 중단시키고 {@link ErrorCode#DUPLICATE_EMAIL} 예외를 던집니다.
+     */
     private void validateDuplicateEmail(String email) {
         if (userRepository.existsByEmail(email)) {
             log.warn("중복된 이메일 입니다: {}", email);
@@ -45,13 +47,18 @@ public class UserService {
         }
     }
 
-    // 단독 API용: 단순히 존재 여부만 반환
+    /**
+     * 단순 이메일 중복 여부 조회를 위한 단독 API용 메서드입니다.
+     */
     @Transactional(readOnly = true)
     public boolean isEmailDuplicate(String email) {
         return userRepository.existsByEmail(email);
     }
 
-    // 닉네임 중복 검사
+    /**
+     * '회원가입 버튼'을 눌렀을 때 실행됩니다.
+     * 이 때 중복이 발견되면 프로세스를 즉시 중단시키고 {@link ErrorCode#DUPLICATE_NICKNAME} 예외를 던집니다.
+     */
     private void validateDuplicateNickname(String nickname) {
         if (userRepository.existsByNickname(nickname)) {
             log.warn("중복된 닉네임 입니다: {}", nickname);
@@ -59,7 +66,9 @@ public class UserService {
         }
     }
 
-    // 단독 API용: 닉네임 존재 여부만 반환
+    /**
+     * 단순 닉네임 중복 여부 조회를 위한 단독 API용 메서드입니다.
+     */
     @Transactional(readOnly = true)
     public boolean isNicknameDuplicate(String nickname) {
         return userRepository.existsByNickname(nickname);
