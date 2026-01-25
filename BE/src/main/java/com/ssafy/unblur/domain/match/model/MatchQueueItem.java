@@ -40,7 +40,7 @@ public class MatchQueueItem {
     /**
      * 대기열 상태
      */
-    private MatchQueueStatus status;
+    private MatchQueueStatus status = MatchQueueStatus.WAITING;
 
     /**
      * 매칭된 상대 사용자 ID
