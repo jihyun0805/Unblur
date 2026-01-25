@@ -48,9 +48,16 @@ public class SecurityConfig {
                         // Swagger 관련 경로
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                         // 로그인 및 회원가입 경로
-                        .requestMatchers("/api/v1/auth/**").permitAll()
-                        // 일단은 모든 경로에 대하여 허용
-                        .anyRequest().permitAll()
+                        .requestMatchers(
+                                "/api/v1/auth/register",
+                                "/api/v1/auth/login",
+                                "/api/v1/auth/check-email",
+                                "/api/v1/auth/check-nickname",
+                                "/api/v1/auth/reissue"
+                        ).permitAll()
+                        // 인증된 사용자만 접근 가능
+                        .requestMatchers("api/v1/auth/logout").authenticated()
+                        .anyRequest().authenticated()
                 )
                 .addFilterBefore(new JWTFilter(jwtUtil), UsernamePasswordAuthenticationFilter.class)
                 .build();
