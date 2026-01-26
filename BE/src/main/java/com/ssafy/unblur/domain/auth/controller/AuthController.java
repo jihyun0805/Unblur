@@ -38,8 +38,9 @@ public class AuthController implements AuthApiDocs {
     @Override
     @GetMapping("/check-email")
     public ResponseEntity<BaseResponse<Boolean>> checkEmail(@RequestParam String email) {
+        boolean isDuplicate = authService.isEmailDuplicate(email);
         return ResponseEntity.ok(
-                new BaseResponse<>(200, "이메일 중복 확인이 완료", authService.isEmailDuplicate(email))
+                new BaseResponse<>(200, "이메일 중복 확인 완료", isDuplicate)
         );
     }
 
@@ -47,7 +48,7 @@ public class AuthController implements AuthApiDocs {
     @GetMapping("/check-nickname")
     public ResponseEntity<BaseResponse<Boolean>> checkNickname(@RequestParam String nickname) {
         return ResponseEntity.ok(
-                new BaseResponse<>(200, "닉네임 중복 확인이 완료", authService.isNicknameDuplicate(nickname))
+                new BaseResponse<>(200, "닉네임 중복 확인 완료", authService.isNicknameDuplicate(nickname))
         );
     }
 
