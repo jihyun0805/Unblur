@@ -15,9 +15,9 @@ interface CameraTestModalProps {
 }
 
 const BLUR_LEVELS = [
-  { level: 20, label: "1라운드", description: "강한 블러" },
-  { level: 10, label: "2라운드", description: "약한 블러" },
-  { level: 5, label: "3라운드", description: "투명" },
+  { level: 20, label: "1라운드", description: "블라인드" },
+  { level: 10, label: "2라운드", description: "강한 블러" },
+  { level: 5, label: "3라운드", description: "약간 블러" },
   { level: 0, label: "최종", description: "완전 공개" },
 ]
 

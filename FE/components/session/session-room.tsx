@@ -22,9 +22,9 @@ interface SessionRoomProps {
 }
 
 const ROUND_TIMES = [10, 10, 5, Number.POSITIVE_INFINITY] // seconds
-const BLUR_LEVELS = [20, 10, 7, 0] // px
+const BLUR_LEVELS = [20, 10, 5, 0] // px
 const ROUND_NAMES = ["1라운드", "2라운드", "3라운드", "최종 라운드"]
-const BLUR_LABELS = ["강한 블러", "약한 블러", "투명", "완전 공개"]
+const BLUR_LABELS = ["블라인드", "강한 블러", "약간 블러", "완전 공개"]
 
 export function SessionRoom({ 
   sessionId, 
