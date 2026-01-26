@@ -21,6 +21,7 @@ public enum ErrorCode {
     USER_PROFILE_INCOMPLETE(HttpStatus.BAD_REQUEST, "AUTH-006", "추가 가입 정보가 아직 부족합니다."),
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "AUTH-007", "로그인이 필요합니다."),
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "AUTH-008", "해당 기능에 접근할 권한이 없습니다."),
+    INVALID_EMAIL_FORMAT(HttpStatus.BAD_REQUEST, "AUTH-009", "유효하지 않은 이메일 형식입니다."),
 
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "COMMON-001", "서버 내부 오류가 발생했습니다."),
     INVALID_INPUT_VALUE(HttpStatus.BAD_REQUEST, "COMMON-002", "잘못된 요청 값입니다."),
