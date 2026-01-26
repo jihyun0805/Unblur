@@ -105,7 +105,7 @@ class InMemoryMatchQueueStoreTest {
             MatchQueueItem newest = createItem(UUID.randomUUID(), UUID.randomUUID(), MatchQueueType.QUICK, nowMinusSeconds(10));
             MatchQueueItem otherType = createItem(UUID.randomUUID(), UUID.randomUUID(), MatchQueueType.ONE_ON_ONE, nowMinusSeconds(5));
 
-            middle.markMatched(UUID.randomUUID(), LocalDateTime.now());
+            middle.markMatched(LocalDateTime.now());
 
             // when: 특정 유형의 대기 목록을 조회하면
             store.save(newest);
@@ -174,7 +174,7 @@ class InMemoryMatchQueueStoreTest {
             UUID userId = UUID.randomUUID();
             LocalDateTime oldTime = nowMinusSeconds(120);
             MatchQueueItem finished = createItem(UUID.randomUUID(), userId, MatchQueueType.QUICK, oldTime);
-            finished.markMatched(UUID.randomUUID(), oldTime.minusSeconds(5));
+            finished.markMatched(oldTime.minusSeconds(5));
 
             // when: 정리 메서드를 호출하면
             store.save(finished);
@@ -238,7 +238,12 @@ class InMemoryMatchQueueStoreTest {
      * @return 대기열 항목
      */
     private MatchQueueItem createItem(UUID requestId, UUID userId, MatchQueueType type, LocalDateTime createdAt) {
-        return new MatchQueueItem(requestId, userId, type, createdAt, null);
+        return MatchQueueItem.builder()
+                .requestId(requestId)
+                .requesterUserId(userId)
+                .queueType(type)
+                .createdAt(createdAt)
+                .build();
     }
 
     /**

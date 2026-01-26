@@ -1,6 +1,6 @@
 package com.ssafy.unblur.domain.match.model;
 
-import lombok.Data;
+import lombok.*;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -8,8 +8,12 @@ import java.util.UUID;
 
 /**
  * 인메모리 매칭 대기열 항목을 나타내는 클래스
+ * <p>
+ * 빠른 매칭은 요청자만 존재하며, 1:1 매칭은 요청자/수신자를 함께 담는다</p>
  */
 @Data
+@Builder
+@AllArgsConstructor
 public class MatchQueueItem {
 
     /**
@@ -18,9 +22,9 @@ public class MatchQueueItem {
     private final UUID requestId;
 
     /**
-     * 요청 사용자 ID
+     * 요청자 사용자 ID
      */
-    private final UUID userId;
+    private final UUID requesterUserId;
 
     /**
      * 매칭 유형
@@ -40,12 +44,13 @@ public class MatchQueueItem {
     /**
      * 대기열 상태
      */
+    @Builder.Default
     private MatchQueueStatus status = MatchQueueStatus.WAITING;
 
     /**
-     * 매칭된 상대 사용자 ID
+     * 1:1 매칭 요청 수신자 사용자 ID
      */
-    private UUID matchedUserId;
+    private final UUID recipientUserId;
 
     /**
      * 매칭된 시각
@@ -55,12 +60,10 @@ public class MatchQueueItem {
     /**
      * 매칭 완료 처리하는 메서드
      *
-     * @param matchedUserId 상대 사용자 ID
-     * @param matchedAt     매칭된 시각
+     * @param matchedAt 매칭된 시각
      */
-    public void markMatched(UUID matchedUserId, LocalDateTime matchedAt) {
+    public void markMatched(LocalDateTime matchedAt) {
         this.status = MatchQueueStatus.MATCHED;
-        this.matchedUserId = matchedUserId;
         this.matchedAt = matchedAt;
     }
 

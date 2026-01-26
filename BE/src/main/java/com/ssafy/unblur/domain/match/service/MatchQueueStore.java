@@ -32,7 +32,7 @@ public interface MatchQueueStore {
     /**
      * 사용자 ID로 대기열 항목을 조회하는 메서드
      *
-     * @param userId    사용자 ID
+     * @param userId    요청자 사용자 ID
      * @param queueType 대기열 유형
      * @return 대기열 항목
      */
@@ -56,7 +56,7 @@ public interface MatchQueueStore {
     /**
      * 사용자 대기 여부를 확인하는 메서드
      *
-     * @param userId    사용자 ID
+     * @param userId    요청자 사용자 ID
      * @param queueType 대기열 유형
      * @return 대기 중이면 true
      */

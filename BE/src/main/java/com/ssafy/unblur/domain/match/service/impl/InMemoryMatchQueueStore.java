@@ -46,7 +46,7 @@ public class InMemoryMatchQueueStore implements MatchQueueStore {
         lock.lock(); // 인덱스와 실제 저장소를 함께 갱신해야 하므로 하나의 락으로 보호
 
         try {
-            UUID previousId = userIndexes.put(key(item.getUserId(), item.getQueueType()), item.getRequestId());
+            UUID previousId = userIndexes.put(key(item.getRequesterUserId(), item.getQueueType()), item.getRequestId());
 
             // 동일 사용자의 이전 요청이 남아있는지 확인
             if (previousId != null && !previousId.equals(item.getRequestId())) {
@@ -85,7 +85,7 @@ public class InMemoryMatchQueueStore implements MatchQueueStore {
             MatchQueueItem removed = items.remove(requestId);
 
             if (removed != null) {
-                userIndexes.remove(key(removed.getUserId(), removed.getQueueType()));
+                userIndexes.remove(key(removed.getRequesterUserId(), removed.getQueueType()));
             }
 
         } finally {
