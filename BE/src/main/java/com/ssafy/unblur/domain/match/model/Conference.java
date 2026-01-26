@@ -1,14 +1,6 @@
 package com.ssafy.unblur.domain.match.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -22,10 +14,7 @@ import java.util.UUID;
  * 소개팅 세션(컨퍼런스) 정보를 담는 엔티티.
  */
 @Entity
-@Table(
-        name = "conferences",
-        uniqueConstraints = @UniqueConstraint(name = "uk_conference_number", columnNames = "conference_number")
-)
+@Table(name = "conferences")
 @Getter
 @Builder
 @NoArgsConstructor
@@ -38,12 +27,6 @@ public class Conference {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
-
-    /**
-     * 세션 번호 (UK).
-     */
-    @Column(name = "conference_number", nullable = false, length = 20)
-    private String conferenceNumber;
 
     /**
      * 세션 상태
