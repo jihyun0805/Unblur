@@ -15,9 +15,9 @@ interface CameraTestModalProps {
 }
 
 const BLUR_LEVELS = [
-  { level: 20, label: "1라운드", description: "강한 블러" },
-  { level: 10, label: "2라운드", description: "약한 블러" },
-  { level: 3, label: "3라운드", description: "투명" },
+  { level: 20, label: "1라운드", description: "블라인드" },
+  { level: 10, label: "2라운드", description: "강한 블러" },
+  { level: 5, label: "3라운드", description: "약간 블러" },
   { level: 0, label: "최종", description: "완전 공개" },
 ]
 
@@ -297,7 +297,7 @@ export function CameraTestModal({ open, onOpenChange, onReady }: CameraTestModal
                     autoPlay 
                     playsInline 
                     muted 
-                    className="w-full h-full object-cover transition-all duration-500"
+                    className="w-full h-full object-cover transition-all duration-500 -scale-x-100"
                     style={{ filter: `blur(${currentBlur.level}px)` }}
                     onLoadedMetadata={() => {
                       console.log("[CameraTest] Video metadata loaded", {
@@ -333,7 +333,7 @@ export function CameraTestModal({ open, onOpenChange, onReady }: CameraTestModal
                     {/* Canvas with filters applied */}
                     <canvas
                       ref={canvasRef}
-                      className="w-full h-full object-cover transition-all duration-500"
+                      className="w-full h-full object-cover transition-all duration-500 -scale-x-100"
                       style={{ filter: `blur(${currentBlur.level}px)` }}
                       width={640}
                       height={480}
@@ -382,7 +382,7 @@ export function CameraTestModal({ open, onOpenChange, onReady }: CameraTestModal
                   <p
                     className={`text-xs mt-1 ${selectedBlur === index ? "text-primary-foreground/80" : "text-muted-foreground"}`}
                   >
-                    {blur.level}px
+                    {blur.description}
                   </p>
                 </button>
               ))}

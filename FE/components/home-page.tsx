@@ -27,8 +27,8 @@ export function HomePage() {
   const handleRequestChat = (userId: string) => {
     setTimeout(() => {
       toast({
-        title: "1:1 채팅 수락!",
-        description: "상대방이 채팅 요청을 수락했습니다. 채팅방으로 이동하시겠습니까?",
+        title: "1:1 매칭 수락!",
+        description: "상대방이 매칭 요청을 수락했습니다. 매칭방으로 이동하시겠습니까?",
         action: (
           <Button
             size="sm"
@@ -93,11 +93,11 @@ export function HomePage() {
               <div className="w-12 sm:w-14 h-12 sm:h-14 rounded-xl bg-secondary flex items-center justify-center mb-4">
                 <UserPlus className="w-6 sm:w-7 h-6 sm:h-7 text-secondary-foreground" />
               </div>
-              <h2 className="text-lg sm:text-xl font-bold mb-2">1:1 채팅</h2>
-              <p className="text-muted-foreground text-sm mb-4">이전에 대화했던 사람과 다시 연결해보세요.</p>
+              <h2 className="text-lg sm:text-xl font-bold mb-2">1:1 매칭</h2>
+              <p className="text-muted-foreground text-sm mb-4">현재 온라인인 사람들에게 매칭 요청을 보내보세요!</p>
               <Button onClick={() => setShowOneOnOne(true)} className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
                 <UserPlus className="w-4 h-4 mr-2" />
-                채팅 요청하기
+                매칭 요청하기
               </Button>
             </div>
           </div>

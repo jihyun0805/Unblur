@@ -1,29 +1,31 @@
 package com.ssafy.unblur.common.response;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
-public record BaseResponse<T>(
+@Getter
+@NoArgsConstructor
+@AllArgsConstructor
+@Schema(description = "공통 응답 포맷")
+public class BaseResponse<T> {
+
+        @Schema(description = "성공 여부", example = "true")
         @JsonProperty("isSuccess")
-        boolean success,
-        int statusCode,
-        String message,
-        T data
-) {
-    /**
-     * 성공 응답을 생성합니다.
-     *
-     * @param data 응답에 포함할 실제 데이터(DTO, Boolean 등)
-     * @param <T>  데이터의 타입
-     * @return 성공 상태, 메시지 및 데이터가 포함된 BaseResponse 객체
-     */
-    public static <T> BaseResponse<T> success(int statusCode, String message, T data) {
-        return new BaseResponse<>(true, statusCode, message, data);
-    }
+        private boolean success;
 
-    /**
-     * 에러 응답을 생성합니다.
-     */
-    public static <T> BaseResponse<T> fail(int statusCode, String message) {
-        return new BaseResponse<>(false, statusCode, message, null);
+        @Schema(description = "상태 코드", example = "200")
+        private int statusCode;
+
+        @Schema(description = "응답 메시지", example = "요청에 성공하였습니다.")
+        private String message;
+
+        @Schema(description = "데이터 결과")
+        private T data;
+
+    public BaseResponse(int statusCode, String message, T data) {
+        this(true, statusCode, message, data);
     }
 }
