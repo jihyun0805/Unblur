@@ -28,6 +28,7 @@ public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint 
                          AuthenticationException authException) throws IOException, ServletException {
         ErrorResponse error = new ErrorResponse(ErrorCode.UNAUTHORIZED);
         response.setStatus(ErrorCode.UNAUTHORIZED.getHttpStatus().value());
+        response.setCharacterEncoding("UTF-8");
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.getWriter().write(objectMapper.writeValueAsString(error));
     }
