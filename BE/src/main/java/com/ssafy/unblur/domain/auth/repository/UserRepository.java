@@ -1,6 +1,6 @@
-package com.ssafy.unblur.domain.user.repository;
+package com.ssafy.unblur.domain.auth.repository;
 
-import com.ssafy.unblur.domain.user.model.User;
+import com.ssafy.unblur.domain.auth.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

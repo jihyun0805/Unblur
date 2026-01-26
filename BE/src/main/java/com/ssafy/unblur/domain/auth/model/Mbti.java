@@ -1,4 +1,4 @@
-package com.ssafy.unblur.domain.user.model;
+package com.ssafy.unblur.domain.auth.model;
 
 /**
  * MBTI 16가지 성격 유형.

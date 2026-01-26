@@ -1,8 +1,9 @@
-package com.ssafy.unblur.domain.user.model;
+package com.ssafy.unblur.domain.auth.model;
 
-import com.ssafy.unblur.domain.user.dto.SignupDto;
+import com.ssafy.unblur.domain.auth.dto.SignupDto;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.ColumnTransformer;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -114,6 +115,10 @@ public class User {
      * 관심사/가치관 임베딩 벡터 (384차원).
      */
     @Convert(converter = PgVectorConverter.class)
+    @ColumnTransformer(
+            write = "?::vector",
+            read = "interests_vector::text"
+    )
     @Column(name = "interests_vector", columnDefinition = "vector(384)")
     private float[] interestsVector;
 
@@ -158,17 +163,10 @@ public class User {
     private LocalDateTime updatedAt;
 
     /**
-     * 회원가입 및 사용자 생성을 위한 생성자입니다.
-     *
-     * @param email    사용자 이메일 (로그인 ID)
-     * @param password 암호화된 비밀번호
-     * @param nickname 사용자 닉네임 (최대 10자)
+     * 탈퇴 시각
      */
-    public User(String email, String password, String nickname) {
-        this.email = email;
-        this.password = password;
-        this.nickname = nickname;
-    }
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     /**
      * SignupDto와 암호화된 비밀번호를 받아 User 엔티티를 생성합니다.
@@ -178,10 +176,28 @@ public class User {
      * @return 생성된 User 엔티티
      */
     public static User from(SignupDto dto, String encodedPassword) {
-        return new User(
-                dto.getEmail(),
-                encodedPassword,
-                dto.getNickname()
-        );
+        return User.builder()
+                .email(dto.getEmail())
+                .password(encodedPassword)
+                .nickname(dto.getNickname())
+                .birthDate(dto.getBirthDate())
+                .gender(dto.getGender())
+                .authProvider(dto.getAuthProvider())
+                .build();
+    }
+
+    public void withdraw() {
+        this.active = false; // 어떤 필드를 사용할 지에 대해서는 논의 후 결정
+        this.deletedAt = LocalDateTime.now();
+        this.email = this.email + "_del_" + this.id.toString().substring(0, 8);
+        this.nickname = "탈퇴" + this.id.toString().substring(0, 7);
+        this.password = "DELETED";
+        this.intro = null;
+        this.detailedInfo = null;
+        this.interestTags = null;
+        this.interestsVector = null;
+        this.region = null;
+        this.mbti = null;
+        this.lastActiveAt = null;
     }
 }

@@ -1,4 +1,4 @@
-package com.ssafy.unblur.domain.user.model;
+package com.ssafy.unblur.domain.auth.model;
 
 /**
  * 인증 제공자 타입.

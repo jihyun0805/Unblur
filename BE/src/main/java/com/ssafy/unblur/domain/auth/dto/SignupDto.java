@@ -1,10 +1,11 @@
-package com.ssafy.unblur.domain.user.dto;
+package com.ssafy.unblur.domain.auth.dto;
 
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
+import com.ssafy.unblur.domain.auth.model.AuthProvider;
+import com.ssafy.unblur.domain.auth.model.Gender;
+import jakarta.validation.constraints.*;
 import lombok.*;
+
+import java.time.LocalDate;
 
 @Getter
 @NoArgsConstructor
@@ -27,4 +28,14 @@ public class SignupDto {
     @NotBlank(message = "닉네임은 필수 입력값입니다.")
     @Size(max = 10, message = "닉네임은 최대 10자까지 가능합니다.")
     private String nickname;
+
+    @NotNull(message = "생년월일은 필수 입력값입니다.")
+    private LocalDate birthDate;
+
+    @NotNull(message = "성별은 필수 입력값입니다.")
+    private Gender gender;
+
+    @Builder.Default
+    private AuthProvider authProvider = AuthProvider.LOCAL;
+
 }

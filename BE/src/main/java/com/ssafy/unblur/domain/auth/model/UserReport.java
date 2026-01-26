@@ -1,4 +1,4 @@
-package com.ssafy.unblur.domain.user.model;
+package com.ssafy.unblur.domain.auth.model;
 
 import com.ssafy.unblur.domain.match.model.Conference;
 import jakarta.persistence.*;
@@ -12,55 +12,56 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * 세션 종료 후 상대방 선명도 평가를 저장하는 엔티티.
+ * 부적절한 사용자 신고 정보를 저장하는 엔티티.
  */
 @Entity
-@Table(
-        name = "clarity_evaluations",
-        uniqueConstraints = @UniqueConstraint(
-                name = "uk_clarity_evaluation_unique",
-                columnNames = {"evaluator_id", "target_id", "conference_id"}
-        )
-)
+@Table(name = "user_reports")
 @Getter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ClarityEvaluation {
+public class UserReport {
 
     /**
-     * 평가 ID (PK).
+     * 신고 ID (PK).
      */
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     /**
-     * 평가자.
+     * 신고자.
      */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "evaluator_id", nullable = false)
-    private User evaluator;
+    @JoinColumn(name = "reporter_id", nullable = false)
+    private User reporter;
 
     /**
-     * 평가 대상자.
+     * 피신고자.
      */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "target_id", nullable = false)
-    private User target;
+    @JoinColumn(name = "reported_id", nullable = false)
+    private User reported;
 
     /**
-     * 평가가 이루어진 소개팅 세션.
+     * 관련 소개팅 세션
      */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "conference_id", nullable = false)
+    @JoinColumn(name = "conference_id")
     private Conference conference;
 
     /**
-     * 평가 점수 (1~5).
+     * 상세 설명.
      */
-    @Column(nullable = false)
-    private Integer score;
+    @Column(columnDefinition = "text")
+    private String description;
+
+    /**
+     * 처리 상태.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private UserReportStatus status;
 
     /**
      * 생성 시각.
@@ -68,4 +69,5 @@ public class ClarityEvaluation {
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
 }

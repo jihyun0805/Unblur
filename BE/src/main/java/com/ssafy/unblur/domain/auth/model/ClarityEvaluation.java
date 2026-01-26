@@ -1,4 +1,4 @@
-package com.ssafy.unblur.domain.user.model;
+package com.ssafy.unblur.domain.auth.model;
 
 import com.ssafy.unblur.domain.match.model.Conference;
 import jakarta.persistence.*;
@@ -12,56 +12,55 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * 부적절한 사용자 신고 정보를 저장하는 엔티티.
+ * 세션 종료 후 상대방 선명도 평가를 저장하는 엔티티.
  */
 @Entity
-@Table(name = "user_reports")
+@Table(
+        name = "clarity_evaluations",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_clarity_evaluation_unique",
+                columnNames = {"evaluator_id", "target_id", "conference_id"}
+        )
+)
 @Getter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserReport {
+public class ClarityEvaluation {
 
     /**
-     * 신고 ID (PK).
+     * 평가 ID (PK).
      */
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     /**
-     * 신고자.
+     * 평가자.
      */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "reporter_id", nullable = false)
-    private User reporter;
+    @JoinColumn(name = "evaluator_id", nullable = false)
+    private User evaluator;
 
     /**
-     * 피신고자.
+     * 평가 대상자.
      */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "reported_id", nullable = false)
-    private User reported;
+    @JoinColumn(name = "target_id", nullable = false)
+    private User target;
 
     /**
-     * 관련 소개팅 세션
+     * 평가가 이루어진 소개팅 세션.
      */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "conference_id")
+    @JoinColumn(name = "conference_id", nullable = false)
     private Conference conference;
 
     /**
-     * 상세 설명.
+     * 평가 점수 (1~5).
      */
-    @Column(columnDefinition = "text")
-    private String description;
-
-    /**
-     * 처리 상태.
-     */
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private UserReportStatus status;
+    @Column(nullable = false)
+    private Integer score;
 
     /**
      * 생성 시각.
@@ -69,5 +68,4 @@ public class UserReport {
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
-
 }
