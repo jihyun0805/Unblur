@@ -1,7 +1,7 @@
 package com.ssafy.unblur.domain.match.model;
 
-import com.ssafy.unblur.domain.user.model.Gender;
-import com.ssafy.unblur.domain.user.model.Region;
+import com.ssafy.unblur.domain.auth.model.Gender;
+import com.ssafy.unblur.domain.auth.model.Region;
 
 import java.util.Map;
 

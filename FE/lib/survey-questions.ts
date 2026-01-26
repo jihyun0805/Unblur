@@ -64,7 +64,7 @@ export const SURVEY_QUESTIONS = {
 
   // Phase 3. 현실 필터 (The Real Deal)
   smokingSelf: {
-    question: "Q8. 흡연 - 나의 상태",
+    question: "흡연을 하시나요?",
     options: [
       { value: "nonsmoker", label: "비흡연" },
       { value: "social", label: "가끔(사교)" },
@@ -72,7 +72,7 @@ export const SURVEY_QUESTIONS = {
     ],
   },
   smokingPartner: {
-    question: "Q8. 흡연 - 상대 허용 범위",
+    question: "상대방의 흡연 여부를 허용하시나요?",
     options: [
       { value: "any", label: "상관없음" },
       { value: "nonsmoker", label: "비흡연자만" },
@@ -80,7 +80,7 @@ export const SURVEY_QUESTIONS = {
     ],
   },
   drinkingSelf: {
-    question: "Q9. 음주 - 나의 상태",
+    question: "음주를 하시나요?",
     options: [
       { value: "none", label: "알쓰(못마심)" },
       { value: "mood", label: "기분파" },
@@ -88,7 +88,7 @@ export const SURVEY_QUESTIONS = {
     ],
   },
   drinkingPartner: {
-    question: "Q9. 음주 - 상대 허용 범위",
+    question: "상대방의 음주 여부를 허용하시나요?",
     options: [
       { value: "any", label: "상관없음" },
       { value: "light", label: "금주 및 절주 선호" },
@@ -96,7 +96,7 @@ export const SURVEY_QUESTIONS = {
     ],
   },
   religionSelf: {
-    question: "Q10. 종교 - 나의 상태",
+    question: "종교를 믿으시나요?",
     options: [
       { value: "none", label: "무교" },
       { value: "christian", label: "기독교" },
@@ -106,7 +106,7 @@ export const SURVEY_QUESTIONS = {
     ],
   },
   religionPartner: {
-    question: "Q10. 종교 - 상대 허용 범위",
+    question: "상대방의 종교 여부를 허용하시나요?",
     options: [
       { value: "respect", label: "존중해요" },
       { value: "same", label: "같은 종교만" },
@@ -114,7 +114,7 @@ export const SURVEY_QUESTIONS = {
     ],
   },
   petSelf: {
-    question: "Q11. 반려동물 - 나의 상태",
+    question: "반려동물을 키우시나요?",
     options: [
       { value: "none", label: "없음" },
       { value: "have", label: "반려동물 있음" },
@@ -122,7 +122,7 @@ export const SURVEY_QUESTIONS = {
     ],
   },
   petPartner: {
-    question: "Q11. 반려동물 - 상대 허용 범위",
+    question: "상대방의 반려동물 키우기 여부를 허용하시나요?",
     options: [
       { value: "any", label: "상관없음" },
       { value: "like", label: "동물 좋아해요" },

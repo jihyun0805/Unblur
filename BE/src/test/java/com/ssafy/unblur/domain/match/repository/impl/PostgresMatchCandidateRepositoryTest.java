@@ -2,10 +2,10 @@ package com.ssafy.unblur.domain.match.repository.impl;
 
 import com.ssafy.unblur.domain.match.repository.MatchCandidateRepository.MatchCandidate;
 import com.ssafy.unblur.common.util.VectorUtils;
-import com.ssafy.unblur.domain.user.model.Gender;
-import com.ssafy.unblur.domain.user.model.Region;
-import com.ssafy.unblur.domain.user.model.User;
-import com.ssafy.unblur.domain.user.repository.UserRepository;
+import com.ssafy.unblur.domain.auth.model.Gender;
+import com.ssafy.unblur.domain.auth.model.Region;
+import com.ssafy.unblur.domain.auth.model.User;
+import com.ssafy.unblur.domain.auth.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

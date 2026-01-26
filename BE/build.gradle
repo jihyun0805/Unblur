@@ -62,6 +62,11 @@ dependencies {
 	// Junit
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
+    // Testcontainers
+    testImplementation 'org.testcontainers:testcontainers:1.19.8'
+    testImplementation 'org.testcontainers:junit-jupiter:1.19.8'
+    testImplementation 'org.testcontainers:postgresql:1.19.8'
+
 	// JWT
 	implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
 	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
@@ -71,6 +76,9 @@ dependencies {
 	implementation 'org.kurento:kurento-client:7.3.0'
 }
 
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
 
 tasks.named('test') {
 	useJUnitPlatform()

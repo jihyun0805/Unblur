@@ -1,6 +1,5 @@
-package com.ssafy.unblur.domain.match.model;
+package com.ssafy.unblur.domain.auth.model;
 
-import com.ssafy.unblur.domain.auth.model.User;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -12,51 +11,45 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * 라운드 연장 투표 정보를 저장하는 엔티티.
+ * 사용자 차단 관계를 저장하는 엔티티.
  */
 @Entity
 @Table(
-        name = "round_votes",
+        name = "user_blocks",
         uniqueConstraints = @UniqueConstraint(
-                name = "uk_round_votes_unique",
-                columnNames = {"round_id", "user_id"}
+                name = "uk_user_blocks_unique",
+                columnNames = {"blocker_id", "blocked_id"}
         )
 )
 @Getter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class RoundVote {
+public class UserBlock {
 
     /**
-     * 투표 ID (PK).
+     * 차단 ID (PK).
      */
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     /**
-     * 투표 대상 라운드.
+     * 차단한 사용자.
      */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "round_id", nullable = false)
-    private ConferenceRound round;
+    @JoinColumn(name = "blocker_id", nullable = false)
+    private User blocker;
 
     /**
-     * 투표한 사용자.
+     * 차단당한 사용자.
      */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @JoinColumn(name = "blocked_id", nullable = false)
+    private User blocked;
 
     /**
-     * 연장 의사 여부.
-     */
-    @Column(name = "wants_continue", nullable = false)
-    private boolean wantsContinue;
-
-    /**
-     * 투표 시각.
+     * 차단 시각.
      */
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
