@@ -6,20 +6,28 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2, User, Trash2, Pencil, Save, X } from "lucide-react"
+import { Loader2, User, X } from "lucide-react"
 import { SURVEY_QUESTIONS } from "@/lib/survey-questions"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { StepProgress } from "@/components/auth/register/step-progress"
+import { RadioGroupField } from "@/components/auth/register/radio-group-field"
+import { CheckboxGroupField } from "@/components/auth/register/checkbox-group-field"
 
 const MBTI_TYPES = [
   "INTJ", "INTP", "ENTJ", "ENTP",
   "INFJ", "INFP", "ENFJ", "ENFP",
   "ISTJ", "ISFJ", "ESTJ", "ESFJ",
   "ISTP", "ISFP", "ESTP", "ESFP",
+]
+
+const REGIONS = [
+  "서울", "경기", "인천", "부산", "대구", "대전", "광주", "울산",
+  "세종", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주",
 ]
 
 export function ProfilePage() {
@@ -32,16 +40,30 @@ export function ProfilePage() {
   const [checkingNickname, setCheckingNickname] = useState(false)
   const [editingBasic, setEditingBasic] = useState(false)
   const [editingSurvey, setEditingSurvey] = useState(false)
-  const [passwordData, setPasswordData] = useState({
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
-  })
-  
+  const [surveyStep, setSurveyStep] = useState(1)
+  const SURVEY_TOTAL_STEPS = 4
+  // birthDate 파싱 (예: "1995-03-15" -> year, month, day)
+  const parseBirthDate = (birthDate?: string) => {
+    if (!birthDate) return { year: "", month: "", day: "" }
+    const parts = birthDate.split("-")
+    return {
+      year: parts[0] || "",
+      month: parts[1] ? parseInt(parts[1]).toString() : "",
+      day: parts[2] ? parseInt(parts[2]).toString() : "",
+    }
+  }
+  const initialBirth = parseBirthDate(user?.birthDate)
+
   const [basicData, setBasicData] = useState({
     nickname: user?.nickname || "",
     bio: user?.bio || "",
     mbti: user?.mbti || "",
+    birthYear: initialBirth.year,
+    birthMonth: initialBirth.month,
+    birthDay: initialBirth.day,
+    gender: user?.gender || "",
+    region: user?.region || "",
+    interests: user?.surveyData?.interests || [] as string[],
   })
 
   const [surveyData, setSurveyData] = useState<{
@@ -82,10 +104,17 @@ export function ProfilePage() {
 
   useEffect(() => {
     if (user) {
+      const birth = parseBirthDate(user.birthDate)
       setBasicData({
         nickname: user.nickname || "",
         bio: user.bio || "",
         mbti: user.mbti || "",
+        birthYear: birth.year,
+        birthMonth: birth.month,
+        birthDay: birth.day,
+        gender: user.gender || "",
+        region: user.region || "",
+        interests: user.surveyData?.interests || [],
       })
       if (user.surveyData) {
         setSurveyData({
@@ -150,14 +179,25 @@ export function ProfilePage() {
     setIsLoading(true)
     await new Promise((resolve) => setTimeout(resolve, 500))
 
-    updateUser(basicData)
+    // birthDate 포맷팅 및 데이터 변환
+    const birthDate = basicData.birthYear && basicData.birthMonth && basicData.birthDay
+      ? `${basicData.birthYear}-${basicData.birthMonth.padStart(2, '0')}-${basicData.birthDay.padStart(2, '0')}`
+      : undefined
+
+    updateUser({
+      nickname: basicData.nickname,
+      bio: basicData.bio,
+      mbti: basicData.mbti,
+      birthDate,
+      gender: basicData.gender as "male" | "female",
+      region: basicData.region,
+      surveyData: {
+        ...user?.surveyData,
+        interests: basicData.interests,
+      },
+    })
     setIsLoading(false)
     setEditingBasic(false)
-    setPasswordData({
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-    })
     setNicknameAvailable(null)
 
     toast({
@@ -167,19 +207,21 @@ export function ProfilePage() {
   }
 
   const resetBasicEdit = () => {
+    const birth = parseBirthDate(user?.birthDate)
     setBasicData({
       nickname: user?.nickname || "",
       bio: user?.bio || "",
       mbti: user?.mbti || "",
+      birthYear: birth.year,
+      birthMonth: birth.month,
+      birthDay: birth.day,
+      gender: user?.gender || "",
+      region: user?.region || "",
+      interests: user?.surveyData?.interests || [],
     })
     setNicknameAvailable(null)
     setCheckingNickname(false)
     setEditingBasic(false)
-    setPasswordData({
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-    })
   }
 
 
@@ -199,8 +241,7 @@ export function ProfilePage() {
       !surveyData.religionSelf ||
       !surveyData.religionPartner ||
       !surveyData.petSelf ||
-      !surveyData.petPartner ||
-      surveyData.interests.length === 0
+      !surveyData.petPartner
     ) {
       toast({
         title: "선택 필요",
@@ -215,6 +256,7 @@ export function ProfilePage() {
 
     updateUser({ surveyData })
     setIsLoading(false)
+    setSurveyStep(1)
     setEditingSurvey(false)
 
     toast({
@@ -244,15 +286,15 @@ export function ProfilePage() {
         interests: user.surveyData.interests || [],
       })
     }
+    setSurveyStep(1)
     setEditingSurvey(false)
   }
-
 
   const handleDelete = async () => {
     if (!deletePassword) {
       toast({
-        title: "?? ??",
-        description: "????? ??????.",
+        title: "입력 필요",
+        description: "비밀번호를 입력해주세요.",
         variant: "destructive",
       })
       return
@@ -264,25 +306,18 @@ export function ProfilePage() {
 
     if (!success) {
       toast({
-        title: "???? ??",
-        description: "????? ???? ????.",
+        title: "계정삭제 실패",
+        description: "비밀번호가 일치하지 않습니다.",
         variant: "destructive",
       })
       return
     }
 
     toast({
-      title: "?? ?? ??",
-      description: "??? ????? ???????.",
+      title: "계정 삭제 완료",
+      description: "그동안 이용해주셔서 감사합니다.",
     })
     setShowDeleteConfirm(false)
-  }
-
-  const toggleArrayItem = (array: string[], item: string) => {
-    if (array.includes(item)) {
-      return array.filter((i) => i !== item)
-    }
-    return [...array, item]
   }
 
   const getTemperatureColor = (temp: number) => {
@@ -293,19 +328,6 @@ export function ProfilePage() {
     return "text-blue-700"
   }
 
-  const getAnswerLabel = (questionKey: string, value: string | string[]) => {
-    const question = SURVEY_QUESTIONS[questionKey as keyof typeof SURVEY_QUESTIONS]
-    if (!question) return value
-
-    if (Array.isArray(value)) {
-      return value
-        .map((v) => question.options.find((opt) => opt.value === v)?.label || v)
-        .join(", ")
-    }
-
-    return question.options.find((opt) => opt.value === value)?.label || value
-  }
-
   const selectedInterestLabels = SURVEY_QUESTIONS.interests.options
     .filter((option) => surveyData.interests.includes(option.value))
     .map((option) => option.label)
@@ -313,88 +335,77 @@ export function ProfilePage() {
 
   return (
     <>
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-3xl mx-auto">
             <div className="mb-8">
               <h1 className="text-2xl font-bold">마이페이지</h1>
               <p className="text-muted-foreground text-sm">내 정보를 관리하고 수정하세요</p>
             </div>
 
         <div className="flex flex-col gap-4">
-          {/* Profile Summary */}
-          <Card>
-            <CardContent className="py-0 flex items-center gap-5">
-              <div className="flex items-center gap-5">
-                <div className="w-28 h-28 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <User className="w-12 h-12 text-primary" />
+          {/* Profile Summary & Basic Info */}
+          <Card className="gap-0 py-0">
+            <CardContent className="p-5">
+              {/* 상단: 아바타 + 닉네임/온도 + 수정 버튼 */}
+              <div className="flex items-center gap-4 pb-4">
+                <div className="w-14 h-14 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                  <User className="w-7 h-7 text-primary-foreground" />
                 </div>
-                <div className="space-y-3 text-left">
-                  <h2 className="text-xl font-semibold">{user?.nickname}</h2>
-                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
-                    <span>{user?.age}세</span>
-                    <span>{user?.gender === "male" ? "남성" : "여성"}</span>
-                    <span>{user?.region}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`font-semibold ${getTemperatureColor(user?.temperature || 36.5)}`}>
+                <div className="flex-1">
+                  <h2 className="text-xl font-bold">{user?.nickname}</h2>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className={`text-sm font-medium ${getTemperatureColor(user?.temperature || 36.5)}`}>
                       {Math.round(user?.temperature || 0)}%
                     </span>
                     <span className="text-xs text-muted-foreground">선명도</span>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Basic Info Card */}
-          <Card className="gap-3">
-            <CardHeader className="pb-1">
-              <div className="flex items-baseline justify-between">
-                <div>
-                  <CardTitle className="text-lg">기본 정보</CardTitle>
-                </div>
-                {!editingBasic && (
-                  <button
-                    type="button"
-                    className="text-sm text-muted-foreground hover:text-foreground"
-                    onClick={() => {
-                    setPasswordData({
-                      currentPassword: "",
-                      newPassword: "",
-                      confirmPassword: "",
-                    })
+                <button
+                  type="button"
+                  className="text-sm text-muted-foreground hover:text-foreground self-start"
+                  onClick={() => {
                     setNicknameAvailable(null)
                     setEditingBasic(true)
                   }}
-                  >
-                    수정하기
-                  </button>
-                )}
+                >
+                  수정하기
+                </button>
               </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
+
+              {/* 기본 정보 그리드 */}
+              <div className="grid grid-cols-3 gap-y-3 gap-x-4 pt-4 border-t">
                 <div>
-                  <p className="text-sm font-semibold">닉네임</p>
-                  <p className="text-sm text-muted-foreground">{user?.nickname || "-"}</p>
+                  <p className="text-sm text-muted-foreground mb-0.5">나이</p>
+                  <p className="text-base font-medium">{user?.age}세</p>
                 </div>
                 <div>
-                  <p className="text-sm font-semibold">한 줄 소개</p>
-                  <p className="text-sm text-muted-foreground">{user?.bio || "-"}</p>
+                  <p className="text-sm text-muted-foreground mb-0.5">성별</p>
+                  <p className="text-base font-medium">{user?.gender === "male" ? "남성" : "여성"}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-semibold">MBTI</p>
-                  <p className="text-sm text-muted-foreground">{user?.mbti || "-"}</p>
+                  <p className="text-sm text-muted-foreground mb-0.5">지역</p>
+                  <p className="text-base font-medium">{user?.region || "-"}</p>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {selectedInterestLabels.length > 0 ? (
-                    selectedInterestLabels.map((label) => (
-                      <Badge key={label} variant="secondary">
-                        {label}
-                      </Badge>
-                    ))
-                  ) : (
-                    <span className="text-sm font-semibold">선택한 관심사 없음</span>
-                  )}
+                <div>
+                  <p className="text-sm text-muted-foreground mb-0.5">MBTI</p>
+                  <p className="text-base font-medium">{user?.mbti || "-"}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-sm text-muted-foreground mb-0.5">한 줄 소개</p>
+                  <p className="text-base font-medium truncate">{user?.bio || "-"}</p>
+                </div>
+                <div className="col-span-3 mt-1">
+                  <p className="text-sm text-muted-foreground mb-1.5">관심사</p>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedInterestLabels.length > 0 ? (
+                      selectedInterestLabels.map((label) => (
+                        <Badge key={label} variant="secondary">
+                          {label}
+                        </Badge>
+                      ))
+                    ) : (
+                      <span className="text-sm text-muted-foreground">선택한 관심사 없음</span>
+                    )}
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -422,6 +433,17 @@ export function ProfilePage() {
           </Card>
         </div>
 
+        {/* 계정 삭제 */}
+        <div className="mt-8 text-center">
+          <button
+            type="button"
+            onClick={() => setShowDeleteConfirm(true)}
+            className="text-xs text-red-500 hover:text-red-600 hover:underline"
+          >
+            계정 삭제
+          </button>
+        </div>
+
       </div>
 
       {/* Edit Basic Info Dialog */}
@@ -432,11 +454,13 @@ export function ProfilePage() {
         }
         setEditingBasic(true)
       }}>
-        <DialogContent className="sm:max-w-lg bg-background max-h-[90vh] overflow-y-auto">
-          <DialogHeader className="pb-1">
-            <DialogTitle className="text-center text-base font-medium text-muted-foreground">기본 정보 수정</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
+        <DialogContent className="sm:max-w-md bg-background max-h-[85vh] overflow-hidden p-0">
+          <div className="overflow-y-auto max-h-[85vh] custom-scrollbar p-6">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-bold">기본 정보 수정</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 mt-4">
+            {/* 닉네임 */}
             <div className="space-y-2">
               <Label htmlFor="nickname">닉네임</Label>
               <div className="flex gap-2">
@@ -447,7 +471,7 @@ export function ProfilePage() {
                     setBasicData({ ...basicData, nickname: e.target.value })
                     setNicknameAvailable(null)
                   }}
-                  className="bg-input flex-1"
+                  className="flex-1 border-2 border-gray-200"
                 />
                 <Button type="button" variant="outline" onClick={checkNickname} disabled={checkingNickname}>
                   {checkingNickname ? <Loader2 className="w-4 h-4 animate-spin" /> : "중복확인"}
@@ -459,22 +483,96 @@ export function ProfilePage() {
                 </p>
               )}
             </div>
+
+            {/* 생년월일 */}
             <div className="space-y-2">
-              <Label htmlFor="bio">한 줄 소개</Label>
-              <Textarea
-                id="bio"
-                placeholder="자신을 한 줄로 소개해보세요"
-                value={basicData.bio}
-                onChange={(e) => setBasicData({ ...basicData, bio: e.target.value })}
-                className="bg-input resize-none"
-                rows={3}
-              />
+              <Label>생년월일</Label>
+              <div className="grid grid-cols-3 gap-2">
+                <Select value={basicData.birthYear} onValueChange={(value) => setBasicData({ ...basicData, birthYear: value })}>
+                  <SelectTrigger className="border-2 border-gray-200">
+                    <SelectValue placeholder="년" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 30 }, (_, i) => new Date().getFullYear() - 20 - i).map((year) => (
+                      <SelectItem key={year} value={year.toString()}>
+                        {year}년
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={basicData.birthMonth} onValueChange={(value) => setBasicData({ ...basicData, birthMonth: value })}>
+                  <SelectTrigger className="border-2 border-gray-200">
+                    <SelectValue placeholder="월" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
+                      <SelectItem key={month} value={month.toString()}>
+                        {month}월
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={basicData.birthDay} onValueChange={(value) => setBasicData({ ...basicData, birthDay: value })}>
+                  <SelectTrigger className="border-2 border-gray-200">
+                    <SelectValue placeholder="일" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                      <SelectItem key={day} value={day.toString()}>
+                        {day}일
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
+
+            {/* 성별 */}
+            <div className="space-y-2">
+              <Label>성별</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  type="button"
+                  variant={basicData.gender === "male" ? "default" : "outline"}
+                  onClick={() => setBasicData({ ...basicData, gender: "male" })}
+                  className={basicData.gender === "male" ? "bg-primary text-primary-foreground" : "border-2 border-gray-200"}
+                >
+                  남성
+                </Button>
+                <Button
+                  type="button"
+                  variant={basicData.gender === "female" ? "default" : "outline"}
+                  onClick={() => setBasicData({ ...basicData, gender: "female" })}
+                  className={basicData.gender === "female" ? "bg-primary text-primary-foreground" : "border-2 border-gray-200"}
+                >
+                  여성
+                </Button>
+              </div>
+            </div>
+
+            {/* 지역 */}
+            <div className="space-y-2">
+              <Label>지역</Label>
+              <Select value={basicData.region} onValueChange={(value) => setBasicData({ ...basicData, region: value })}>
+                <SelectTrigger className="border-2 border-gray-200">
+                  <SelectValue placeholder="지역을 선택하세요" />
+                </SelectTrigger>
+                <SelectContent>
+                  {REGIONS.map((region) => (
+                    <SelectItem key={region} value={region}>
+                      {region}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* MBTI */}
             <div className="space-y-2">
               <Label>MBTI</Label>
               <Select value={basicData.mbti} onValueChange={(value) => setBasicData({ ...basicData, mbti: value })}>
-                <SelectTrigger className="bg-input">
-                  <SelectValue placeholder="선택하세요" />
+                <SelectTrigger className="border-2 border-gray-200">
+                  <SelectValue placeholder="MBTI를 선택하세요" />
                 </SelectTrigger>
                 <SelectContent>
                   {MBTI_TYPES.map((type) => (
@@ -485,43 +583,42 @@ export function ProfilePage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="pt-4 border-t border-border space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="current-password">현재 비밀번호</Label>
-                <Input
-                  id="current-password"
-                  type="password"
-                  placeholder="현재 비밀번호를 입력하세요"
-                  value={passwordData.currentPassword}
-                  onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-                  className="bg-input"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="new-password">새 비밀번호</Label>
-                <Input
-                  id="new-password"
-                  type="password"
-                  placeholder="새 비밀번호를 입력하세요"
-                  value={passwordData.newPassword}
-                  onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                  className="bg-input"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="confirm-password">새 비밀번호 확인</Label>
-                <Input
-                  id="confirm-password"
-                  type="password"
-                  placeholder="새 비밀번호를 다시 입력하세요"
-                  value={passwordData.confirmPassword}
-                  onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                  className="bg-input"
-                />
-              </div>
+
+            {/* 한 줄 소개 */}
+            <div className="space-y-2">
+              <Label htmlFor="bio">한 줄 소개</Label>
+              <Textarea
+                id="bio"
+                placeholder="자신을 한 줄로 소개해보세요"
+                value={basicData.bio}
+                onChange={(e) => {
+                  if (e.target.value.length <= 50) {
+                    setBasicData({ ...basicData, bio: e.target.value })
+                  }
+                }}
+                className="resize-none border-2 border-gray-200"
+                rows={2}
+                maxLength={50}
+              />
+              <p className="text-xs text-muted-foreground text-right">{basicData.bio.length}/50</p>
             </div>
+
+            {/* 관심사 */}
+            <CheckboxGroupField
+              label="관심사 (최대 5개)"
+              values={basicData.interests}
+              options={SURVEY_QUESTIONS.interests.options}
+              onChange={(values) => setBasicData({ ...basicData, interests: values })}
+              fieldId="interests-edit"
+              maxSelection={5}
+              showCount={true}
+              gridCols={2}
+              className="grid grid-cols-2 gap-2"
+            />
+
+            {/* Action Buttons */}
             <div className="flex gap-3">
-              <Button variant="outline" onClick={resetBasicEdit} className="flex-1">
+              <Button variant="outline" onClick={resetBasicEdit} className="flex-1 bg-transparent">
                 <X className="w-4 h-4 mr-2" />
                 취소
               </Button>
@@ -531,394 +628,250 @@ export function ProfilePage() {
                 disabled={isLoading}
               >
                 {isLoading ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    저장 중...
+                  </>
                 ) : (
-                  <Save className="w-4 h-4 mr-2" />
+                  "저장하기"
                 )}
-                저장
               </Button>
             </div>
-            <div className="pt-1 border-t border-border flex justify-end">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowDeleteConfirm(true)}
-                className="text-muted-foreground hover:text-destructive"
-              >
-                계정 삭제
-              </Button>
-            </div>
+          </div>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Edit Survey Dialog */}
+      {/* Edit Survey Dialog - Step-based */}
       <Dialog open={editingSurvey} onOpenChange={(open) => {
         if (!open) {
           resetSurveyEdit()
+          setSurveyStep(1)
           return
         }
         setEditingSurvey(true)
       }}>
-        <DialogContent className="sm:max-w-3xl bg-background max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-lg bg-background max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-center">성향 & 선호도 수정</DialogTitle>
+            <DialogTitle className="text-2xl font-bold text-center">성향 & 선호도 수정</DialogTitle>
+            <StepProgress currentStep={surveyStep} totalSteps={SURVEY_TOTAL_STEPS} />
           </DialogHeader>
-          <div className="space-y-6">
-            <div className="space-y-4">
-              <h3 className="font-semibold text-sm">Phase 1. 나의 분위기 (Vibe Check)</h3>
 
-              <div className="space-y-2">
-                <Label>{SURVEY_QUESTIONS.dateStyle.question}</Label>
-                <Select value={surveyData.dateStyle} onValueChange={(value) => setSurveyData({ ...surveyData, dateStyle: value })}>
-                  <SelectTrigger className="bg-input">
-                    <SelectValue placeholder="선택하세요" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SURVEY_QUESTIONS.dateStyle.options.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+          {/* Step 1: 나의 분위기 (Vibe Check) */}
+          {surveyStep === 1 && (
+            <div className="space-y-10 mt-4">
+              <div className="space-y-1">
+                <h3 className="font-semibold text-center">평소의 나는 어떤 사람인지 알려주세요!</h3>
+                <p className="text-sm text-muted-foreground text-center">매칭시에 사용되는 정보입니다. 타인에게는 노출되지 않습니다.</p>
               </div>
 
-              <div className="space-y-2">
-                <Label>{SURVEY_QUESTIONS.contactStyle.question}</Label>
-                <Select value={surveyData.contactStyle} onValueChange={(value) => setSurveyData({ ...surveyData, contactStyle: value })}>
-                  <SelectTrigger className="bg-input">
-                    <SelectValue placeholder="선택하세요" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SURVEY_QUESTIONS.contactStyle.options.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <RadioGroupField
+                label={SURVEY_QUESTIONS.dateStyle.question}
+                value={surveyData.dateStyle}
+                options={SURVEY_QUESTIONS.dateStyle.options}
+                onChange={(value) => setSurveyData({ ...surveyData, dateStyle: value })}
+                fieldId="dateStyle-edit"
+              />
 
-              <div className="space-y-2">
-                <Label>{SURVEY_QUESTIONS.conflictStyle.question}</Label>
-                <Select value={surveyData.conflictStyle} onValueChange={(value) => setSurveyData({ ...surveyData, conflictStyle: value })}>
-                  <SelectTrigger className="bg-input">
-                    <SelectValue placeholder="선택하세요" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SURVEY_QUESTIONS.conflictStyle.options.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <RadioGroupField
+                label={SURVEY_QUESTIONS.contactStyle.question}
+                value={surveyData.contactStyle}
+                options={SURVEY_QUESTIONS.contactStyle.options}
+                onChange={(value) => setSurveyData({ ...surveyData, contactStyle: value })}
+                fieldId="contactStyle-edit"
+              />
 
-              <div className="space-y-2">
-                <Label>{SURVEY_QUESTIONS.spending.question}</Label>
-                <Select value={surveyData.spending} onValueChange={(value) => setSurveyData({ ...surveyData, spending: value })}>
-                  <SelectTrigger className="bg-input">
-                    <SelectValue placeholder="선택하세요" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SURVEY_QUESTIONS.spending.options.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <RadioGroupField
+                label={SURVEY_QUESTIONS.conflictStyle.question}
+                value={surveyData.conflictStyle}
+                options={SURVEY_QUESTIONS.conflictStyle.options}
+                onChange={(value) => setSurveyData({ ...surveyData, conflictStyle: value })}
+                fieldId="conflictStyle-edit"
+              />
+
+              <RadioGroupField
+                label={SURVEY_QUESTIONS.spending.question}
+                value={surveyData.spending}
+                options={SURVEY_QUESTIONS.spending.options}
+                onChange={(value) => setSurveyData({ ...surveyData, spending: value })}
+                fieldId="spending-edit"
+              />
+
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => { resetSurveyEdit(); setSurveyStep(1) }} className="flex-1">
+                  취소
+                </Button>
+                <Button
+                  onClick={() => setSurveyStep(2)}
+                  className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  다음
+                </Button>
               </div>
             </div>
+          )}
 
-            <div className="space-y-4">
-              <h3 className="font-semibold text-sm">Phase 2. 매칭 조건 (My Type)</h3>
-
-              <div className="space-y-2">
-                <Label>{SURVEY_QUESTIONS.priority.question}</Label>
-                <Select value={surveyData.priority} onValueChange={(value) => setSurveyData({ ...surveyData, priority: value })}>
-                  <SelectTrigger className="bg-input">
-                    <SelectValue placeholder="선택하세요" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SURVEY_QUESTIONS.priority.options.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+          {/* Step 2: 매칭 조건 (My Type) */}
+          {surveyStep === 2 && (
+            <div className="space-y-10 mt-4">
+              <div className="space-y-1">
+                <h3 className="font-semibold text-center">매칭됐으면 하는 상대의 조건을 알려주세요!</h3>
+                <p className="text-sm text-muted-foreground text-center">매칭시에 사용되는 정보입니다. 타인에게는 노출되지 않습니다.</p>
               </div>
 
-              <div className="space-y-2">
-                <Label>{SURVEY_QUESTIONS.agePreference.question}</Label>
-                <div className="space-y-2">
-                  {SURVEY_QUESTIONS.agePreference.options.map((opt) => (
-                    <div key={opt.value} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`age-edit-${opt.value}`}
-                        checked={surveyData.agePreference.includes(opt.value)}
-                        onCheckedChange={() =>
-                          setSurveyData({
-                            ...surveyData,
-                            agePreference: toggleArrayItem(surveyData.agePreference, opt.value),
-                          })
-                        }
-                      />
-                      <label htmlFor={`age-edit-${opt.value}`} className="text-sm cursor-pointer">
-                        {opt.label}
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <RadioGroupField
+                label={SURVEY_QUESTIONS.priority.question}
+                value={surveyData.priority}
+                options={SURVEY_QUESTIONS.priority.options}
+                onChange={(value) => setSurveyData({ ...surveyData, priority: value })}
+                fieldId="priority-edit"
+              />
 
-              <div className="space-y-2">
-                <Label>{SURVEY_QUESTIONS.distancePreference.question}</Label>
-                <Select value={surveyData.distancePreference} onValueChange={(value) => setSurveyData({ ...surveyData, distancePreference: value })}>
-                  <SelectTrigger className="bg-input">
-                    <SelectValue placeholder="선택하세요" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SURVEY_QUESTIONS.distancePreference.options.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <CheckboxGroupField
+                label={SURVEY_QUESTIONS.agePreference.question}
+                values={surveyData.agePreference}
+                options={SURVEY_QUESTIONS.agePreference.options}
+                onChange={(values) => setSurveyData({ ...surveyData, agePreference: values })}
+                fieldId="age-edit"
+              />
+
+              <RadioGroupField
+                label={SURVEY_QUESTIONS.distancePreference.question}
+                value={surveyData.distancePreference}
+                options={SURVEY_QUESTIONS.distancePreference.options}
+                onChange={(value) => setSurveyData({ ...surveyData, distancePreference: value })}
+                fieldId="distancePreference-edit"
+              />
+
+              <div className="flex gap-3">
+                <Button type="button" variant="outline" onClick={() => setSurveyStep(1)} className="flex-1">
+                  이전
+                </Button>
+                <Button
+                  onClick={() => setSurveyStep(3)}
+                  className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  다음
+                </Button>
               </div>
             </div>
+          )}
 
-            <div className="space-y-4">
-              <h3 className="font-semibold text-sm">Phase 3. 현실 필터 (The Real Deal)</h3>
+          {/* Step 3: 나의 상태 (The Real Deal - Self) */}
+          {surveyStep === 3 && (
+            <div className="space-y-10 mt-4">
+              <div className="space-y-1">
+                <h3 className="font-semibold text-center">나는 어떤 사람인지 알려주세요!</h3>
+                <p className="text-sm text-muted-foreground text-center">매칭시에 사용되는 정보입니다. 타인에게는 노출되지 않습니다.</p>
+              </div>
 
-              <div className="space-y-3">
-                <div className="hidden sm:grid sm:grid-cols-[120px_1fr_1fr] text-xs text-muted-foreground text-center">
-                  <span />
-                  <span>나의 상태</span>
-                  <span>상대 허용 범위</span>
-                </div>
+              <RadioGroupField
+                label={SURVEY_QUESTIONS.smokingSelf.question}
+                value={surveyData.smokingSelf}
+                options={SURVEY_QUESTIONS.smokingSelf.options}
+                onChange={(value) => setSurveyData({ ...surveyData, smokingSelf: value })}
+                fieldId="smokingSelf-edit"
+              />
 
-                <div className="grid gap-3 sm:grid-cols-[120px_1fr_1fr] sm:items-center">
-                  <p className="text-sm font-semibold sm:text-center">Q8. 흡연</p>
-                  <div className="space-y-2 sm:space-y-0 sm:flex sm:justify-center">
-                    <Label className="sm:hidden">{SURVEY_QUESTIONS.smokingSelf.question}</Label>
-                    <Select
-                      value={surveyData.smokingSelf}
-                      onValueChange={(value) => setSurveyData({ ...surveyData, smokingSelf: value })}
-                    >
-                      <SelectTrigger className="bg-input h-10 sm:w-56">
-                        <SelectValue placeholder="선택하세요" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SURVEY_QUESTIONS.smokingSelf.options.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2 sm:space-y-0 sm:flex sm:justify-center">
-                    <Label className="sm:hidden">{SURVEY_QUESTIONS.smokingPartner.question}</Label>
-                    <Select
-                      value={surveyData.smokingPartner}
-                      onValueChange={(value) => setSurveyData({ ...surveyData, smokingPartner: value })}
-                    >
-                      <SelectTrigger className="bg-input h-10 sm:w-56">
-                        <SelectValue placeholder="선택하세요" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SURVEY_QUESTIONS.smokingPartner.options.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+              <RadioGroupField
+                label={SURVEY_QUESTIONS.drinkingSelf.question}
+                value={surveyData.drinkingSelf}
+                options={SURVEY_QUESTIONS.drinkingSelf.options}
+                onChange={(value) => setSurveyData({ ...surveyData, drinkingSelf: value })}
+                fieldId="drinkingSelf-edit"
+              />
 
-                <div className="grid gap-3 sm:grid-cols-[120px_1fr_1fr] sm:items-center">
-                  <p className="text-sm font-semibold sm:text-center">Q9. 음주</p>
-                  <div className="space-y-2 sm:space-y-0 sm:flex sm:justify-center">
-                    <Label className="sm:hidden">{SURVEY_QUESTIONS.drinkingSelf.question}</Label>
-                    <Select
-                      value={surveyData.drinkingSelf}
-                      onValueChange={(value) => setSurveyData({ ...surveyData, drinkingSelf: value })}
-                    >
-                      <SelectTrigger className="bg-input h-10 sm:w-56">
-                        <SelectValue placeholder="선택하세요" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SURVEY_QUESTIONS.drinkingSelf.options.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2 sm:space-y-0 sm:flex sm:justify-center">
-                    <Label className="sm:hidden">{SURVEY_QUESTIONS.drinkingPartner.question}</Label>
-                    <Select
-                      value={surveyData.drinkingPartner}
-                      onValueChange={(value) => setSurveyData({ ...surveyData, drinkingPartner: value })}
-                    >
-                      <SelectTrigger className="bg-input h-10 sm:w-56">
-                        <SelectValue placeholder="선택하세요" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SURVEY_QUESTIONS.drinkingPartner.options.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+              <RadioGroupField
+                label={SURVEY_QUESTIONS.religionSelf.question}
+                value={surveyData.religionSelf}
+                options={SURVEY_QUESTIONS.religionSelf.options}
+                onChange={(value) => setSurveyData({ ...surveyData, religionSelf: value })}
+                fieldId="religionSelf-edit"
+              />
 
-                <div className="grid gap-3 sm:grid-cols-[120px_1fr_1fr] sm:items-center">
-                  <p className="text-sm font-semibold sm:text-center">Q10. 종교</p>
-                  <div className="space-y-2 sm:space-y-0 sm:flex sm:justify-center">
-                    <Label className="sm:hidden">{SURVEY_QUESTIONS.religionSelf.question}</Label>
-                    <Select
-                      value={surveyData.religionSelf}
-                      onValueChange={(value) => setSurveyData({ ...surveyData, religionSelf: value })}
-                    >
-                      <SelectTrigger className="bg-input h-10 sm:w-56">
-                        <SelectValue placeholder="선택하세요" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SURVEY_QUESTIONS.religionSelf.options.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2 sm:space-y-0 sm:flex sm:justify-center">
-                    <Label className="sm:hidden">{SURVEY_QUESTIONS.religionPartner.question}</Label>
-                    <Select
-                      value={surveyData.religionPartner}
-                      onValueChange={(value) => setSurveyData({ ...surveyData, religionPartner: value })}
-                    >
-                      <SelectTrigger className="bg-input h-10 sm:w-56">
-                        <SelectValue placeholder="선택하세요" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SURVEY_QUESTIONS.religionPartner.options.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+              <RadioGroupField
+                label={SURVEY_QUESTIONS.petSelf.question}
+                value={surveyData.petSelf}
+                options={SURVEY_QUESTIONS.petSelf.options}
+                onChange={(value) => setSurveyData({ ...surveyData, petSelf: value })}
+                fieldId="petSelf-edit"
+              />
 
-                <div className="grid gap-3 sm:grid-cols-[120px_1fr_1fr] sm:items-center">
-                  <p className="text-sm font-semibold sm:text-center">Q11. 반려동물</p>
-                  <div className="space-y-2 sm:space-y-0 sm:flex sm:justify-center">
-                    <Label className="sm:hidden">{SURVEY_QUESTIONS.petSelf.question}</Label>
-                    <Select
-                      value={surveyData.petSelf}
-                      onValueChange={(value) => setSurveyData({ ...surveyData, petSelf: value })}
-                    >
-                      <SelectTrigger className="bg-input h-10 sm:w-56">
-                        <SelectValue placeholder="선택하세요" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SURVEY_QUESTIONS.petSelf.options.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2 sm:space-y-0 sm:flex sm:justify-center">
-                    <Label className="sm:hidden">{SURVEY_QUESTIONS.petPartner.question}</Label>
-                    <Select
-                      value={surveyData.petPartner}
-                      onValueChange={(value) => setSurveyData({ ...surveyData, petPartner: value })}
-                    >
-                      <SelectTrigger className="bg-input h-10 sm:w-56">
-                        <SelectValue placeholder="선택하세요" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SURVEY_QUESTIONS.petPartner.options.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+              <div className="flex gap-3">
+                <Button type="button" variant="outline" onClick={() => setSurveyStep(2)} className="flex-1">
+                  이전
+                </Button>
+                <Button
+                  onClick={() => setSurveyStep(4)}
+                  className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  다음
+                </Button>
               </div>
             </div>
+          )}
 
-            <div className="space-y-4">
-              <h3 className="font-semibold text-sm">Phase 4. 관심사 태그 (Talk Topics)</h3>
+          {/* Step 4: 상대 허용범위 (The Real Deal - Partner) */}
+          {surveyStep === 4 && (
+            <div className="space-y-10 mt-4">
+              <div className="space-y-1">
+                <h3 className="font-semibold text-center">매칭됐으면 하는 상대의 조건을 알려주세요!</h3>
+                <p className="text-sm text-muted-foreground text-center">매칭시에 사용되는 정보입니다. 타인에게는 노출되지 않습니다.</p>
+              </div>
 
-              <div className="space-y-2">
-                <Label>{SURVEY_QUESTIONS.interests.question} (최대 5개)</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  {SURVEY_QUESTIONS.interests.options.map((opt) => (
-                    <div key={opt.value} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`interest-edit-${opt.value}`}
-                        checked={surveyData.interests.includes(opt.value)}
-                        onCheckedChange={() => {
-                          if (surveyData.interests.includes(opt.value)) {
-                            setSurveyData({
-                              ...surveyData,
-                              interests: surveyData.interests.filter((i) => i !== opt.value),
-                            })
-                          } else if (surveyData.interests.length < 5) {
-                            setSurveyData({
-                              ...surveyData,
-                              interests: [...surveyData.interests, opt.value],
-                            })
-                          }
-                        }}
-                        disabled={!surveyData.interests.includes(opt.value) && surveyData.interests.length >= 5}
-                      />
-                      <label htmlFor={`interest-edit-${opt.value}`} className="text-sm cursor-pointer">
-                        {opt.label}
-                      </label>
-                    </div>
-                  ))}
-                </div>
-                <p className="text-xs text-muted-foreground">{surveyData.interests.length}/5 선택됨</p>
+              <RadioGroupField
+                label={SURVEY_QUESTIONS.smokingPartner.question}
+                value={surveyData.smokingPartner}
+                options={SURVEY_QUESTIONS.smokingPartner.options}
+                onChange={(value) => setSurveyData({ ...surveyData, smokingPartner: value })}
+                fieldId="smokingPartner-edit"
+              />
+
+              <RadioGroupField
+                label={SURVEY_QUESTIONS.drinkingPartner.question}
+                value={surveyData.drinkingPartner}
+                options={SURVEY_QUESTIONS.drinkingPartner.options}
+                onChange={(value) => setSurveyData({ ...surveyData, drinkingPartner: value })}
+                fieldId="drinkingPartner-edit"
+              />
+
+              <RadioGroupField
+                label={SURVEY_QUESTIONS.religionPartner.question}
+                value={surveyData.religionPartner}
+                options={SURVEY_QUESTIONS.religionPartner.options}
+                onChange={(value) => setSurveyData({ ...surveyData, religionPartner: value })}
+                fieldId="religionPartner-edit"
+              />
+
+              <RadioGroupField
+                label={SURVEY_QUESTIONS.petPartner.question}
+                value={surveyData.petPartner}
+                options={SURVEY_QUESTIONS.petPartner.options}
+                onChange={(value) => setSurveyData({ ...surveyData, petPartner: value })}
+                fieldId="petPartner-edit"
+              />
+
+              <div className="flex gap-3">
+                <Button type="button" variant="outline" onClick={() => setSurveyStep(3)} className="flex-1">
+                  이전
+                </Button>
+                <Button
+                  onClick={handleSaveSurvey}
+                  className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      저장 중...
+                    </>
+                  ) : (
+                    "저장하기"
+                  )}
+                </Button>
               </div>
             </div>
-
-            <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={resetSurveyEdit} className="flex-1">
-                <X className="w-4 h-4 mr-2" />
-                취소
-              </Button>
-              <Button
-                onClick={handleSaveSurvey}
-                className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Save className="w-4 h-4 mr-2" />
-                )}
-                저장
-              </Button>
-            </div>
-          </div>
+          )}
         </DialogContent>
       </Dialog>
 
@@ -929,9 +882,6 @@ export function ProfilePage() {
             <DialogTitle className="text-center text-base font-medium text-muted-foreground">계정 삭제</DialogTitle>
           </DialogHeader>
           <div className="py-4 text-center">
-            <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4">
-              <Trash2 className="w-8 h-8 text-destructive" />
-            </div>
             <h3 className="text-lg font-semibold mb-2">정말 탈퇴하시겠어요?</h3>
             <p className="text-muted-foreground text-sm mb-6">탈퇴 시 모든 데이터가 삭제되며 복구할 수 없습니다.</p>
             <div className="space-y-2 text-left mb-6">
