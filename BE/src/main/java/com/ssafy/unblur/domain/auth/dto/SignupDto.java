@@ -1,9 +1,11 @@
 package com.ssafy.unblur.domain.auth.dto;
 
-import com.ssafy.unblur.domain.auth.model.AuthProvider;
 import com.ssafy.unblur.domain.auth.model.Gender;
 import jakarta.validation.constraints.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 
@@ -34,8 +36,4 @@ public class SignupDto {
 
     @NotNull(message = "성별은 필수 입력값입니다.")
     private Gender gender;
-
-    @Builder.Default
-    private AuthProvider authProvider = AuthProvider.LOCAL;
-
 }
