@@ -10,6 +10,7 @@ import com.ssafy.unblur.domain.auth.dto.SignupResponseDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -29,8 +30,51 @@ public interface AuthApiDocs {
      */
     @Operation(summary = "회원가입", description = "새로운 사용자를 등록합니다.")
     @ApiResponse(responseCode = "201", description = "회원가입 성공", content = @Content(schema = @Schema(implementation = SwaggerResponses.SignupResponse.class)))
-    @ApiResponse(responseCode = "400", description = "유효하지 않은 입력 값", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-    @ApiResponse(responseCode = "409", description = "이메일 또는 닉네임 중복", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(
+            responseCode = "400",
+            description = "유효하지 않은 입력 값 (이메일 형식 오류, 필수값 누락 등)",
+            content = @Content(
+                    schema = @Schema(implementation = ErrorResponse.class),
+                    examples = @ExampleObject(value = """
+                            {
+                              "isSuccess": false,
+                              "statusCode": 400,
+                              "message": "입력 값이 유효하지 않습니다.",
+                              "code": "COMMON-002"
+                            }
+                            """)
+            )
+    )
+    @ApiResponse(
+            responseCode = "409",
+            description = "이메일 중복",
+            content = @Content(
+                    schema = @Schema(implementation = ErrorResponse.class),
+                    examples = @ExampleObject(value = """
+                            {
+                            "isSuccess": false,
+                            "statusCode": 409,
+                            "message": "이미 존재하는 이메일입니다.",
+                            "code": "USER-003"
+                            }
+                            """)
+            )
+    )
+    @ApiResponse(
+            responseCode = "409",
+            description = "닉네임 중복",
+            content = @Content(
+                    schema = @Schema(implementation = ErrorResponse.class),
+                    examples = @ExampleObject(value = """
+                            {
+                            "isSuccess": false,
+                            "statusCode": 409,
+                            "message": "이미 존재하는 닉네임입니다.",
+                            "code": "USER-004"
+                            }
+                            """)
+            )
+    )
     ResponseEntity<BaseResponse<SignupResponseDto>> signUp(@RequestBody SignupDto signUpDto);
 
     /**
@@ -53,7 +97,7 @@ public interface AuthApiDocs {
      * @return 성공 시 200 상태 코드와 함께 중복 여부(true: 중복)를 반환
      */
     @Operation(summary = "닉네임 중복 확인", description = "닉네임 중복 여부를 체크합니다.")
-    @ApiResponse(responseCode = "200", description = "조회 성공 (true: 중복됨, false: 사용 가능)", content = @Content(schema = @Schema(implementation = BaseResponse.class)))
+    @ApiResponse(responseCode = "200", description = "조회 성공 (true: 중복됨, false: 사용 가능)", content = @Content(schema = @Schema(implementation = SwaggerResponses.DuplicateCheckResponse.class)))
     @ApiResponse(responseCode = "400", description = "유효하지 않은 닉네임 형식", content = @Content(schema = @Schema(implementation = BaseResponse.class)))
     ResponseEntity<BaseResponse<Boolean>> checkNickname(
             @Parameter(description = "중복 확인할 닉네임", example = "unblur")
