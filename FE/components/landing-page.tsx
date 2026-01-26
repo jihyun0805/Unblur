@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { LoginModal } from "@/components/auth/login-modal"
-import { RegisterModal } from "@/components/auth/register-modal"
+import { RegisterModal } from "@/components/auth/register/register-modal"
 import { Users, Clock, Shield, Eye, MessageCircle, Heart, Zap, User2 } from "lucide-react"
 import Image from "next/image"
 import { Header } from "@/components/common/header"
