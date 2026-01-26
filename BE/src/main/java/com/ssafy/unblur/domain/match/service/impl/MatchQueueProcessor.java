@@ -43,6 +43,11 @@ import java.util.concurrent.locks.ReentrantLock;
 public class MatchQueueProcessor {
 
     /**
+     * 타임아웃 시 임계치 비활성 값을 나타내는 상수
+     */
+    private static final double NO_THRESHOLD = -1.0;
+
+    /**
      * 매칭 대기열 저장소
      */
     private final MatchQueueStore queueStore;
@@ -150,7 +155,7 @@ public class MatchQueueProcessor {
                 }
 
                 // 타임아웃 시점에는 임계치 없이 최종 후보를 시도
-                boolean matched = tryMatch(item, user, -1.0, policy.immediateTopK());
+                boolean matched = tryMatch(item, user, NO_THRESHOLD, policy.immediateTopK());
                 if (!matched) {
                     item.markTimeout();
                 }
@@ -239,8 +244,8 @@ public class MatchQueueProcessor {
         // 요청 필터를 도메인 전용 필터로 변환
         MatchFilters filters = MatchFilters.from(item.getFilters());
         LocalDate now = LocalDate.now(clock);
-        LocalDate latestBirthDate = filters.ageMin() != null ? now.minusYears(filters.ageMin()) : null;
-        LocalDate earliestBirthDate = filters.ageMax() != null ? now.minusYears(filters.ageMax()) : null;
+        LocalDate maxBirthDate = filters.ageMin() != null ? now.minusYears(filters.ageMin()) : null;
+        LocalDate minBirthDate = filters.ageMax() != null ? now.minusYears(filters.ageMax()) : null;
 
         // pgvector 후보 조회(상위 K) 후 상호 필터/유사도 검증
         List<MatchCandidate> candidates = matchCandidateRepository.findQuickCandidates(
@@ -249,8 +254,8 @@ public class MatchQueueProcessor {
                 candidateIds,
                 filters.gender() != null ? filters.gender().name() : null,
                 filters.region() != null ? filters.region().name() : null,
-                latestBirthDate,
-                earliestBirthDate,
+                maxBirthDate,
+                minBirthDate,
                 limit
         );
 
@@ -278,7 +283,11 @@ public class MatchQueueProcessor {
 
             // 양방향 유사도 모두 임계치 통과해야 확정
             double reverseSimilarity = VectorUtils.cosineSimilarity(targetUser.getInterestsVector(), user.getInterestsVector());
-            if (candidate.similarity() == null || candidate.similarity() < threshold || reverseSimilarity < threshold) {
+            if (candidate.similarity() == null) {
+                continue;
+            }
+
+            if (threshold >= 0 && (candidate.similarity() < threshold || reverseSimilarity < threshold)) {
                 continue;
             }
 

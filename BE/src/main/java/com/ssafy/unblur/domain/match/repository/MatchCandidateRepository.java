@@ -19,8 +19,8 @@ public interface MatchCandidateRepository {
      * @param candidateIds      후보 사용자 ID 목록
      * @param gender            선호 성별
      * @param region            선호 지역
-     * @param latestBirthDate   최대 생년월일 (ageMin 기준)
-     * @param earliestBirthDate 최소 생년월일 (ageMax 기준)
+     * @param maxBirthDate 최대 생년월일 (ageMin 기준)
+     * @param minBirthDate 최소 생년월일 (ageMax 기준)
      * @param limit             조회 수
      * @return 유사도 높은 순으로 정렬된 후보 목록
      */
@@ -29,8 +29,8 @@ public interface MatchCandidateRepository {
                                              List<UUID> candidateIds,
                                              String gender,
                                              String region,
-                                             LocalDate latestBirthDate,
-                                             LocalDate earliestBirthDate,
+                                             LocalDate maxBirthDate,
+                                             LocalDate minBirthDate,
                                              int limit);
 
     /**

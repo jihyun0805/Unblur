@@ -31,8 +31,8 @@ public interface PostgresMatchCandidateRepository extends MatchCandidateReposito
                       and u.interests_vector is not null
                       and (:gender is null or u.gender = cast(:gender as varchar))
                       and (:region is null or u.region = cast(:region as varchar))
-                      and u.birth_date <= coalesce(cast(:latestBirthDate as date), u.birth_date)
-                      and u.birth_date >= coalesce(cast(:earliestBirthDate as date), u.birth_date)
+                      and u.birth_date <= coalesce(cast(:maxBirthDate as date), u.birth_date)
+                      and u.birth_date >= coalesce(cast(:minBirthDate as date), u.birth_date)
                       and not exists (
                         select 1 from user_blocks b
                         where (b.blocker_id = :userId and b.blocked_id = u.id)
@@ -48,7 +48,7 @@ public interface PostgresMatchCandidateRepository extends MatchCandidateReposito
                                              @Param("candidateIds") List<UUID> candidateIds,
                                              @Param("gender") String gender,
                                              @Param("region") String region,
-                                             @Param("latestBirthDate") LocalDate latestBirthDate,
-                                             @Param("earliestBirthDate") LocalDate earliestBirthDate,
+                                             @Param("maxBirthDate") LocalDate maxBirthDate,
+                                             @Param("minBirthDate") LocalDate minBirthDate,
                                              @Param("limit") int limit);
 }
