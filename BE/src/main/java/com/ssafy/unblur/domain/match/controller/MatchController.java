@@ -2,6 +2,7 @@ package com.ssafy.unblur.domain.match.controller;
 
 import com.ssafy.unblur.common.exception.ErrorResponse;
 import com.ssafy.unblur.common.response.BaseResponse;
+import com.ssafy.unblur.common.security.auth.CustomUserDetails;
 import com.ssafy.unblur.domain.match.dto.FastMatchingRequest;
 import com.ssafy.unblur.domain.match.dto.MatchingQueueResponse;
 import com.ssafy.unblur.domain.match.dto.OneOnOneMatchRequest;
@@ -12,12 +13,15 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PathVariable;
 
 @Tag(name = "Matching", description = "매칭 관련 API")
+@SecurityRequirement(name = "bearerAuth")
 public interface MatchController {
 
     /**
@@ -102,7 +106,10 @@ public interface MatchController {
                             }""")
             )
     )
-    ResponseEntity<BaseResponse<MatchingQueueResponse>> startQuickMatch(@RequestBody FastMatchingRequest request);
+    ResponseEntity<BaseResponse<MatchingQueueResponse>> startQuickMatch(
+            @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestBody FastMatchingRequest request
+    );
 
     /**
      * 1:1 매칭 요청 API
@@ -213,7 +220,10 @@ public interface MatchController {
                             }""")
             )
     )
-    ResponseEntity<BaseResponse<OneOnOneMatchResponse>> startOneOnOneMatch(@RequestBody OneOnOneMatchRequest request);
+    ResponseEntity<BaseResponse<OneOnOneMatchResponse>> startOneOnOneMatch(
+            @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestBody OneOnOneMatchRequest request
+    );
 
 
     /**
@@ -274,7 +284,9 @@ public interface MatchController {
                             }""")
             )
     )
-    ResponseEntity<BaseResponse<MatchingQueueResponse>> getQueueStatus();
+    ResponseEntity<BaseResponse<MatchingQueueResponse>> getQueueStatus(
+            @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails
+    );
 
     /**
      * 매칭 취소 API
@@ -340,6 +352,7 @@ public interface MatchController {
             )
     )
     ResponseEntity<BaseResponse<Object>> cancelQuickMatch(
+            @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
             @Parameter(description = "매칭 요청 ID", example = "0f4d8f6a-8df6-4fa9-9b9d-2b3bcd0b7b8f")
             @PathVariable("request_id") String requestId
     );
@@ -444,6 +457,7 @@ public interface MatchController {
             )
     )
     ResponseEntity<BaseResponse<OneOnOneMatchResponse>> acceptOneOnOne(
+            @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
             @Parameter(description = "매칭 요청 ID", example = "0f4d8f6a-8df6-4fa9-9b9d-2b3bcd0b7b8f")
             @PathVariable("request_id") String requestId
     );
@@ -548,6 +562,7 @@ public interface MatchController {
             )
     )
     ResponseEntity<BaseResponse<OneOnOneMatchResponse>> declineOneOnOne(
+            @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
             @Parameter(description = "매칭 요청 ID", example = "0f4d8f6a-8df6-4fa9-9b9d-2b3bcd0b7b8f")
             @PathVariable("request_id") String requestId
     );
