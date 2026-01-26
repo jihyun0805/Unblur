@@ -23,7 +23,7 @@ export function Header({ onLogout, onLoginClick, onRegisterClick }: HeaderProps)
   const isActive = (path: string) => pathname === path
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-transparent backdrop-blur-md border-b border-border/30">
+    <header className="shrink-0 z-50 bg-transparent backdrop-blur-md border-b border-border/30">
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
         {user ? (
