@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { LoginModal } from "@/components/auth/login-modal"
-import { RegisterModal } from "@/components/auth/register-modal"
+import { RegisterModal } from "@/components/auth/register/register-modal"
 import { Users, Clock, Shield, Eye, MessageCircle, Heart, Zap, User2 } from "lucide-react"
 import Image from "next/image"
 import { Header } from "@/components/common/header"
@@ -51,7 +51,7 @@ export function LandingPage() {
                 size="lg"
                 variant="outline"
                 onClick={() => setShowLogin(true)}
-                className="w-full sm:w-auto px-8 py-6 text-lg bg-card/50 backdrop-blur-sm"
+                className="w-full sm:w-auto px-8 py-6 text-lg bg-card/50 backdrop-blur-sm border-transparent hover:bg-card/50 hover:text-foreground hover:border-transparent"
               >
                 이미 계정이 있어요
               </Button>

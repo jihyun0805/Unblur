@@ -13,3 +13,6 @@ server:
 local:
   http:
     enabled: true
+
+jwt:
+  secret: ${JWT_SECRET}

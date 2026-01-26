@@ -1,6 +1,6 @@
 package com.ssafy.unblur.domain.match.model;
 
-import com.ssafy.unblur.domain.user.model.User;
+import com.ssafy.unblur.domain.auth.model.User;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

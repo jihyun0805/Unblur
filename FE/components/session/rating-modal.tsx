@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Star, Thermometer } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
@@ -36,6 +36,7 @@ export function RatingModal({ open, onComplete, partnerNickname }: RatingModalPr
   return (
     <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent className="sm:max-w-md bg-background" showCloseButton={false}>
+        <DialogTitle className="sr-only">상대방 평가</DialogTitle>
         <div className="py-4 text-center">
           {!submitted ? (
             <>

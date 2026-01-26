@@ -23,6 +23,13 @@ configurations {
 repositories {
 	mavenCentral()
 }
+
+dependencyManagement {
+	imports {
+		mavenBom "io.netty:netty-bom:4.2.9.Final" // Kurento 7.3.x는 Netty 4.2.x API를 사용하므로, 호환성을 위해 Netty BOM을 추가
+	}
+}
+
 dependencies {
 	// Spring Boot
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
@@ -35,9 +42,6 @@ dependencies {
 	developmentOnly 'org.springframework.boot:spring-boot-docker-compose'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'
-
-	// H2 database
-	testImplementation 'com.h2database:h2'
 
 	// Swagger
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.5'
@@ -55,12 +59,23 @@ dependencies {
 	// Junit
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
+    // Testcontainers
+    testImplementation 'org.testcontainers:testcontainers:1.19.8'
+    testImplementation 'org.testcontainers:junit-jupiter:1.19.8'
+    testImplementation 'org.testcontainers:postgresql:1.19.8'
+
 	// JWT
 	implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
 	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
 	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
+
+	// Kurento
+	implementation 'org.kurento:kurento-client:7.3.0'
 }
 
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
 
 tasks.named('test') {
 	useJUnitPlatform()

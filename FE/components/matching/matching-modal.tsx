@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { X, MapPin, Users } from "lucide-react"
@@ -89,6 +89,7 @@ export function MatchingModal({ open, onOpenChange, onMatchFound }: MatchingModa
       }}
     >
       <DialogContent className="sm:max-w-md bg-background">
+        <DialogTitle className="sr-only">빠른 매칭</DialogTitle>
         {step === "settings" ? (
           <div className="py-4">
             <h2 className="text-2xl font-bold text-center mb-2">빠른 매칭</h2>

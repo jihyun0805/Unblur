@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { apiFetch, clearAuthToken, getAuthToken, setAuthToken } from "@/lib/api"
 
-interface SurveyData {
+export interface SurveyData {
   dateStyle?: string
   contactStyle?: string
   conflictStyle?: string
@@ -22,7 +22,7 @@ interface SurveyData {
   interests?: string[]
 }
 
-interface User {
+export interface User {
   id: string
   username: string
   nickname: string
@@ -55,6 +55,8 @@ interface RegisterData {
   age: number
   gender: "male" | "female"
   region: string
+  mbti?: string
+  bio?: string
   surveyData?: SurveyData
 }
 
@@ -133,6 +135,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       gender: data.gender,
       region: data.region,
       birthDate: data.birthDate,
+      mbti: data.mbti,
+      bio: data.bio,
       surveyData: data.surveyData,
       temperature: 36.5,
       password: data.password,

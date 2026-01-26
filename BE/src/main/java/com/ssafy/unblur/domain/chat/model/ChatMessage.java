@@ -1,7 +1,7 @@
 package com.ssafy.unblur.domain.chat.model;
 
 import com.ssafy.unblur.domain.match.model.Conference;
-import com.ssafy.unblur.domain.user.model.User;
+import com.ssafy.unblur.domain.auth.model.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
