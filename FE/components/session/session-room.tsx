@@ -244,10 +244,6 @@ export function SessionRoom({
     }
   }
 
-  const handleRatingClose = () => {
-    setShowRating(false)
-    setPendingExternalLeave(false)
-  }
 
   const handleLeave = () => {
     setShowEndConfirm(true)
@@ -552,12 +548,7 @@ export function SessionRoom({
         onClose={() => setShowQuestionBank(false)}
       />
 
-      <RatingModal
-        open={showRating}
-        onComplete={handleRatingComplete}
-        onClose={handleRatingClose}
-        partnerNickname="상대방"
-      />
+      <RatingModal open={showRating} onComplete={handleRatingComplete} partnerNickname="상대방" />
     </div>
   )
 }

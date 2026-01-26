@@ -3,19 +3,18 @@
 import { useState } from "react"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Star, X } from "lucide-react"
+import { Star } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 
 interface RatingModalProps {
   open: boolean
   onComplete: () => void
-  onClose?: () => void
   partnerNickname: string
 }
 
 const RATING_LABELS = ["매우 불쾌", "불쾌", "보통", "좋음", "매우 좋음"]
 
-export function RatingModal({ open, onComplete, onClose, partnerNickname }: RatingModalProps) {
+export function RatingModal({ open, onComplete, partnerNickname }: RatingModalProps) {
   const { updateTemperature } = useAuth()
   const [rating, setRating] = useState(0)
   const [hoveredRating, setHoveredRating] = useState(0)
@@ -35,22 +34,12 @@ export function RatingModal({ open, onComplete, onClose, partnerNickname }: Rati
   const displayRating = hoveredRating || rating
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose?.() }}>
+    <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent className="sm:max-w-md bg-background" showCloseButton={false}>
         <DialogTitle className="sr-only">상대방 평가</DialogTitle>
         <div className="py-4 text-center">
           {!submitted ? (
             <>
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:text-foreground transition-colors"
-                  aria-label="닫기"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
               <h2 className="text-xl font-bold mb-2">상대방 평가</h2>
               <p className="text-muted-foreground mb-6">
                 <span className="font-medium">{partnerNickname}</span>님과의 대화는 어땠나요?
