@@ -3,8 +3,7 @@
 import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { X, MapPin, Users } from "lucide-react"
+import { X, Users } from "lucide-react"
 import { CameraTestModal } from "./camera-test-modal"
 
 interface MatchingModalProps {
@@ -13,11 +12,8 @@ interface MatchingModalProps {
   onMatchFound: (sessionId: string) => void
 }
 
-const REGIONS = ["전체", "서울", "경기", "인천", "부산", "대구", "대전", "광주", "울산"]
-
 export function MatchingModal({ open, onOpenChange, onMatchFound }: MatchingModalProps) {
   const [step, setStep] = useState<"settings" | "camera" | "matching">("settings")
-  const [region, setRegion] = useState("전체")
   const [matchingTime, setMatchingTime] = useState(0)
 
   useEffect(() => {
@@ -96,32 +92,16 @@ export function MatchingModal({ open, onOpenChange, onMatchFound }: MatchingModa
             <p className="text-muted-foreground text-center mb-6">새로운 사람과 블라인드 소개팅을 시작해보세요</p>
 
             <div className="space-y-4 mb-6">
-              <div className="space-y-2">
-                <label className="text-sm font-medium flex items-center gap-2">
-                  <MapPin className="w-4 h-4" />
-                  선호 지역
-                </label>
-                <Select value={region} onValueChange={setRegion}>
-                  <SelectTrigger className="bg-input">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {REGIONS.map((r) => (
-                      <SelectItem key={r} value={r}>
-                        {r}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="rounded-xl bg-card p-4">
+                <p className="font-medium">가치관 기반 매칭</p>
+                <p className="text-sm text-muted-foreground">대화 성향과 가치관이 맞는 상대를 우선 연결해요.</p>
               </div>
 
               <div className="flex items-center gap-3 p-4 rounded-xl bg-card">
                 <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
                 <div>
                   <p className="font-medium">현재 대기 중</p>
-                  <p className="text-sm text-muted-foreground">
-                    {region === "전체" ? "128명" : `${Math.floor(Math.random() * 30 + 10)}명`}
-                  </p>
+                  <p className="text-sm text-muted-foreground">128명</p>
                 </div>
               </div>
             </div>
