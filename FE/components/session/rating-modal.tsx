@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Star, Thermometer } from "lucide-react"
+import { Star } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 
 interface RatingModalProps {
@@ -40,9 +40,6 @@ export function RatingModal({ open, onComplete, partnerNickname }: RatingModalPr
         <div className="py-4 text-center">
           {!submitted ? (
             <>
-              <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
-                <Thermometer className="w-8 h-8 text-primary" />
-              </div>
               <h2 className="text-xl font-bold mb-2">상대방 평가</h2>
               <p className="text-muted-foreground mb-6">
                 <span className="font-medium">{partnerNickname}</span>님과의 대화는 어땠나요?
@@ -88,7 +85,7 @@ export function RatingModal({ open, onComplete, partnerNickname }: RatingModalPr
                 <Star className="w-8 h-8 text-green-600 fill-green-600" />
               </div>
               <h2 className="text-xl font-bold mb-2">평가 완료!</h2>
-              <p className="text-muted-foreground">평가가 상대방의 매너 온도에 반영되었습니다.</p>
+              <p className="text-muted-foreground">평가가 상대방의 선명도에 반영되었습니다.</p>
             </>
           )}
         </div>
