@@ -58,6 +58,11 @@ public class MatchQueueItem {
     private LocalDateTime matchedAt;
 
     /**
+     * 완화 단계 진입 시각
+     */
+    private LocalDateTime relaxedAt;
+
+    /**
      * 매칭 완료 처리하는 메서드
      *
      * @param matchedAt 매칭된 시각
@@ -79,6 +84,17 @@ public class MatchQueueItem {
      */
     public void markTimeout() {
         this.status = MatchQueueStatus.TIMEOUT;
+    }
+
+    /**
+     * 완화 단계 진입 처리하는 메서드
+     *
+     * @param relaxedAt 완화 단계 시각
+     */
+    public void markRelaxed(LocalDateTime relaxedAt) {
+        if (this.relaxedAt == null) {
+            this.relaxedAt = relaxedAt;
+        }
     }
 
     /**
