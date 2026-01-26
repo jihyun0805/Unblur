@@ -4,9 +4,12 @@ import com.ssafy.unblur.common.exception.BaseException;
 import com.ssafy.unblur.common.exception.ErrorCode;
 import com.ssafy.unblur.common.util.VectorUtils;
 import com.ssafy.unblur.domain.match.config.MatchConfig.MatchPolicy;
+import com.ssafy.unblur.domain.match.dto.QuickMatchResultEvent;
+import com.ssafy.unblur.domain.match.dto.QuickMatchStageEvent;
 import com.ssafy.unblur.domain.match.model.Conference;
 import com.ssafy.unblur.domain.match.model.ConferenceParticipant;
 import com.ssafy.unblur.domain.match.model.ConferenceStatus;
+import com.ssafy.unblur.domain.match.model.MatchEventType;
 import com.ssafy.unblur.domain.match.model.MatchFilters;
 import com.ssafy.unblur.domain.match.model.MatchQueueItem;
 import com.ssafy.unblur.domain.match.model.MatchQueueType;
@@ -14,6 +17,7 @@ import com.ssafy.unblur.domain.match.repository.ConferenceParticipantRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRepository;
 import com.ssafy.unblur.domain.match.repository.MatchCandidateRepository;
 import com.ssafy.unblur.domain.match.repository.MatchCandidateRepository.MatchCandidate;
+import com.ssafy.unblur.domain.match.service.MatchEventPublisher;
 import com.ssafy.unblur.domain.match.service.MatchQueueStore;
 import com.ssafy.unblur.domain.auth.model.User;
 import com.ssafy.unblur.domain.auth.repository.UserRepository;
@@ -76,6 +80,11 @@ public class MatchQueueProcessor {
      * 매칭 정책 설정값
      */
     private final MatchPolicy policy;
+
+    /**
+     * 매칭 이벤트 전송기
+     */
+    private final MatchEventPublisher eventPublisher;
 
     /**
      * 기준 시각 제공용 Clock
@@ -172,6 +181,11 @@ public class MatchQueueProcessor {
         LocalDateTime now = LocalDateTime.now(clock);
         for (MatchQueueItem item : queueStore.findWaitingByType(MatchQueueType.QUICK)) {
             if (isOlderThan(item, now, policy.relaxDelay())) {
+                if (item.getRelaxedAt() == null) {
+                    item.markRelaxed(now);
+                    publishRelaxedEvent(item, now);
+                }
+
                 User user = findUser(item.getRequesterUserId());
                 if (user == null) {
                     continue;
@@ -292,10 +306,11 @@ public class MatchQueueProcessor {
             }
 
             // 상호 임계치 통과 시 매칭 확정
-            createConference(user, targetUser);
+            Conference conference = createConference(user, targetUser);
             LocalDateTime matchedAt = LocalDateTime.now(clock);
             item.markMatched(matchedAt);
             targetItem.markMatched(matchedAt);
+            publishMatchedEvent(item, targetItem, conference, matchedAt);
             return true;
         }
 
@@ -327,13 +342,14 @@ public class MatchQueueProcessor {
             }
 
             // 최적 매칭 쌍 확정 후 컨퍼런스 생성
-            createConference(
+            Conference conference = createConference(
                     findUser(users, bestPair.left().getRequesterUserId()),
                     findUser(users, bestPair.right().getRequesterUserId())
             );
             LocalDateTime matchedAt = LocalDateTime.now(clock);
             bestPair.left().markMatched(matchedAt);
             bestPair.right().markMatched(matchedAt);
+            publishMatchedEvent(bestPair.left(), bestPair.right(), conference, matchedAt);
 
             batch.remove(bestPair.left());
             batch.remove(bestPair.right());
@@ -488,6 +504,55 @@ public class MatchQueueProcessor {
         conferenceParticipantRepository.save(recipientParticipant);
 
         return saved;
+    }
+
+    /**
+     * 완화 단계 진입 이벤트를 전송하는 메서드
+     *
+     * @param item 대기열 항목
+     * @param now  기준 시각
+     */
+    private void publishRelaxedEvent(MatchQueueItem item, LocalDateTime now) {
+        QuickMatchStageEvent event = QuickMatchStageEvent.builder()
+                .requestId(item.getRequestId().toString())
+                .stage("relaxed")
+                .threshold(policy.relaxedSimilarityThreshold())
+                .occurredAt(now)
+                .build();
+
+        eventPublisher.publish(item.getRequesterUserId(), MatchEventType.QUICK_RELAXED, event);
+    }
+
+    /**
+     * 매칭 완료 이벤트를 전송하는 메서드
+     *
+     * @param left     첫 번째 사용자 항목
+     * @param right    두 번째 사용자 항목
+     * @param matchedAt 매칭 완료 시각
+     */
+    private void publishMatchedEvent(MatchQueueItem left, MatchQueueItem right, Conference conference, LocalDateTime matchedAt) {
+        String conferenceId = conference.getId() != null ? conference.getId().toString() : null;
+
+        QuickMatchResultEvent leftEvent = QuickMatchResultEvent.builder()
+                .requestId(left.getRequestId().toString())
+                .status("matched")
+                .queueType(left.getQueueType().name().toLowerCase())
+                .matchedUserId(right.getRequesterUserId().toString())
+                .conferenceId(conferenceId)
+                .matchedAt(matchedAt)
+                .build();
+
+        QuickMatchResultEvent rightEvent = QuickMatchResultEvent.builder()
+                .requestId(right.getRequestId().toString())
+                .status("matched")
+                .queueType(right.getQueueType().name().toLowerCase())
+                .matchedUserId(left.getRequesterUserId().toString())
+                .conferenceId(conferenceId)
+                .matchedAt(matchedAt)
+                .build();
+
+        eventPublisher.publish(left.getRequesterUserId(), MatchEventType.QUICK_MATCHED, leftEvent);
+        eventPublisher.publish(right.getRequesterUserId(), MatchEventType.QUICK_MATCHED, rightEvent);
     }
 
     /**

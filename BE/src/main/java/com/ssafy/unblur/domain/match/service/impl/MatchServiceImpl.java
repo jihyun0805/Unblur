@@ -5,9 +5,11 @@ import com.ssafy.unblur.common.exception.ErrorCode;
 import com.ssafy.unblur.domain.match.config.MatchConfig.MatchPolicy;
 import com.ssafy.unblur.domain.match.dto.FastMatchingRequest;
 import com.ssafy.unblur.domain.match.dto.MatchingQueueResponse;
+import com.ssafy.unblur.domain.match.model.MatchEventType;
 import com.ssafy.unblur.domain.match.model.MatchQueueItem;
 import com.ssafy.unblur.domain.match.model.MatchQueueStatus;
 import com.ssafy.unblur.domain.match.model.MatchQueueType;
+import com.ssafy.unblur.domain.match.service.MatchEventPublisher;
 import com.ssafy.unblur.domain.match.service.MatchQueueStore;
 import com.ssafy.unblur.domain.match.service.MatchService;
 import com.ssafy.unblur.domain.auth.model.User;
@@ -45,6 +47,11 @@ public class MatchServiceImpl implements MatchService {
      * 매칭 대기열 처리 컴포넌트
      */
     private final MatchQueueProcessor queueProcessor;
+
+    /**
+     * 매칭 상태 알림 전송기
+     */
+    private final MatchEventPublisher eventPublisher;
 
     /**
      * 매칭 정책 설정값
@@ -87,9 +94,15 @@ public class MatchServiceImpl implements MatchService {
         queueStore.save(item);
 
         // 즉시 매칭 1회 시도
-        queueProcessor.tryImmediateMatch(item, user);
+        boolean matched = queueProcessor.tryImmediateMatch(item, user);
 
-        return buildResponse(item);
+        MatchingQueueResponse response = buildResponse(item);
+
+        if (!matched) {
+            eventPublisher.publish(userId, MatchEventType.QUICK_WAITING, response);
+        }
+
+        return response;
     }
 
     /**
