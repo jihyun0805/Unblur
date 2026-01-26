@@ -1,34 +1,51 @@
 package com.ssafy.unblur.domain.user.controller;
 
+import com.ssafy.unblur.common.exception.BaseException;
+import com.ssafy.unblur.common.exception.ErrorCode;
 import com.ssafy.unblur.common.response.BaseResponse;
 import com.ssafy.unblur.common.util.SecurityUtil;
+import com.ssafy.unblur.domain.user.dto.UserProfileResponseDto;
 import com.ssafy.unblur.domain.user.service.UserService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
-public class UserController {
+public class UserController implements UserApiDocs {
 
     private final UserService userService;
 
+    @Override
     @DeleteMapping("/me")
     public ResponseEntity<BaseResponse<Void>> withdraw(HttpServletResponse response) {
         String currentUserEmail = SecurityUtil.getCurrentUserEmail()
-                .orElseThrow(() -> new RuntimeException("인증된 사용자 정보를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BaseException(ErrorCode.UNAUTHORIZED));
 
         userService.withdraw(currentUserEmail);
 
         response.addCookie(clearRefreshTokenCookie());
 
         return ResponseEntity.ok(
-                BaseResponse.success(200, "회원 탈퇴가 성공적으로 처리되었습니다.", null)
+                new BaseResponse<>(200, "회원 탈퇴가 성공적으로 처리되었습니다.", null)
+        );
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<BaseResponse<UserProfileResponseDto>> getMyProfile() {
+        String email = SecurityUtil.getCurrentUserEmail()
+                .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
+
+        UserProfileResponseDto response = userService.getMyProfile(email);
+
+        return ResponseEntity.ok(
+                new BaseResponse<>(200, "내 정보 조회가 성공적으로 처리되었습니다.", response)
         );
     }
 
