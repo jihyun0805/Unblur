@@ -186,7 +186,6 @@ public class User {
                 .nickname(dto.getNickname())
                 .birthDate(dto.getBirthDate())
                 .gender(dto.getGender())
-                .authProvider(dto.getAuthProvider())
                 .build();
     }
 
