@@ -19,7 +19,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -90,6 +93,7 @@ public class ConferenceHistoryService {
                 conference.getCurrentRound(),
                 createdDate,
                 durationMinutes,
+                computeUnreadCount(conference),
                 partnerUser != null ? partnerUser.getNickname() : null,
                 partnerUser != null ? partnerUser.getProfileImageUrl() : null,
                 partnerUser != null ? partnerUser.getClarityScore() : null
@@ -116,5 +120,9 @@ public class ConferenceHistoryService {
         LocalDateTime effectiveEnd = endedAt != null ? endedAt : LocalDateTime.now();
         return Math.max(0L, Duration.between(startedAt, effectiveEnd).toMinutes());
     }
-}
 
+    private long computeUnreadCount(Conference conference) {
+        // TODO: 대화방별 미읽음 메시지 개수 계산
+        return 0L;
+    }
+}
