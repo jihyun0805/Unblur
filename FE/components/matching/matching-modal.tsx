@@ -89,18 +89,13 @@ export function MatchingModal({ open, onOpenChange, onMatchFound }: MatchingModa
         {step === "settings" ? (
           <div className="py-4">
             <h2 className="text-2xl font-bold text-center mb-2">빠른 매칭</h2>
-            <p className="text-muted-foreground text-center mb-6">새로운 사람과 블라인드 소개팅을 시작해보세요</p>
+            <p className="text-muted-foreground text-center mb-6">대화 성향과 가치관이 맞는 상대를 우선 연결해요.</p>
 
             <div className="space-y-4 mb-6">
-              <div className="rounded-xl bg-card p-4">
-                <p className="font-medium">가치관 기반 매칭</p>
-                <p className="text-sm text-muted-foreground">대화 성향과 가치관이 맞는 상대를 우선 연결해요.</p>
-              </div>
-
               <div className="flex items-center gap-3 p-4 rounded-xl bg-card">
                 <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
                 <div>
-                  <p className="font-medium">현재 대기 중</p>
+                  <p className="font-medium">현재 온라인</p>
                   <p className="text-sm text-muted-foreground">128명</p>
                 </div>
               </div>
