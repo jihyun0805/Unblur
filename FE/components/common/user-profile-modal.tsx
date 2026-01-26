@@ -26,7 +26,7 @@ export function UserProfileModal({ open, onOpenChange, profile }: UserProfileMod
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md bg-background max-h-[90vh] overflow-y-auto">
-        <div className="space-y-4">
+        <div className="space-y-3 pt-2">
           {/* 닉네임, 선명도 */}
           <div className="flex items-center gap-4 px-4">
             <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
@@ -60,6 +60,8 @@ export function UserProfileModal({ open, onOpenChange, profile }: UserProfileMod
               <p className="font-medium">{profile.region || "-"}</p>
             </div>
           </div>
+
+          <hr className="border-border" />
 
           {/* MBTI, 한줄소개, 관심사태그 */}
           <div className="space-y-4 p-4 rounded-xl bg-card">
