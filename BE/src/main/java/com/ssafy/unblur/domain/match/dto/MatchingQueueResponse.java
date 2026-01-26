@@ -1,12 +1,14 @@
 package com.ssafy.unblur.domain.match.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.Builder;
 
 import java.time.LocalDateTime;
 
 /**
  * 매칭 대기열 등록 결과 DTO
  */
+@Builder
 @Schema(description = "매칭 대기열 등록 결과")
 public record MatchingQueueResponse(
 
