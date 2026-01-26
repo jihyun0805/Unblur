@@ -1,6 +1,6 @@
 "use client"
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { User } from "lucide-react"
 import { SURVEY_QUESTIONS } from "@/lib/survey-questions"
@@ -20,18 +20,13 @@ interface UserProfileModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   profile: UserProfileData
-  title?: string
 }
 
-export function UserProfileModal({ open, onOpenChange, profile, title = "프로필" }: UserProfileModalProps) {
+export function UserProfileModal({ open, onOpenChange, profile }: UserProfileModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md bg-background max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">{title}</DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-4 mt-4">
+        <div className="space-y-4">
           {/* 닉네임, 선명도 */}
           <div className="flex items-center gap-4 px-4">
             <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
