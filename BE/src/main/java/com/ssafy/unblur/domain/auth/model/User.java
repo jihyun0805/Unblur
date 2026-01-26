@@ -2,7 +2,10 @@ package com.ssafy.unblur.domain.auth.model;
 
 import com.ssafy.unblur.domain.auth.dto.SignupDto;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.hibernate.annotations.ColumnTransformer;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -11,6 +14,7 @@ import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Period;
 import java.util.Map;
 import java.util.UUID;
 
@@ -199,5 +203,10 @@ public class User {
         this.region = null;
         this.mbti = null;
         this.lastActiveAt = null;
+    }
+
+    public int getAge() {
+        if (this.birthDate == null) return 0;
+        return Period.between(birthDate, LocalDate.now()).getYears();
     }
 }
