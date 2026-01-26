@@ -1,7 +1,7 @@
 package com.ssafy.unblur.domain.chat.model;
 
-import com.ssafy.unblur.domain.match.model.Conference;
 import com.ssafy.unblur.domain.auth.model.User;
+import com.ssafy.unblur.domain.match.model.Conference;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -23,7 +23,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * 소개팅 세션 내 채팅 메시지 엔티티.
+ * 컨퍼런스 내 채팅 메시지 엔티티
  */
 @Entity
 @Table(name = "chat_messages")
@@ -34,41 +34,54 @@ import java.util.UUID;
 public class ChatMessage {
 
     /**
-     * 메시지 ID (PK).
+     * 메시지 ID (PK)
      */
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     /**
-     * 소속 세션.
+     * 소속 컨퍼런스
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "conference_id", nullable = false)
     private Conference conference;
 
     /**
-     * 발신자 (시스템 메시지는 null 가능).
+     * 발신자 (시스템 메시지는 null 가능)
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
 
     /**
-     * 메시지 유형.
+     * 메시지 유형
      */
     @Enumerated(EnumType.STRING)
     @Column(name = "message_type", nullable = false, length = 20)
     private ChatMessageType messageType;
 
     /**
-     * 메시지 본문.
+     * 메시지 본문
      */
     @Column(columnDefinition = "text", nullable = false)
     private String content;
 
     /**
-     * 전송 시각.
+     * 읽음 여부(수신자 기준)
+     */
+    @Builder.Default
+    @Column(name = "is_read", nullable = false)
+    private boolean isRead = false;
+
+    /**
+     * 읽은 시각
+     */
+    @Column(name = "read_at")
+    private LocalDateTime readAt;
+
+    /**
+     * 전송 시각
      */
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
