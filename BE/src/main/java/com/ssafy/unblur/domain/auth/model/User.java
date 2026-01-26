@@ -92,6 +92,12 @@ public class User {
     private Mbti mbti;
 
     /**
+     * 프로필 이미지 URL.
+     */
+    @Column(name = "profile_image_url", length = 500)
+    private String profileImageUrl;
+
+    /**
      * 한 줄 소개.
      */
     @Column(name = "intro", length = 200)
@@ -192,6 +198,7 @@ public class User {
         this.email = this.email + "_del_" + this.id.toString().substring(0, 8);
         this.nickname = "탈퇴" + this.id.toString().substring(0, 7);
         this.password = "DELETED";
+        this.profileImageUrl = null;
         this.intro = null;
         this.detailedInfo = null;
         this.interestTags = null;
