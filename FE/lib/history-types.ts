@@ -11,4 +11,5 @@ export interface HistoryItem {
   birthDate?: string
   bio?: string
   mbti?: string
+  interests?: string[]
 }

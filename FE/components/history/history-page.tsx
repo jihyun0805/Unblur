@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { ChatModal } from "./chat-modal"
-import { PartnerProfileModal } from "./partner-profile-modal"
+import { UserProfileModal } from "@/components/common/user-profile-modal"
 import { useAuth } from "@/contexts/auth-context"
 import { useHistory } from "@/hooks/use-history"
 import type { HistoryItem } from "@/lib/history-types"
@@ -72,17 +72,18 @@ export function HistoryPage() {
       )}
 
       {selectedProfile && (
-        <PartnerProfileModal
+        <UserProfileModal
           open={!!selectedProfile}
           onOpenChange={(open) => !open && setSelectedProfile(null)}
-          partner={{
-            partnerNickname: selectedProfile.partnerNickname,
+          profile={{
+            nickname: selectedProfile.partnerNickname,
+            temperature: selectedProfile.partnerTemp,
             age: selectedProfile.age,
             gender: selectedProfile.gender,
             region: selectedProfile.region,
-            birthDate: selectedProfile.birthDate,
             bio: selectedProfile.bio,
             mbti: selectedProfile.mbti,
+            interests: selectedProfile.interests,
           }}
         />
       )}
