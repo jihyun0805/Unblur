@@ -57,4 +57,6 @@ deploy_master:
       "export BE_IMAGE=$BE_IMAGE FE_IMAGE=$FE_IMAGE IMAGE_TAG=$IMAGE_TAG; \
        docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_TOKEN; \
        docker compose -f /opt/unblur/infra/docker-compose.yml pull be fe; \
-       docker compose -f /opt/unblur/infra/docker-compose.yml up -d be fe"
+       docker compose -f /opt/unblur/infra/docker-compose.yml up -d be fe; \
+       docker exec unblur-dev-nginx-1 nginx -t; \
+       docker exec unblur-dev-nginx-1 nginx -s reload"
