@@ -11,6 +11,8 @@ import com.ssafy.unblur.domain.chat.service.ChatMessageService;
 import io.swagger.v3.oas.annotations.Parameter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -31,7 +33,9 @@ public class ChatMessageController {
     @GetMapping("/messages")
     public ResponseEntity<BaseResponse<ChatMessagePageResponseDto>> getMessages(
             @PathVariable UUID conferenceId,
-            @Parameter(hidden = true) Pageable pageable
+            @Parameter(hidden = true)
+            @PageableDefault(size = 100, sort = "createdAt", direction = Sort.Direction.DESC)
+            Pageable pageable
     ) {
         String email = SecurityUtil.getCurrentUserEmail()
                 .orElseThrow(() -> new BaseException(ErrorCode.UNAUTHORIZED));

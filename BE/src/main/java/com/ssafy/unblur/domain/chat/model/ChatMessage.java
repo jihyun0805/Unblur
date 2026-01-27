@@ -68,19 +68,6 @@ public class ChatMessage {
     private String content;
 
     /**
-     * 읽음 여부(수신자 기준)
-     */
-    @Builder.Default
-    @Column(name = "is_read", nullable = false)
-    private boolean isRead = false;
-
-    /**
-     * 읽은 시각
-     */
-    @Column(name = "read_at")
-    private LocalDateTime readAt;
-
-    /**
      * 전송 시각
      */
     @CreationTimestamp

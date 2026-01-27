@@ -4,6 +4,7 @@ import com.ssafy.unblur.common.exception.BaseException;
 import com.ssafy.unblur.common.exception.ErrorCode;
 import com.ssafy.unblur.domain.auth.model.User;
 import com.ssafy.unblur.domain.auth.repository.UserRepository;
+import com.ssafy.unblur.domain.chat.repository.ChatMessageRepository;
 import com.ssafy.unblur.domain.match.dto.ConferenceHistoryItemDto;
 import com.ssafy.unblur.domain.match.dto.ConferenceHistoryResponseDto;
 import com.ssafy.unblur.domain.match.dto.ConferenceHistorySummaryDto;
@@ -31,6 +32,7 @@ public class ConferenceHistoryService {
 
     private final UserRepository userRepository;
     private final ConferenceParticipantRepository conferenceParticipantRepository;
+    private final ChatMessageRepository chatMessageRepository;
 
     @Transactional(readOnly = true)
     public ConferenceHistoryResponseDto getMyConferenceHistory(String email, Pageable pageable) {
@@ -93,7 +95,7 @@ public class ConferenceHistoryService {
                 conference.getCurrentRound(),
                 createdDate,
                 durationMinutes,
-                computeUnreadCount(conference),
+                computeUnreadCount(conference, participant, me),
                 partnerUser != null ? partnerUser.getNickname() : null,
                 partnerUser != null ? partnerUser.getProfileImageUrl() : null,
                 partnerUser != null ? partnerUser.getClarityScore() : null
@@ -121,8 +123,11 @@ public class ConferenceHistoryService {
         return Math.max(0L, Duration.between(startedAt, effectiveEnd).toMinutes());
     }
 
-    private long computeUnreadCount(Conference conference) {
-        // TODO: 대화방별 미읽음 메시지 개수 계산
-        return 0L;
+    private long computeUnreadCount(Conference conference, ConferenceParticipant participant, User me) {
+        return chatMessageRepository.countUnreadMessages(
+                conference.getId(),
+                me.getId(),
+                participant.getLastReadAt()
+        );
     }
 }
