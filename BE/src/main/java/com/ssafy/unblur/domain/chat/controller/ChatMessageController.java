@@ -37,7 +37,7 @@ public class ChatMessageController {
                 .orElseThrow(() -> new BaseException(ErrorCode.UNAUTHORIZED));
 
         ChatMessagePageResponseDto response = chatMessageService.getMessages(conferenceId, pageable, email);
-        return ResponseEntity.ok(BaseResponse.success(200, "대화방 메시지 조회 성공", response));
+        return ResponseEntity.ok(new BaseResponse<>(200, "대화방 메시지 조회 성공", response));
     }
 
     @PostMapping("/read")
@@ -49,6 +49,6 @@ public class ChatMessageController {
                 .orElseThrow(() -> new BaseException(ErrorCode.UNAUTHORIZED));
 
         ChatReadEventDto response = chatMessageService.markAsRead(conferenceId, request.lastReadAt(), email);
-        return ResponseEntity.ok(BaseResponse.success(200, "읽음 처리 성공", response));
+        return ResponseEntity.ok(new BaseResponse<>(200, "읽음 처리 성공", response));
     }
 }
