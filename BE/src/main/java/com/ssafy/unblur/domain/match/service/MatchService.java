@@ -2,6 +2,8 @@ package com.ssafy.unblur.domain.match.service;
 
 import com.ssafy.unblur.domain.match.dto.FastMatchingRequest;
 import com.ssafy.unblur.domain.match.dto.MatchingQueueResponse;
+import com.ssafy.unblur.domain.match.dto.OneOnOneMatchRequest;
+import com.ssafy.unblur.domain.match.dto.OneOnOneMatchResponse;
 
 import java.util.UUID;
 
@@ -34,5 +36,32 @@ public interface MatchService {
      * @return 대기열 상태 (대기 중인 요청이 없으면 null)
      */
     MatchingQueueResponse getQueueStatus(UUID userId);
+
+    /**
+     * 1:1 매칭 요청을 처리하는 메서드
+     *
+     * @param userId  요청자 사용자 ID
+     * @param request 1:1 매칭 요청 DTO
+     * @return 1:1 매칭 응답
+     */
+    OneOnOneMatchResponse startOneOnOneMatch(UUID userId, OneOnOneMatchRequest request);
+
+    /**
+     * 1:1 매칭 요청을 수락하는 메서드
+     *
+     * @param userId    수신자 사용자 ID
+     * @param requestId 매칭 요청 ID
+     * @return 1:1 매칭 응답
+     */
+    OneOnOneMatchResponse acceptOneOnOneMatch(UUID userId, String requestId);
+
+    /**
+     * 1:1 매칭 요청을 거절하는 메서드
+     *
+     * @param userId    수신자 사용자 ID
+     * @param requestId 매칭 요청 ID
+     * @return 1:1 매칭 응답
+     */
+    OneOnOneMatchResponse declineOneOnOneMatch(UUID userId, String requestId);
 
 }

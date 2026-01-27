@@ -105,4 +105,11 @@ public class MatchQueueItem {
     public boolean isWaiting() {
         return this.status == MatchQueueStatus.WAITING;
     }
+
+    /**
+     * 거절 처리하는 메서드 (1:1 매칭)
+     */
+    public void markDeclined() {
+        this.status = MatchQueueStatus.DECLINED;
+    }
 }

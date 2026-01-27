@@ -23,5 +23,10 @@ public enum MatchQueueStatus {
     /**
      * 타임아웃
      */
-    TIMEOUT
+    TIMEOUT,
+
+    /**
+     * 거절됨 (1:1 매칭)
+     */
+    DECLINED
 }
