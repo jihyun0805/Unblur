@@ -105,4 +105,19 @@ public class SwaggerResponses {
         @Schema(description = "응답 데이터")
         private UserSurveyResponseDto data;
     }
+
+    @Schema(description = "설문조사 정보 수정 성공")
+    public static class SurveyUpdateResponse extends BaseResponse<UserSurveyResponseDto> {
+        @Schema(description = "성공 여부", example = "true")
+        public boolean isSuccess;
+
+        @Schema(description = "상태 코드", example = "200")
+        public int statusCode;
+
+        @Schema(description = "응답 메시지", example = "설문조사 정보 수정 성공")
+        public String message;
+
+        @Schema(description = "응답 데이터")
+        private UserSurveyResponseDto data;
+    }
 }
