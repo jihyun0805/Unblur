@@ -60,7 +60,7 @@ export function OneOnOneModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md bg-background">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold text-center">1:1 채팅</DialogTitle>
+          <DialogTitle className="text-2xl font-bold text-center">1:1 매칭</DialogTitle>
           <p className="text-sm text-muted-foreground text-center mt-2">
             현재 활동 중인 사람들에게 매칭 요청을 보내보세요!
           </p>
