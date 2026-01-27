@@ -6,6 +6,8 @@ import org.springframework.context.annotation.Configuration;
 
 /**
  * Kurento 클라이언트 설정 클래스
+ * <p>
+ * KurentoClient는 연결 재생성 이슈가 있어 Provider 패턴으로 관리한다.
  */
 @Configuration
 public class KurentoConfig {
