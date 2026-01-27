@@ -1,8 +1,10 @@
 package com.ssafy.unblur.domain.user.controller;
 
+import com.ssafy.unblur.common.exception.BaseException;
 import com.ssafy.unblur.common.response.BaseResponse;
 import com.ssafy.unblur.domain.user.dto.UserProfileResponseDto;
 import com.ssafy.unblur.domain.user.dto.UserProfileUpdateRequestDto;
+import com.ssafy.unblur.domain.user.dto.UserSurveyResponseDto;
 import com.ssafy.unblur.domain.user.service.UserService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
@@ -42,6 +44,15 @@ public class UserController implements UserApiDocs {
         UserProfileResponseDto updatedProfile = userService.updateMyProfile(dto);
         return ResponseEntity.ok(
                 BaseResponse.onSuccess("프로필 수정 성공", updatedProfile)
+        );
+    }
+
+    @Override
+    @GetMapping("/me/survey")
+    public ResponseEntity<BaseResponse<UserSurveyResponseDto>> getMySurvey() {
+        UserSurveyResponseDto response = userService.getMySurvey();
+        return ResponseEntity.ok(
+                BaseResponse.onSuccess("설문조사 조회 성공", response)
         );
     }
 

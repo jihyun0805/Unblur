@@ -4,6 +4,7 @@ import com.ssafy.unblur.common.response.BaseResponse;
 import com.ssafy.unblur.common.response.SwaggerResponses;
 import com.ssafy.unblur.domain.user.dto.UserProfileResponseDto;
 import com.ssafy.unblur.domain.user.dto.UserProfileUpdateRequestDto;
+import com.ssafy.unblur.domain.user.dto.UserSurveyResponseDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -155,5 +156,9 @@ public interface UserApiDocs {
             )
     )
     ResponseEntity<BaseResponse<UserProfileResponseDto>> updateMyProfile(UserProfileUpdateRequestDto dto);
+
+    @Operation(summary = "설문조사 정보 조회", description = "현재 로그인된 사용자의 설문조사 정보를 조회합니다.")
+    @ApiResponse(responseCode = "200", description = "설문조사 조회 성공", content = @Content(schema = @Schema(implementation = SwaggerResponses.SurveyResponse.class)))
+    ResponseEntity<BaseResponse<UserSurveyResponseDto>> getMySurvey();
 
 }
