@@ -37,6 +37,10 @@ public class JWTUtil {
         return parseToken(token).get("username", String.class);
     }
 
+    public String getUserId(String token) {
+        return parseToken(token).get("userId", String.class);
+    }
+
     public String getJti(String token) {
         return parseToken(token).getId();
     }
@@ -49,23 +53,24 @@ public class JWTUtil {
         return parseToken(token).getExpiration().before(new Date());
     }
 
-    public String createJwt(String jti, String username, Long expiredMs) {
+    public String createJwt(String jti, String username, String userId, Long expiredMs) {
         return Jwts.builder()
                 .id(jti)
                 .claim("username", username)
+                .claim("userId", userId)
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date(System.currentTimeMillis() + expiredMs))
                 .signWith(secretKey)
                 .compact();
     }
 
-    public String createAccessToken(String username) {
+    public String createAccessToken(UUID userId, String username) {
         String jti = UUID.randomUUID().toString();
-        return createJwt(jti, username, ACCESS_TOKEN_EXPIRED_MS);
+        return createJwt(jti, username, userId.toString(), ACCESS_TOKEN_EXPIRED_MS);
     }
 
-    public String createRefreshToken(String username) {
+    public String createRefreshToken(UUID userId, String username) {
         String jti = UUID.randomUUID().toString();
-        return createJwt(jti, username, REFRESH_TOKEN_EXPIRED_MS);
+        return createJwt(jti, username, userId.toString(), REFRESH_TOKEN_EXPIRED_MS);
     }
 }

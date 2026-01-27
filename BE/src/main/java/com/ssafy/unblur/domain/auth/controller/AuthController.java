@@ -60,8 +60,8 @@ public class AuthController implements AuthApiDocs {
 
         User user = authService.login(loginRequest);
 
-        String accessToken = jwtUtil.createAccessToken(user.getEmail());
-        String refreshToken = jwtUtil.createRefreshToken(user.getEmail());
+        String accessToken = jwtUtil.createAccessToken(user.getId(), user.getEmail());
+        String refreshToken = jwtUtil.createRefreshToken(user.getId(), user.getEmail());
 
         refreshTokenService.saveRefreshToken(user, refreshToken, jwtUtil.getJti(refreshToken),
                 jwtUtil.getExpiration(refreshToken).toInstant());
