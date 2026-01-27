@@ -37,7 +37,7 @@ public class ChatMessageService {
 
     @Transactional(readOnly = true)
     public ChatMessagePageResponseDto getMessages(UUID conferenceId, Pageable pageable) {
-        User user = getCurrentUser(null);
+        User user = getCurrentUser();
 
         ConferenceParticipant participant = conferenceParticipantRepository
                 .findByConferenceIdAndUser(conferenceId, user)
@@ -64,8 +64,8 @@ public class ChatMessageService {
     }
 
     @Transactional
-    public ChatMessageResponseDto sendMessage(UUID conferenceId, ChatSendRequestDto request, String email) {
-        User user = getCurrentUser(email);
+    public ChatMessageResponseDto sendMessage(UUID conferenceId, ChatSendRequestDto request) {
+        User user = getCurrentUser();
 
         Conference conference = conferenceRepository.findById(conferenceId)
                 .orElseThrow(() -> new BaseException(ErrorCode.INVALID_INPUT_VALUE));
@@ -97,7 +97,7 @@ public class ChatMessageService {
 
     @Transactional
     public ChatReadEventDto markAsRead(UUID conferenceId, LocalDateTime lastReadAt) {
-        User user = getCurrentUser(null);
+        User user = getCurrentUser();
 
         conferenceParticipantRepository.findByConferenceIdAndUser(conferenceId, user)
                 .orElseThrow(() -> new BaseException(ErrorCode.ACCESS_DENIED));
@@ -113,13 +113,10 @@ public class ChatMessageService {
         );
     }
 
-    private User getCurrentUser(String email) {
-        String resolvedEmail = email;
-        if (resolvedEmail == null) {
-            resolvedEmail = SecurityUtil.getCurrentUserEmail()
-                    .orElseThrow(() -> new BaseException(ErrorCode.UNAUTHORIZED));
-        }
-        return userRepository.findByEmail(resolvedEmail)
+    private User getCurrentUser() {
+        String email = SecurityUtil.getCurrentUserEmail()
+                .orElseThrow(() -> new BaseException(ErrorCode.UNAUTHORIZED));
+        return userRepository.findByEmail(email)
                 .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
     }
 

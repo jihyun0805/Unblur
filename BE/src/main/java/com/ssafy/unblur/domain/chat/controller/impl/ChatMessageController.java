@@ -4,7 +4,9 @@ import com.ssafy.unblur.common.response.BaseResponse;
 import com.ssafy.unblur.domain.chat.controller.ChatMessageApiDocs;
 import com.ssafy.unblur.domain.chat.dto.event.ChatReadEventDto;
 import com.ssafy.unblur.domain.chat.dto.request.ChatReadRequestDto;
+import com.ssafy.unblur.domain.chat.dto.request.ChatSendRequestDto;
 import com.ssafy.unblur.domain.chat.dto.response.ChatMessagePageResponseDto;
+import com.ssafy.unblur.domain.chat.dto.response.ChatMessageResponseDto;
 import com.ssafy.unblur.domain.chat.service.ChatMessageService;
 import io.swagger.v3.oas.annotations.Parameter;
 import lombok.RequiredArgsConstructor;
@@ -49,5 +51,15 @@ public class ChatMessageController implements ChatMessageApiDocs {
         ChatReadEventDto response = chatMessageService.markAsRead(conferenceId, request.lastReadAt());
         messagingTemplate.convertAndSend("/sub/conferences/" + conferenceId, response);
         return ResponseEntity.ok(BaseResponse.onSuccess("읽음 처리 성공", response));
+    }
+
+    @PostMapping("/messages")
+    public ResponseEntity<BaseResponse<ChatMessageResponseDto>> sendMessage(
+            @PathVariable UUID conferenceId,
+            @RequestBody ChatSendRequestDto request
+    ) {
+        ChatMessageResponseDto response = chatMessageService.sendMessage(conferenceId, request);
+        messagingTemplate.convertAndSend("/sub/conferences/" + conferenceId, response);
+        return ResponseEntity.ok(BaseResponse.onSuccess("대화방 메시지 전송 성공", response));
     }
 }
