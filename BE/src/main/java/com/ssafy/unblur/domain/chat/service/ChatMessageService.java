@@ -6,12 +6,16 @@ import com.ssafy.unblur.common.util.SecurityUtil;
 import com.ssafy.unblur.domain.auth.model.User;
 import com.ssafy.unblur.domain.auth.repository.UserRepository;
 import com.ssafy.unblur.domain.chat.dto.event.ChatReadEventDto;
+import com.ssafy.unblur.domain.chat.dto.request.ChatSendRequestDto;
 import com.ssafy.unblur.domain.chat.dto.response.ChatMessagePageResponseDto;
 import com.ssafy.unblur.domain.chat.dto.response.ChatMessageResponseDto;
 import com.ssafy.unblur.domain.chat.model.ChatMessage;
+import com.ssafy.unblur.domain.chat.model.ChatMessageType;
 import com.ssafy.unblur.domain.chat.repository.ChatMessageRepository;
+import com.ssafy.unblur.domain.match.model.Conference;
 import com.ssafy.unblur.domain.match.model.ConferenceParticipant;
 import com.ssafy.unblur.domain.match.repository.ConferenceParticipantRepository;
+import com.ssafy.unblur.domain.match.repository.ConferenceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -27,12 +31,13 @@ import java.util.UUID;
 public class ChatMessageService {
 
     private final UserRepository userRepository;
+    private final ConferenceRepository conferenceRepository;
     private final ConferenceParticipantRepository conferenceParticipantRepository;
     private final ChatMessageRepository chatMessageRepository;
 
     @Transactional(readOnly = true)
     public ChatMessagePageResponseDto getMessages(UUID conferenceId, Pageable pageable) {
-        User user = getCurrentUser();
+        User user = getCurrentUser(null);
 
         ConferenceParticipant participant = conferenceParticipantRepository
                 .findByConferenceIdAndUser(conferenceId, user)
@@ -59,8 +64,40 @@ public class ChatMessageService {
     }
 
     @Transactional
+    public ChatMessageResponseDto sendMessage(UUID conferenceId, ChatSendRequestDto request, String email) {
+        User user = getCurrentUser(email);
+
+        Conference conference = conferenceRepository.findById(conferenceId)
+                .orElseThrow(() -> new BaseException(ErrorCode.INVALID_INPUT_VALUE));
+
+        conferenceParticipantRepository.findByConferenceIdAndUser(conferenceId, user)
+                .orElseThrow(() -> new BaseException(ErrorCode.ACCESS_DENIED));
+
+        ChatMessageType messageType = parseMessageType(request.type());
+
+        ChatMessage message = ChatMessage.builder()
+                .conference(conference)
+                .user(user)
+                .messageType(messageType)
+                .content(request.content())
+                .build();
+
+        ChatMessage saved = chatMessageRepository.saveAndFlush(message);
+
+        return new ChatMessageResponseDto(
+                saved.getId(),
+                user.getId(),
+                user.getNickname(),
+                messageType.name(),
+                saved.getContent(),
+                saved.getCreatedAt(),
+                false
+        );
+    }
+
+    @Transactional
     public ChatReadEventDto markAsRead(UUID conferenceId, LocalDateTime lastReadAt) {
-        User user = getCurrentUser();
+        User user = getCurrentUser(null);
 
         conferenceParticipantRepository.findByConferenceIdAndUser(conferenceId, user)
                 .orElseThrow(() -> new BaseException(ErrorCode.ACCESS_DENIED));
@@ -71,11 +108,22 @@ public class ChatMessageService {
         return new ChatReadEventDto(readAt);
     }
 
-    private User getCurrentUser() {
-        String email = SecurityUtil.getCurrentUserEmail()
-                .orElseThrow(() -> new BaseException(ErrorCode.UNAUTHORIZED));
-        return userRepository.findByEmail(email)
+    private User getCurrentUser(String email) {
+        String resolvedEmail = email;
+        if (resolvedEmail == null) {
+            resolvedEmail = SecurityUtil.getCurrentUserEmail()
+                    .orElseThrow(() -> new BaseException(ErrorCode.UNAUTHORIZED));
+        }
+        return userRepository.findByEmail(resolvedEmail)
                 .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
+    }
+
+    private ChatMessageType parseMessageType(String type) {
+        try {
+            return ChatMessageType.valueOf(type);
+        } catch (Exception e) {
+            throw new BaseException(ErrorCode.INVALID_INPUT_VALUE);
+        }
     }
 
     private LocalDateTime resolvePartnerLastReadAt(UUID conferenceId, UUID userId) {
