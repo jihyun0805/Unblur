@@ -2,7 +2,7 @@
 
 import { BackgroundLayout } from "./background-layout"
 import { Header } from "./header"
-import { FloatingMbtiButton } from "./floating-mbti-button"
+import { FloatingTestButton } from "./floating-test-button"
 
 interface MainLayoutProps {
   children: React.ReactNode
@@ -14,7 +14,7 @@ export function MainLayout({ children, onLogout }: MainLayoutProps) {
     <BackgroundLayout className="h-screen flex flex-col overflow-hidden">
       <Header onLogout={onLogout} />
       <main className="flex-1 overflow-y-auto py-6 px-4 custom-scrollbar">{children}</main>
-      <FloatingMbtiButton />
+      <FloatingTestButton />
     </BackgroundLayout>
   )
 }

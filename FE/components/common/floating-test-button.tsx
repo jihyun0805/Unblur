@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation"
 import { Brain, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-export function FloatingMbtiButton() {
+export function FloatingTestButton() {
   const pathname = usePathname()
   const [isHovered, setIsHovered] = useState(false)
   
