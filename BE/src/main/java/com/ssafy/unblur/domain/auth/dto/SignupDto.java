@@ -51,7 +51,7 @@ public class SignupDto {
     private Region region;
 
     @Schema(description = "설문 응답 상세 데이터(JSON")
-    private Map<String, Object> detailedInfo;
+    private List<Map<String, Object>> detailedInfo;
 
     @NotEmpty(message = "관심사를 최소 하나 이상 선택해주세요.")
     @Schema(description = "관심사 태그 목록", example = "[\"코딩\", \"만화\"]")
