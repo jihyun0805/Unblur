@@ -14,8 +14,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
-
 @RestController
 @RequestMapping("/api/v1/match")
 @RequiredArgsConstructor
@@ -41,16 +39,9 @@ public class MatchControllerImpl implements MatchController {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @Valid @RequestBody OneOnOneMatchRequest request
     ) {
-        OneOnOneMatchResponse response = new OneOnOneMatchResponse(
-                "queue-id",
-                "waiting",
-                "one-on-one",
-                request.getTargetUserId(),
-                "pending",
-                60,
-                LocalDateTime.parse("2024-01-14T14:30:00")
+        OneOnOneMatchResponse response = matchService.startOneOnOneMatch(
+                userDetails.getUserId(), request
         );
-
         return ResponseEntity.ok(
                 BaseResponse.onSuccess("1:1 매칭 요청이 성공적으로 처리되었습니다.", response)
         );
@@ -85,16 +76,9 @@ public class MatchControllerImpl implements MatchController {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable("request_id") String requestId
     ) {
-        OneOnOneMatchResponse response = new OneOnOneMatchResponse(
-                requestId,
-                "matched",
-                "one-on-one",
-                "0f4d8f6a-8df6-4fa9-9b9d-2b3bcd0b7b8f",
-                "accepted",
-                null,
-                LocalDateTime.parse("2024-01-14T14:30:00")
+        OneOnOneMatchResponse response = matchService.acceptOneOnOneMatch(
+                userDetails.getUserId(), requestId
         );
-
         return ResponseEntity.ok(
                 BaseResponse.onSuccess("1:1 매칭 요청이 성공적으로 수락되었습니다.", response)
         );
@@ -106,16 +90,9 @@ public class MatchControllerImpl implements MatchController {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable("request_id") String requestId
     ) {
-        OneOnOneMatchResponse response = new OneOnOneMatchResponse(
-                requestId,
-                "canceled",
-                "one-on-one",
-                "0f4d8f6a-8df6-4fa9-9b9d-2b3bcd0b7b8f",
-                "declined",
-                null,
-                LocalDateTime.parse("2024-01-14T14:30:00")
+        OneOnOneMatchResponse response = matchService.declineOneOnOneMatch(
+                userDetails.getUserId(), requestId
         );
-
         return ResponseEntity.ok(
                 BaseResponse.onSuccess("1:1 매칭 요청이 성공적으로 거절되었습니다.", response)
         );
