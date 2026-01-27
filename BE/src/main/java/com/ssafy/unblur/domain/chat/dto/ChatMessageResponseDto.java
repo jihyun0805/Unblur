@@ -10,7 +10,6 @@ public record ChatMessageResponseDto(
         String type,
         String content,
         LocalDateTime createdAt,
-        boolean isRead,
-        LocalDateTime readAt
+        boolean isReadByPartner
 ) {
 }

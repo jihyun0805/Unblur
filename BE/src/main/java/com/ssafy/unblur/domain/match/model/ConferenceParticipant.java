@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * 세션 참여자 매핑 엔티티.
+ * 컨퍼런스 참가자 매핑 엔티티
  */
 @Entity
 @Table(
@@ -29,21 +29,21 @@ import java.util.UUID;
 public class ConferenceParticipant {
 
     /**
-     * 참여자 ID (PK).
+     * 참가자 ID (PK).
      */
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     /**
-     * 참여한 세션.
+     * 참가한 컨퍼런스.
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "conference_id", nullable = false)
     private Conference conference;
 
     /**
-     * 참여 사용자.
+     * 참가 사용자
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
@@ -61,6 +61,12 @@ public class ConferenceParticipant {
      */
     @Column(name = "left_at")
     private LocalDateTime leftAt;
+
+    /**
+     * 마지막 읽음 시각.
+     */
+    @Column(name = "last_read_at")
+    private LocalDateTime lastReadAt;
 
     /**
      * 퇴장 시각을 기록하는 메서드
