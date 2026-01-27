@@ -12,6 +12,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -27,6 +28,7 @@ import java.util.UUID;
 public class ChatMessageController implements ChatMessageApiDocs {
 
     private final ChatMessageService chatMessageService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @GetMapping("/messages")
     public ResponseEntity<BaseResponse<ChatMessagePageResponseDto>> getMessages(
@@ -45,6 +47,7 @@ public class ChatMessageController implements ChatMessageApiDocs {
             @RequestBody ChatReadRequestDto request
     ) {
         ChatReadEventDto response = chatMessageService.markAsRead(conferenceId, request.lastReadAt());
+        messagingTemplate.convertAndSend("/sub/conferences/" + conferenceId, response);
         return ResponseEntity.ok(BaseResponse.onSuccess("읽음 처리 성공", response));
     }
 }

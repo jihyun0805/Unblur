@@ -105,7 +105,12 @@ public class ChatMessageService {
         LocalDateTime readAt = lastReadAt != null ? lastReadAt : LocalDateTime.now();
         conferenceParticipantRepository.updateLastReadAt(conferenceId, user, readAt);
 
-        return new ChatReadEventDto(readAt);
+        return new ChatReadEventDto(
+                ChatMessageType.SYSTEM.name(),
+                conferenceId,
+                user.getId(),
+                readAt
+        );
     }
 
     private User getCurrentUser(String email) {
