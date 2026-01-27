@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { MatchingModal } from "@/components/matching/matching-modal"
 import { OneOnOneModal } from "@/components/matching/one-on-one-modal"
 import { CameraTestModal } from "@/components/matching/camera-test-modal"
-import { Zap, Thermometer, UserPlus } from "lucide-react"
+import { Zap, UserPlus } from "lucide-react"
 
 export function HomePage() {
   const { user } = useAuth()
@@ -27,8 +27,8 @@ export function HomePage() {
   const handleRequestChat = (userId: string) => {
     setTimeout(() => {
       toast({
-        title: "1:1 채팅 수락!",
-        description: "상대방이 채팅 요청을 수락했습니다. 채팅방으로 이동하시겠습니까?",
+        title: "1:1 매칭 수락!",
+        description: "상대방이 매칭 요청을 수락했습니다. 매칭방으로 이동하시겠습니까?",
         action: (
           <Button
             size="sm"
@@ -52,6 +52,11 @@ export function HomePage() {
     return "text-blue-700"
   }
 
+  const getClarityPercent = (temp: number) => {
+    const percent = Math.round(((temp - 30) / 20) * 100)
+    return Math.max(0, Math.min(100, percent))
+  }
+
   return (
     <>
       <div className="max-w-4xl mx-auto">
@@ -59,11 +64,10 @@ export function HomePage() {
           <h1 className="text-2xl sm:text-3xl font-bold mb-2">안녕하세요, {user?.nickname}님!</h1>
           <p className="text-muted-foreground text-sm sm:text-base">오늘도 특별한 만남이 기다리고 있어요.</p>
           <div className="inline-flex items-center gap-2 mt-3 px-4 py-2 rounded-full bg-card">
-            <Thermometer className={`w-4 h-4 ${getTemperatureColor(user?.temperature || 36.5)}`} />
             <span className={`font-semibold ${getTemperatureColor(user?.temperature || 36.5)}`}>
-              {user?.temperature?.toFixed(1) || "36.5"}°C
+              {getClarityPercent(user?.temperature ?? 36.5)}%
             </span>
-            <span className="text-xs text-muted-foreground">매너 온도</span>
+            <span className="text-xs text-muted-foreground">선명도</span>
           </div>
         </div>
 
@@ -89,11 +93,11 @@ export function HomePage() {
               <div className="w-12 sm:w-14 h-12 sm:h-14 rounded-xl bg-secondary flex items-center justify-center mb-4">
                 <UserPlus className="w-6 sm:w-7 h-6 sm:h-7 text-secondary-foreground" />
               </div>
-              <h2 className="text-lg sm:text-xl font-bold mb-2">1:1 채팅</h2>
-              <p className="text-muted-foreground text-sm mb-4">이전에 대화했던 사람과 다시 연결해보세요.</p>
+              <h2 className="text-lg sm:text-xl font-bold mb-2">1:1 매칭</h2>
+              <p className="text-muted-foreground text-sm mb-4">현재 온라인인 사람들에게 매칭 요청을 보내보세요!</p>
               <Button onClick={() => setShowOneOnOne(true)} className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
                 <UserPlus className="w-4 h-4 mr-2" />
-                채팅 요청하기
+                매칭 요청하기
               </Button>
             </div>
           </div>

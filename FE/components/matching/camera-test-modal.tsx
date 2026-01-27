@@ -15,9 +15,9 @@ interface CameraTestModalProps {
 }
 
 const BLUR_LEVELS = [
-  { level: 20, label: "1라운드", description: "강한 블러" },
-  { level: 10, label: "2라운드", description: "약한 블러" },
-  { level: 3, label: "3라운드", description: "투명" },
+  { level: 20, label: "1라운드", description: "블라인드" },
+  { level: 10, label: "2라운드", description: "강한 블러" },
+  { level: 5, label: "3라운드", description: "약간 블러" },
   { level: 0, label: "최종", description: "완전 공개" },
 ]
 
@@ -147,62 +147,85 @@ export function CameraTestModal({ open, onOpenChange, onReady }: CameraTestModal
   }, [stream, beautyFilter])
 
   const initCamera = async () => {
+    // Check if mediaDevices API is available
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      console.error("[CameraTest] MediaDevices API not supported")
+      setHasCamera(false)
+      setHasMicrophone(false)
+      return
+    }
+
+    setHasCamera(null) // 로딩 상태
+    setHasMicrophone(null) // 로딩 상태
+
+    let videoStream: MediaStream | null = null
+    let audioStream: MediaStream | null = null
+
+    // 카메라 개별 확인
     try {
-      // Check if mediaDevices API is available
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        console.error("[CameraTest] MediaDevices API not supported")
-        setHasCamera(false)
-        return
-      }
-
-      setHasCamera(null) // 로딩 상태
-      setHasMicrophone(null) // 로딩 상태
-
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
+      videoStream = await navigator.mediaDevices.getUserMedia({
         video: { 
           facingMode: "user", 
           width: { ideal: 1280 },
           height: { ideal: 720 }
         },
-        audio: true, // 마이크 활성화
+        audio: false,
       })
       
-      setStream(mediaStream)
-      
-      // 비디오 트랙 확인
-      const videoTracks = mediaStream.getVideoTracks()
-      const audioTracks = mediaStream.getAudioTracks()
-      
-      setHasCamera(videoTracks.length > 0 && videoTracks[0].readyState === "live")
-      setHasMicrophone(audioTracks.length > 0 && audioTracks[0].readyState === "live")
+      const videoTracks = videoStream.getVideoTracks()
+      const cameraAvailable = videoTracks.length > 0 && videoTracks[0].readyState === "live"
+      setHasCamera(cameraAvailable)
+      console.log("[CameraTest] Camera check:", cameraAvailable)
       
       // 트랙 상태 변경 감지
       videoTracks.forEach((track) => {
-        track.onended = () => {
-          setHasCamera(false)
-        }
-        track.onmute = () => {
-          setHasCamera(false)
-        }
-        track.onunmute = () => {
-          setHasCamera(true)
-        }
+        track.onended = () => setHasCamera(false)
+        track.onmute = () => setHasCamera(false)
+        track.onunmute = () => setHasCamera(true)
+      })
+    } catch (error: any) {
+      console.error("[CameraTest] Camera access error:", error?.name, error?.message)
+      setHasCamera(false)
+    }
+
+    // 마이크 개별 확인
+    try {
+      audioStream = await navigator.mediaDevices.getUserMedia({
+        video: false,
+        audio: true,
       })
       
+      const audioTracks = audioStream.getAudioTracks()
+      const micAvailable = audioTracks.length > 0 && audioTracks[0].readyState === "live"
+      setHasMicrophone(micAvailable)
+      console.log("[CameraTest] Microphone check:", micAvailable)
+      
+      // 트랙 상태 변경 감지
       audioTracks.forEach((track) => {
-        track.onended = () => {
-          setHasMicrophone(false)
-        }
-        track.onmute = () => {
-          setHasMicrophone(false)
-        }
-        track.onunmute = () => {
-          setHasMicrophone(true)
-        }
+        track.onended = () => setHasMicrophone(false)
+        track.onmute = () => setHasMicrophone(false)
+        track.onunmute = () => setHasMicrophone(true)
       })
+    } catch (error: any) {
+      console.error("[CameraTest] Microphone access error:", error?.name, error?.message)
+      setHasMicrophone(false)
+    }
+
+    // 스트림 합치기 (둘 다 있거나 하나만 있는 경우 모두 처리)
+    if (videoStream || audioStream) {
+      const combinedStream = new MediaStream()
       
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream
+      if (videoStream) {
+        videoStream.getVideoTracks().forEach(track => combinedStream.addTrack(track))
+      }
+      if (audioStream) {
+        audioStream.getAudioTracks().forEach(track => combinedStream.addTrack(track))
+      }
+      
+      setStream(combinedStream)
+      
+      if (videoRef.current && videoStream) {
+        videoRef.current.srcObject = combinedStream
         
         // 비디오가 로드될 때까지 대기
         videoRef.current.onloadedmetadata = () => {
@@ -223,20 +246,6 @@ export function CameraTestModal({ open, onOpenChange, onReady }: CameraTestModal
           console.error("[CameraTest] Failed to play video:", error)
         })
       }
-    } catch (error: any) {
-      console.error("[CameraTest] Camera access error:", error?.name, error?.message)
-      
-      let errorMessage = "카메라 또는 마이크에 접근할 수 없습니다"
-      if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
-        errorMessage = "카메라/마이크 권한이 거부되었습니다. 브라우저 설정에서 권한을 허용해주세요."
-      } else if (error.name === "NotFoundError" || error.name === "DevicesNotFoundError") {
-        errorMessage = "카메라/마이크를 찾을 수 없습니다. 장치가 연결되어 있는지 확인해주세요."
-      } else if (error.name === "NotReadableError" || error.name === "TrackStartError") {
-        errorMessage = "카메라/마이크에 접근할 수 없습니다. 다른 애플리케이션에서 사용 중일 수 있습니다."
-      }
-      
-      setHasCamera(false)
-      setHasMicrophone(false)
     }
   }
 
@@ -297,7 +306,7 @@ export function CameraTestModal({ open, onOpenChange, onReady }: CameraTestModal
                     autoPlay 
                     playsInline 
                     muted 
-                    className="w-full h-full object-cover transition-all duration-500"
+                    className="w-full h-full object-cover transition-all duration-500 -scale-x-100"
                     style={{ filter: `blur(${currentBlur.level}px)` }}
                     onLoadedMetadata={() => {
                       console.log("[CameraTest] Video metadata loaded", {
@@ -333,7 +342,7 @@ export function CameraTestModal({ open, onOpenChange, onReady }: CameraTestModal
                     {/* Canvas with filters applied */}
                     <canvas
                       ref={canvasRef}
-                      className="w-full h-full object-cover transition-all duration-500"
+                      className="w-full h-full object-cover transition-all duration-500 -scale-x-100"
                       style={{ filter: `blur(${currentBlur.level}px)` }}
                       width={640}
                       height={480}
@@ -382,7 +391,7 @@ export function CameraTestModal({ open, onOpenChange, onReady }: CameraTestModal
                   <p
                     className={`text-xs mt-1 ${selectedBlur === index ? "text-primary-foreground/80" : "text-muted-foreground"}`}
                   >
-                    {blur.level}px
+                    {blur.description}
                   </p>
                 </button>
               ))}

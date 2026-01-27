@@ -2,6 +2,7 @@
 
 import { BackgroundLayout } from "./background-layout"
 import { Header } from "./header"
+import { FloatingTestButton } from "./floating-test-button"
 
 interface MainLayoutProps {
   children: React.ReactNode
@@ -10,9 +11,10 @@ interface MainLayoutProps {
 
 export function MainLayout({ children, onLogout }: MainLayoutProps) {
   return (
-    <BackgroundLayout>
+    <BackgroundLayout className="h-screen flex flex-col overflow-hidden">
       <Header onLogout={onLogout} />
-      <main className="pt-20 pb-10 px-4">{children}</main>
+      <main className="flex-1 overflow-y-auto py-6 px-4 custom-scrollbar">{children}</main>
+      <FloatingTestButton />
     </BackgroundLayout>
   )
 }

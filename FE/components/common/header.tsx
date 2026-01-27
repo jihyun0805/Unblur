@@ -23,7 +23,7 @@ export function Header({ onLogout, onLoginClick, onRegisterClick }: HeaderProps)
   const isActive = (path: string) => pathname === path
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-transparent backdrop-blur-md border-b border-border/30">
+    <header className="shrink-0 z-50 bg-transparent backdrop-blur-md border-b border-border/30">
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
         {user ? (
@@ -94,10 +94,10 @@ export function Header({ onLogout, onLoginClick, onRegisterClick }: HeaderProps)
           </nav>
         ) : (
           <div className="hidden sm:flex items-center gap-3">
-            <Button variant="ghost" onClick={onLoginClick} className="text-foreground">
+            <Button variant="ghost" onClick={onLoginClick} className="text-foreground hover:bg-sky-200/80">
               로그인
             </Button>
-            <Button onClick={onRegisterClick} className="bg-primary text-primary-foreground hover:bg-primary/90">
+            <Button onClick={onRegisterClick} className="bg-transparent text-foreground hover:bg-sky-200/80">
               시작하기
             </Button>
           </div>
@@ -163,7 +163,7 @@ export function Header({ onLogout, onLoginClick, onRegisterClick }: HeaderProps)
                 <>
                   <Button
                     variant="ghost"
-                    className="justify-start"
+                    className="justify-start hover:bg-sky-200/80"
                     onClick={() => {
                       onLoginClick?.()
                       setMobileMenuOpen(false)
@@ -172,7 +172,7 @@ export function Header({ onLogout, onLoginClick, onRegisterClick }: HeaderProps)
                     로그인
                   </Button>
                   <Button
-                    className="bg-primary text-primary-foreground hover:bg-primary/90"
+                    className="bg-transparent text-foreground hover:bg-sky-200/80"
                     onClick={() => {
                       onRegisterClick?.()
                       setMobileMenuOpen(false)

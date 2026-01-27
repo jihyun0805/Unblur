@@ -1,9 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { LoginModal } from "@/components/auth/login-modal"
-import { RegisterModal } from "@/components/auth/register-modal"
+import { RegisterModal } from "@/components/auth/register/register-modal"
 import { Users, Clock, Shield, Eye, MessageCircle, Heart, Zap, User2 } from "lucide-react"
 import Image from "next/image"
 import { Header } from "@/components/common/header"
@@ -12,38 +12,120 @@ import { BackgroundLayout } from "@/components/common/background-layout"
 export function LandingPage() {
   const [showLogin, setShowLogin] = useState(false)
   const [showRegister, setShowRegister] = useState(false)
+  const [showIntro, setShowIntro] = useState(true)
+  const [introSharp, setIntroSharp] = useState(false)
+  const [heroParallax, setHeroParallax] = useState({ x: 0, y: 0 })
+  const stageOptions = [
+    { label: "1R: 강한 블러", round: "1라운드", time: "04:32", blurPx: 16 },
+    { label: "2R: 약한 블러", round: "2라운드", time: "09:18", blurPx: 10 },
+    { label: "3R: 투명", round: "3라운드", time: "13:41", blurPx: 4 },
+    { label: "4R: 완전 공개", round: "4라운드", time: "LIVE", blurPx: 0 },
+  ] as const
+  const [selectedStageIndex, setSelectedStageIndex] = useState(0)
+  const selectedStage = stageOptions[selectedStageIndex]
+
+  useEffect(() => {
+    const sharpTimer = setTimeout(() => setIntroSharp(true), 120)
+    const introTimer = setTimeout(() => setShowIntro(false), 1120)
+    return () => {
+      clearTimeout(sharpTimer)
+      clearTimeout(introTimer)
+    }
+  }, [])
+
+  const handleHeroMouseMove = (event: React.MouseEvent<HTMLElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect()
+    const px = (event.clientX - rect.left) / rect.width - 0.5
+    const py = (event.clientY - rect.top) / rect.height - 0.5
+    setHeroParallax({ x: px, y: py })
+  }
+
+  const handleHeroMouseLeave = () => {
+    setHeroParallax({ x: 0, y: 0 })
+  }
 
   return (
     <BackgroundLayout
       imageOpacity={30}
       overlayClassName="bg-gradient-to-b from-background/50 via-background/30 to-background/50"
       useNextImage={true}
+      className="h-screen flex flex-col overflow-hidden"
     >
+      {/* Intro splash: logo pops in, then fades out */}
+      <div
+        aria-hidden
+        className={[
+          "fixed inset-0 z-[60] flex flex-col items-center justify-center gap-5 bg-black transition-opacity duration-700",
+          showIntro ? "opacity-100" : "pointer-events-none opacity-0",
+        ].join(" ")}
+      >
+        <Image
+          src="/logo.png"
+          alt="Unblur Logo"
+          width={220}
+          height={220}
+          priority
+          className="h-28 w-28 md:h-40 md:w-40 object-contain transition-all duration-[1200ms] ease-out motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-50 motion-safe:duration-700"
+          style={{
+            filter: [
+              "brightness(0) saturate(100%) invert(100%)",
+              introSharp ? "blur(0px)" : "blur(14px)",
+            ].join(" "),
+            transform: introSharp ? "scale(1)" : "scale(0.72)",
+          }}
+        />
+      </div>
+
       {/* Header */}
       <Header
         onLoginClick={() => setShowLogin(true)}
         onRegisterClick={() => setShowRegister(true)}
       />
 
+      <main className="flex-1 overflow-y-auto custom-scrollbar">
         {/* Hero Section */}
-        <section className="pt-32 sm:pt-40 pb-16 sm:pb-24 px-4">
-          <div className="max-w-6xl mx-auto text-center">
-            <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold mb-6 sm:mb-8 text-balance">
+        <section
+          className="relative overflow-hidden pt-12 sm:pt-20 pb-16 sm:pb-24 px-4"
+          onMouseMove={handleHeroMouseMove}
+          onMouseLeave={handleHeroMouseLeave}
+        >
+          {/* Ambient animated blobs */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -top-24 -left-16 h-72 w-72 rounded-full bg-primary/25 blur-3xl transition-transform duration-500 ease-out motion-safe:animate-pulse"
+            style={{ transform: `translate(${heroParallax.x * -18}px, ${heroParallax.y * -18}px)` }}
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -bottom-32 -right-20 h-80 w-80 rounded-full bg-secondary/20 blur-3xl transition-transform duration-500 ease-out motion-safe:animate-pulse"
+            style={{ transform: `translate(${heroParallax.x * 22}px, ${heroParallax.y * 22}px)` }}
+          />
+
+          <div className="relative max-w-6xl mx-auto text-center">
+            <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold mb-6 sm:mb-8 text-balance motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-6 motion-safe:duration-700">
               <span className="text-foreground">얼굴보다</span>
               <br />
-              <span className="text-primary">마음이 먼저</span>
+              <span className="relative inline-block text-primary">
+                <span className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-700 motion-safe:delay-150 motion-safe:animate-pulse">
+                  마음이 먼저
+                </span>
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute -bottom-3 left-1/2 h-3 w-[120%] -translate-x-1/2 rounded-full bg-primary/25 blur-lg motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-50 motion-safe:duration-700 motion-safe:delay-300"
+                />
+              </span>
             </h1>
-            <p className="text-lg sm:text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto mb-10 sm:mb-12 text-pretty px-4">
+            <p className="text-lg sm:text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto mb-10 sm:mb-12 text-pretty px-4 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-6 motion-safe:duration-700 motion-safe:delay-150">
               블러 처리된 화면에서 시작하는 특별한 소개팅.
               <br className="hidden sm:block" />
               <span className="sm:hidden"> </span>
               대화를 나눌수록 서서히 드러나는 상대방의 모습을 만나보세요.
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 px-4">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 px-4 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-6 motion-safe:duration-700 motion-safe:delay-300">
               <Button
                 size="lg"
                 onClick={() => setShowRegister(true)}
-                className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-6 text-lg shadow-lg"
+                className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-6 text-lg shadow-lg transition-all duration-200 motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-2xl motion-safe:active:translate-y-0 motion-safe:active:scale-[0.99]"
               >
                 무료로 시작하기
               </Button>
@@ -51,7 +133,7 @@ export function LandingPage() {
                 size="lg"
                 variant="outline"
                 onClick={() => setShowLogin(true)}
-                className="w-full sm:w-auto px-8 py-6 text-lg bg-card/50 backdrop-blur-sm"
+                className="w-full sm:w-auto px-8 py-6 text-lg bg-card/50 backdrop-blur-sm border-transparent hover:bg-card/50 hover:text-foreground hover:border-transparent transition-all duration-200 motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-xl motion-safe:active:translate-y-0 motion-safe:active:scale-[0.99]"
               >
                 이미 계정이 있어요
               </Button>
@@ -126,17 +208,25 @@ export function LandingPage() {
                 <div className="aspect-[4/3] rounded-3xl bg-card/70 backdrop-blur-md overflow-hidden shadow-2xl border border-border/50">
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="grid grid-cols-2 gap-4 p-6 w-full">
-                      <div className="aspect-video rounded-2xl bg-secondary/50 blur-[8px] flex items-center justify-center">
-                        <div className="w-16 h-16 rounded-full bg-accent" />
+                      <div className="aspect-video rounded-2xl bg-secondary/50 flex items-center justify-center">
+                        <div
+                          className="w-16 h-16 rounded-full bg-accent transition-all duration-500 ease-out"
+                          style={{ filter: `blur(${selectedStage.blurPx}px)` }}
+                        />
                       </div>
-                      <div className="aspect-video rounded-2xl bg-primary/30 blur-[8px] flex items-center justify-center">
-                        <div className="w-16 h-16 rounded-full bg-primary" />
+                      <div className="aspect-video rounded-2xl bg-primary/30 flex items-center justify-center">
+                        <div
+                          className="w-16 h-16 rounded-full bg-primary transition-all duration-500 ease-out"
+                          style={{ filter: `blur(${selectedStage.blurPx}px)` }}
+                        />
                       </div>
                     </div>
                   </div>
                   <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full bg-card/90 backdrop-blur-sm">
                     <Clock className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">1라운드 - 04:32</span>
+                    <span className="text-sm font-medium">
+                      {selectedStage.round} - {selectedStage.time}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -147,11 +237,25 @@ export function LandingPage() {
                   서로의 모습이 완전히 공개됩니다.
                 </p>
                 <div className="flex flex-wrap gap-3">
-                  {["1R: 강한 블러", "2R: 약한 블러", "3R: 투명", "4R: 완전 공개"].map((stage) => (
-                    <span key={stage} className="px-4 py-2 rounded-full text-sm bg-card/70 backdrop-blur-sm border border-border/50">
-                      {stage}
-                    </span>
-                  ))}
+                  {stageOptions.map((stage, index) => {
+                    const isActive = index === selectedStageIndex
+                    return (
+                      <button
+                        key={stage.label}
+                        type="button"
+                        onClick={() => setSelectedStageIndex(index)}
+                        className={[
+                          "px-4 py-2 rounded-full text-sm border backdrop-blur-sm transition-all duration-300",
+                          isActive
+                            ? "bg-primary text-primary-foreground border-primary shadow-md"
+                            : "bg-card/70 text-foreground border-border/50 hover:border-primary/40 hover:-translate-y-0.5",
+                        ].join(" ")}
+                        aria-pressed={isActive}
+                      >
+                        {stage.label}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
             </div>
@@ -256,6 +360,7 @@ export function LandingPage() {
             <p className="text-sm text-muted-foreground">© 2026 Unblur. All rights reserved.</p>
           </div>
         </footer>
+      </main>
 
         {/* Modals */}
         <LoginModal

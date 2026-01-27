@@ -1,6 +1,6 @@
 package com.ssafy.unblur.domain.match.model;
 
-import com.ssafy.unblur.domain.user.model.User;
+import com.ssafy.unblur.domain.auth.model.User;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -61,4 +61,21 @@ public class ConferenceParticipant {
      */
     @Column(name = "left_at")
     private LocalDateTime leftAt;
+
+    /**
+     * 퇴장 시각을 기록하는 메서드
+     *
+     * @param leftAt 퇴장 시각
+     */
+    public void markLeft(LocalDateTime leftAt) {
+        this.leftAt = leftAt;
+    }
+
+    /**
+     * 재입장 시 퇴장 시각을 초기화하는 메서드
+     */
+    public void rejoin() {
+        this.leftAt = null;
+    }
+
 }

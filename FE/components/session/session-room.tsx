@@ -22,8 +22,9 @@ interface SessionRoomProps {
 }
 
 const ROUND_TIMES = [10, 10, 5, Number.POSITIVE_INFINITY] // seconds
-const BLUR_LEVELS = [20, 10, 3, 0] // px
+const BLUR_LEVELS = [20, 10, 5, 0] // px
 const ROUND_NAMES = ["1라운드", "2라운드", "3라운드", "최종 라운드"]
+const BLUR_LABELS = ["블라인드", "강한 블러", "약간 블러", "완전 공개"]
 
 export function SessionRoom({ 
   sessionId, 
@@ -42,6 +43,7 @@ export function SessionRoom({
   const [showEndConfirm, setShowEndConfirm] = useState(false)
   const [showQuestionBank, setShowQuestionBank] = useState(false)
   const [pendingLeave, setPendingLeave] = useState(false)
+  const [pendingExternalLeave, setPendingExternalLeave] = useState(false)
   const [messages, setMessages] = useState<{ id: string; sender: string; text: string }[]>([])
   const [newMessage, setNewMessage] = useState("")
   const [showIceBreaker, setShowIceBreaker] = useState(false)
@@ -108,6 +110,18 @@ export function SessionRoom({
       })
     }
   }, [isConnected, toast])
+
+  // 브라우저 탭/창 닫기 시 확인 대화상자 표시
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+      return ''
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [])
 
   // Timer logic
   useEffect(() => {
@@ -229,18 +243,26 @@ export function SessionRoom({
 
   const handleRatingComplete = () => {
     setShowRating(false)
+    const shouldLeaveExternally = pendingExternalLeave && !!onExternalConfirmLeave
+    setPendingExternalLeave(false)
     toast({
       title: "소개팅 종료",
       description: "다음에 더 좋은 인연을 만나길 바랍니다!",
     })
-    onLeave()
+    if (shouldLeaveExternally && onExternalConfirmLeave) {
+      onExternalConfirmLeave()
+    } else {
+      onLeave()
+    }
   }
+
 
   const handleLeave = () => {
     setShowEndConfirm(true)
   }
 
   const blurLevel = BLUR_LEVELS[currentRound]
+  const blurLabel = BLUR_LABELS[currentRound]
   const isTimeWarning = timeLeft <= 60 && timeLeft > 0
 
   return (
@@ -317,7 +339,7 @@ export function SessionRoom({
                     ref={remoteVideoRef}
                     autoPlay
                     playsInline
-                    className="w-full h-full object-cover transition-all duration-1000"
+                    className="w-full h-full object-cover transition-all duration-1000 -scale-x-100"
                     style={{ filter: `blur(${blurLevel}px)` }}
                   />
                   <div className="absolute bottom-4 left-4 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-sm">
@@ -325,7 +347,7 @@ export function SessionRoom({
                   </div>
                   {blurLevel > 0 && (
                     <div className="absolute top-4 right-4 px-3 py-1.5 rounded-full bg-primary/80 backdrop-blur-sm">
-                      <span className="text-primary-foreground text-xs">블러 {blurLevel}px</span>
+                      <span className="text-primary-foreground text-xs">{blurLabel}</span>
                     </div>
                   )}
                 </>
@@ -349,7 +371,7 @@ export function SessionRoom({
                   )}
                   {blurLevel > 0 && (
                     <div className="absolute top-4 right-4 px-3 py-1.5 rounded-full bg-primary/80 backdrop-blur-sm">
-                      <span className="text-primary-foreground text-xs">블러 {blurLevel}px</span>
+                      <span className="text-primary-foreground text-xs">{blurLabel}</span>
                     </div>
                   )}
                 </>
@@ -363,7 +385,7 @@ export function SessionRoom({
                 autoPlay
                 playsInline
                 muted
-                className="w-full h-full object-cover transition-all duration-1000"
+                className="w-full h-full object-cover transition-all duration-1000 -scale-x-100"
                 style={{ filter: `blur(${blurLevel}px)`, display: localStream ? "block" : "none" }}
               />
               {localStream ? (
@@ -378,7 +400,7 @@ export function SessionRoom({
                   )}
                   {blurLevel > 0 && (
                     <div className="absolute top-4 right-4 px-3 py-1.5 rounded-full bg-primary/80 backdrop-blur-sm">
-                      <span className="text-primary-foreground text-xs">블러 {blurLevel}px</span>
+                      <span className="text-primary-foreground text-xs">{blurLabel}</span>
                     </div>
                   )}
                 </>
@@ -402,7 +424,7 @@ export function SessionRoom({
                   )}
                   {blurLevel > 0 && (
                     <div className="absolute top-4 right-4 px-3 py-1.5 rounded-full bg-primary/80 backdrop-blur-sm">
-                      <span className="text-primary-foreground text-xs">블러 {blurLevel}px</span>
+                      <span className="text-primary-foreground text-xs">{blurLabel}</span>
                     </div>
                   )}
                 </>
@@ -433,7 +455,7 @@ export function SessionRoom({
 
         {/* Chat Panel - 오른쪽 사이드바 */}
         <div
-          className={`bg-background border-l border-border transition-all duration-300 overflow-hidden ${
+          className={`bg-background border-l border-border transition-all duration-300 overflow-hidden rounded-l-2xl ${
             showChat ? "w-80" : "w-0"
           }`}
         >
@@ -452,7 +474,7 @@ export function SessionRoom({
                 {messages.map((msg) => (
                   <div key={msg.id} className={`flex ${msg.sender === "me" ? "justify-end" : "justify-start"}`}>
                     <div
-                      className={`max-w-[80%] px-3 py-2 rounded-xl text-sm ${
+                      className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm ${
                         msg.sender === "me" ? "bg-primary text-primary-foreground" : "bg-card"
                       }`}
                     >
@@ -524,13 +546,11 @@ export function SessionRoom({
         }}
         onConfirm={() => {
           setShowEndConfirm(false)
-          if (onExternalConfirmLeave) {
-            onExternalConfirmLeave()
-          } else if (currentRound >= 3) {
-            setShowRating(true)
-          } else {
-            onLeave()
+          if (externalShowEndConfirm) {
+            onExternalCancelLeave?.()
           }
+          setPendingExternalLeave(!!onExternalConfirmLeave && externalShowEndConfirm)
+          setShowRating(true)
         }}
       />
 

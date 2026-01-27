@@ -121,8 +121,14 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    overflow: hidden;
+    height: 100%;
+  }
   body {
     @apply bg-background text-foreground;
+    overflow: hidden;
+    height: 100%;
   }
 }
 
@@ -161,4 +167,28 @@
     transform: translateX(-50%) translateY(0);
     opacity: 1;
   }
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 16px 0;
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #9ca3af;
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+.custom-scrollbar {
+  scrollbar-gutter: stable;
 }

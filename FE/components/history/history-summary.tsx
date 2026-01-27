@@ -31,17 +31,17 @@ export function HistorySummary({
       <div className="grid grid-cols-3 gap-2 sm:gap-4">
         <div className="text-center p-3 sm:p-4 rounded-xl bg-secondary/20">
           <p className="text-xl sm:text-2xl font-bold text-primary">{totalCount}</p>
-          <p className="text-xs text-muted-foreground">총 매칭</p>
+          <p className="text-xs text-muted-foreground">매칭 수</p>
         </div>
         <div className="text-center p-3 sm:p-4 rounded-xl bg-secondary/20">
           <p className="text-xl sm:text-2xl font-bold text-foreground">{totalDuration}</p>
-          <p className="text-xs text-muted-foreground">총 대화</p>
+          <p className="text-xs text-muted-foreground">대화 시간</p>
         </div>
         <div className="text-center p-3 sm:p-4 rounded-xl bg-secondary/20">
           <p className={`text-xl sm:text-2xl font-bold ${getTemperatureColor(temperature)}`}>
-            {temperature.toFixed(1)}°
+            {Math.round(temperature)}%
           </p>
-          <p className="text-xs text-muted-foreground">매너온도</p>
+          <p className="text-xs text-muted-foreground">선명도</p>
         </div>
       </div>
     </div>

@@ -1,67 +1,44 @@
-﻿package com.ssafy.unblur.domain.user.service;
+package com.ssafy.unblur.domain.user.service;
 
-import com.ssafy.unblur.domain.user.dto.SignupDto;
-import com.ssafy.unblur.domain.user.model.User;
-import com.ssafy.unblur.domain.user.repository.UserRepository;
 import com.ssafy.unblur.common.exception.BaseException;
 import com.ssafy.unblur.common.exception.ErrorCode;
+import com.ssafy.unblur.domain.auth.model.User;
+import com.ssafy.unblur.domain.auth.service.AuthService;
+import com.ssafy.unblur.domain.auth.service.RefreshTokenService;
+import com.ssafy.unblur.domain.user.dto.UserProfileResponseDto;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class UserService {
 
-    private final UserRepository userRepository;
-    private final BCryptPasswordEncoder bCryptPasswordEncoder;
+    private final AuthService authService;
+    private final RefreshTokenService refreshTokenService;
 
     /**
-     * 회원가입 프로세스를 진행합니다.
-     * <p>이메일과 닉네임의 중복 여부를 최종적으로 확인한 후.
-     * 비밀번호를 암호화하여 데이터베이스에 유저 정보를 저장합니다.</p>
-     *
-     * @param signUpDto 회원가입 정보 객체
-     * @throws BaseException 이메일/닉네임 중복 시 발생
+     * 회원 탈퇴를 진행합니다.
      */
     @Transactional
-    public String signUp(SignupDto signUpDto) {
-        validateDuplicateEmail(signUpDto.getEmail());
-        validateDuplicateNickname(signUpDto.getNickname()); // 닉네임 중복 검사 추가
+    public void withdraw(String email) {
+        User user = authService.findUserByEmail(email)
+                .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
 
-        User user = User.from(signUpDto, bCryptPasswordEncoder.encode(signUpDto.getPassword()));
-        User savedUser = userRepository.save(user);
-        return savedUser.getEmail();
+        refreshTokenService.deleteTokenByUser(user);
+
+        user.withdraw();
     }
 
-    // 이메일 중복 검사
-    private void validateDuplicateEmail(String email) {
-        if (userRepository.existsByEmail(email)) {
-            log.warn("중복된 이메일 입니다: {}", email);
-            throw new BaseException(ErrorCode.DUPLICATE_EMAIL);
-        }
-    }
-
-    // 단독 API용: 단순히 존재 여부만 반환
+    /**
+     * 현재 로그인된 사용자의 프로필 정보를 조회합니다.
+     */
     @Transactional(readOnly = true)
-    public boolean isEmailDuplicate(String email) {
-        return userRepository.existsByEmail(email);
+    public UserProfileResponseDto getMyProfile(String email) {
+        User user = authService.findUserByEmail(email)
+                .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
+
+        return UserProfileResponseDto.from(user);
     }
 
-    // 닉네임 중복 검사
-    private void validateDuplicateNickname(String nickname) {
-        if (userRepository.existsByNickname(nickname)) {
-            log.warn("중복된 닉네임 입니다: {}", nickname);
-            throw new BaseException(ErrorCode.DUPLICATE_NICKNAME);
-        }
-    }
-
-    // 단독 API용: 닉네임 존재 여부만 반환
-    @Transactional(readOnly = true)
-    public boolean isNicknameDuplicate(String nickname) {
-        return userRepository.existsByNickname(nickname);
-    }
 }
