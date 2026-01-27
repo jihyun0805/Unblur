@@ -2,6 +2,7 @@ package com.ssafy.unblur.domain.auth.model;
 
 import com.ssafy.unblur.domain.auth.dto.SignupDto;
 import com.ssafy.unblur.domain.user.dto.UserProfileUpdateRequestDto;
+import com.ssafy.unblur.domain.user.dto.UserSurveyUpdateRequestDto;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -16,6 +17,7 @@ import org.hibernate.type.SqlTypes;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Period;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -113,7 +115,7 @@ public class User {
      */
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "detailed_info", columnDefinition = "jsonb")
-    private Map<String, Object> detailedInfo;
+    private List<Map<String, Object>> detailedInfo;
 
     /**
      * 관심사 태그 목록.
@@ -254,6 +256,15 @@ public class User {
 
         if (dto.getInterestTags() != null) {
             this.interestTags = dto.getInterestTags().toArray(String[]::new);
+        }
+    }
+
+    /**
+     * 사용자의 관심사/가치관 설문조사 정보를 업데이트 합니다.
+     */
+    public void updateSurvey(UserSurveyUpdateRequestDto dto) {
+        if(dto.getSurveyData() != null) {
+            this.detailedInfo = dto.getSurveyData();
         }
     }
 }
