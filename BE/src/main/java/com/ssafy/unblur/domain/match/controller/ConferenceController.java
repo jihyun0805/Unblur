@@ -17,7 +17,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 /**
  * 세션(컨퍼런스) 라운드 관리 컨트롤러 인터페이스
  */
-@Tag(name = "Conference", description = "소개팅 세션 라운드 관리 API")
+@Tag(name = "Matching")
 public interface ConferenceController {
 
     /**
