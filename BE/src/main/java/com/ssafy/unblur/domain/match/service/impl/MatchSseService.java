@@ -26,12 +26,30 @@ public class MatchSseService implements MatchEventPublisher {
     private final Map<UUID, SseEmitter> emitters = new ConcurrentHashMap<>();
 
     /**
+     * 사용자가 이미 연결되어 있는지 확인하는 메서드
+     *
+     * @param userId 사용자 ID
+     * @return 연결 중이면 true
+     */
+    public boolean isConnected(UUID userId) {
+        return emitters.containsKey(userId);
+    }
+
+    /**
      * 매칭 SSE 구독을 생성하는 메서드
+     * <p>
+     * 기존 연결이 있으면 먼저 종료하고 새 연결을 생성한다
      *
      * @param userId 사용자 ID
      * @return SSE emitter
      */
     public SseEmitter connect(UUID userId) {
+        // 기존 연결 정리
+        SseEmitter existingEmitter = emitters.remove(userId);
+        if (existingEmitter != null) {
+            existingEmitter.complete();
+        }
+
         SseEmitter emitter = new SseEmitter(0L);
         emitters.put(userId, emitter);
 

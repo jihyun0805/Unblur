@@ -43,7 +43,7 @@ public class Conference {
     private ConferenceStatus status;
 
     /**
-     * 현재 라운드 (1~4).
+     * 현재 라운드 (대기 상태는 0, 진행 중은 1~4).
      */
     @Column(name = "current_round", nullable = false)
     private Integer currentRound;
@@ -66,4 +66,38 @@ public class Conference {
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    /**
+     * 세션을 진행 상태로 전환하는 메서드
+     *
+     * @param startedAt   시작 시각
+     */
+    public void activate(LocalDateTime startedAt) {
+        this.status = ConferenceStatus.ACTIVE;
+        this.currentRound = 1;
+        this.startedAt = startedAt;
+    }
+
+    /**
+     * 다음 라운드로 이동하는 메서드
+     * <p>
+     * 현재 라운드 값을 1 증가시킨다.
+     * </p>
+     */
+    public void advanceRound() {
+        if (this.currentRound == null) {
+            this.currentRound = 0;
+        }
+        this.currentRound = this.currentRound + 1;
+    }
+
+    /**
+     * 세션을 종료 상태로 전환하는 메서드
+     *
+     * @param endedAt 종료 시각
+     */
+    public void complete(LocalDateTime endedAt) {
+        this.status = ConferenceStatus.COMPLETED;
+        this.endedAt = endedAt;
+    }
 }

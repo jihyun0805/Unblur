@@ -8,12 +8,10 @@ import com.ssafy.unblur.domain.match.config.MatchConfig.MatchPolicy;
 import com.ssafy.unblur.domain.match.dto.FastMatchingRequest;
 import com.ssafy.unblur.domain.match.dto.MatchingQueueResponse;
 import com.ssafy.unblur.domain.match.model.Conference;
-import com.ssafy.unblur.domain.match.model.ConferenceParticipant;
 import com.ssafy.unblur.domain.match.model.MatchEventType;
 import com.ssafy.unblur.domain.match.model.MatchQueueItem;
 import com.ssafy.unblur.domain.match.model.MatchQueueStatus;
 import com.ssafy.unblur.domain.match.model.MatchQueueType;
-import com.ssafy.unblur.domain.match.repository.ConferenceParticipantRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRepository;
 import com.ssafy.unblur.domain.match.repository.MatchCandidateRepository;
 import com.ssafy.unblur.domain.match.repository.MatchCandidateRepository.MatchCandidate;
@@ -34,7 +32,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -198,14 +195,11 @@ class MatchServiceImplTest {
             UserRepository localUserRepository = mock(UserRepository.class);
             MatchCandidateRepository candidateRepository = mock(MatchCandidateRepository.class);
             ConferenceRepository conferenceRepository = mock(ConferenceRepository.class);
-            ConferenceParticipantRepository participantRepository = mock(ConferenceParticipantRepository.class);
-
             MatchQueueProcessor localProcessor = new MatchQueueProcessor(
                     localQueueStore,
                     localUserRepository,
                     candidateRepository,
                     conferenceRepository,
-                    participantRepository,
                     policy,
                     (userId, type, response) -> {
                     },
@@ -264,8 +258,6 @@ class MatchServiceImplTest {
 
             when(conferenceRepository.save(any(Conference.class)))
                     .thenAnswer(invocation -> invocation.getArgument(0));
-            when(participantRepository.save(any(ConferenceParticipant.class)))
-                    .thenAnswer(invocation -> invocation.getArgument(0));
 
             FastMatchingRequest request = new FastMatchingRequest();
             request.setFilters(Map.of());
@@ -282,14 +274,7 @@ class MatchServiceImplTest {
             assertThat(response.queuedAt()).isEqualTo(now);
 
             assertThat(candidateItem.getStatus()).isEqualTo(MatchQueueStatus.MATCHED);
-
-            ArgumentCaptor<ConferenceParticipant> participantCaptor = ArgumentCaptor.forClass(ConferenceParticipant.class);
-            verify(participantRepository, times(2)).save(participantCaptor.capture());
-            List<UUID> savedUserIds = new ArrayList<>();
-            for (ConferenceParticipant participant : participantCaptor.getAllValues()) {
-                savedUserIds.add(participant.getUser().getId());
-            }
-            assertThat(savedUserIds).containsExactlyInAnyOrder(requesterId, candidateId);
+            verify(conferenceRepository).save(any(Conference.class));
         }
     }
 }

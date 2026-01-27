@@ -4,14 +4,12 @@ import com.ssafy.unblur.domain.auth.model.User;
 import com.ssafy.unblur.domain.auth.repository.UserRepository;
 import com.ssafy.unblur.domain.match.config.MatchConfig.MatchPolicy;
 import com.ssafy.unblur.domain.match.model.Conference;
-import com.ssafy.unblur.domain.match.model.ConferenceParticipant;
 import com.ssafy.unblur.domain.match.model.ConferenceStatus;
 import com.ssafy.unblur.domain.match.model.MatchEventType;
 import com.ssafy.unblur.domain.match.model.MatchQueueItem;
 import com.ssafy.unblur.domain.match.model.MatchQueueStatus;
 import com.ssafy.unblur.domain.match.model.MatchQueueType;
 import com.ssafy.unblur.domain.match.dto.QuickMatchResultEvent;
-import com.ssafy.unblur.domain.match.repository.ConferenceParticipantRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRepository;
 import com.ssafy.unblur.domain.match.repository.MatchCandidateRepository;
 import com.ssafy.unblur.domain.match.repository.MatchCandidateRepository.MatchCandidate;
@@ -77,9 +75,6 @@ class MatchQueueProcessorTest {
     private ConferenceRepository conferenceRepository;
 
     @Mock
-    private ConferenceParticipantRepository conferenceParticipantRepository;
-
-    @Mock
     private MatchEventPublisher eventPublisher;
 
     private MatchQueueProcessor processor() {
@@ -88,7 +83,6 @@ class MatchQueueProcessorTest {
                 userRepository,
                 matchCandidateRepository,
                 conferenceRepository,
-                conferenceParticipantRepository,
                 policy,
                 eventPublisher,
                 FIXED_CLOCK
@@ -156,12 +150,9 @@ class MatchQueueProcessorTest {
 
             when(conferenceRepository.save(any(Conference.class))).thenAnswer(invocation -> Conference.builder()
                     .id(UUID.randomUUID())
-                    .status(ConferenceStatus.ACTIVE)
-                    .currentRound(1)
-                    .startedAt(now)
+                    .status(ConferenceStatus.WAITING)
+                    .currentRound(0)
                     .build());
-            when(conferenceParticipantRepository.save(any(ConferenceParticipant.class)))
-                    .thenAnswer(invocation -> invocation.getArgument(0));
 
             // when: 즉시 매칭을 시도할 때
             boolean matched = matchQueueProcessor.tryImmediateMatch(requesterItem, requester);
@@ -174,7 +165,6 @@ class MatchQueueProcessorTest {
             assertThat(candidateItem.getMatchedAt()).isEqualTo(now);
 
             verify(conferenceRepository, times(1)).save(any(Conference.class));
-            verify(conferenceParticipantRepository, times(2)).save(any(ConferenceParticipant.class));
             verify(eventPublisher, times(2))
                     .publish(any(UUID.class), eq(MatchEventType.QUICK_MATCHED), any(QuickMatchResultEvent.class));
         }

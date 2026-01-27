@@ -5,6 +5,7 @@ import com.ssafy.unblur.common.exception.ErrorCode;
 import com.ssafy.unblur.domain.match.config.MatchConfig.MatchPolicy;
 import com.ssafy.unblur.domain.match.dto.FastMatchingRequest;
 import com.ssafy.unblur.domain.match.dto.MatchingQueueResponse;
+import com.ssafy.unblur.domain.match.dto.QuickMatchStageEvent;
 import com.ssafy.unblur.domain.match.model.MatchEventType;
 import com.ssafy.unblur.domain.match.model.MatchQueueItem;
 import com.ssafy.unblur.domain.match.model.MatchQueueStatus;
@@ -146,5 +147,58 @@ public class MatchServiceImpl implements MatchService {
                 .waitingCount(waitingCount)
                 .queuedAt(item.getCreatedAt())
                 .build();
+    }
+
+    /**
+     * 빠른 매칭을 취소하는 메서드
+     *
+     * @param userId    사용자 ID
+     * @param requestId 매칭 요청 ID
+     */
+    @Override
+    public void cancelQuickMatch(UUID userId, String requestId) {
+        UUID parsedRequestId;
+        try {
+            parsedRequestId = UUID.fromString(requestId);
+        } catch (IllegalArgumentException e) {
+            throw new BaseException(ErrorCode.MATCH_REQUEST_NOT_FOUND);
+        }
+
+        MatchQueueItem item = queueStore.findByRequestId(parsedRequestId)
+                .orElseThrow(() -> new BaseException(ErrorCode.MATCH_REQUEST_NOT_FOUND));
+
+        // 본인의 요청인지 확인
+        if (!item.getRequesterUserId().equals(userId)) {
+            throw new BaseException(ErrorCode.MATCH_REQUEST_NOT_FOUND);
+        }
+
+        // 대기 중인 상태에서만 취소 가능
+        if (!item.isWaiting()) {
+            throw new BaseException(ErrorCode.MATCH_ALREADY_HANDLED);
+        }
+
+        item.markCanceled();
+
+        // SSE 취소 이벤트 전송
+        QuickMatchStageEvent event = QuickMatchStageEvent.builder()
+                .requestId(requestId)
+                .stage("canceled")
+                .occurredAt(LocalDateTime.now(clock))
+                .build();
+
+        eventPublisher.publish(userId, MatchEventType.QUICK_CANCELED, event);
+    }
+
+    /**
+     * 매칭 대기 상태를 조회하는 메서드
+     *
+     * @param userId 사용자 ID
+     * @return 대기열 상태 (대기 중인 요청이 없으면 null)
+     */
+    @Override
+    public MatchingQueueResponse getQueueStatus(UUID userId) {
+        return queueStore.findByUserId(userId, MatchQueueType.QUICK)
+                .map(this::buildResponse)
+                .orElse(null);
     }
 }

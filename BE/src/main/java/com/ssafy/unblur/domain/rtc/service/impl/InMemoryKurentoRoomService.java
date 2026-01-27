@@ -5,6 +5,7 @@ import com.ssafy.unblur.domain.rtc.exception.ConferenceRoomNotFoundException;
 import com.ssafy.unblur.domain.rtc.exception.UserNotJoinedException;
 import com.ssafy.unblur.domain.rtc.model.UserSession;
 import com.ssafy.unblur.domain.rtc.service.KurentoRoomService;
+import com.ssafy.unblur.domain.match.service.ConferenceLifecycleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.kurento.client.IceCandidate;
@@ -27,13 +28,29 @@ import java.util.concurrent.ConcurrentHashMap;
 public class InMemoryKurentoRoomService implements KurentoRoomService {
 
     private final KurentoClientProvider kurentoClientProvider;
+    private final ConferenceLifecycleService conferenceLifecycleService;
 
     private final Map<UUID, Room> rooms = new ConcurrentHashMap<>();
 
     @Override
     public UserSession join(UUID conferenceId, UUID userId, WebSocketSession session) {
         Room room = rooms.computeIfAbsent(conferenceId, this::createRoom);
-        return room.join(userId, session);
+        UserSession userSession = room.join(userId, session);
+
+        try {
+            conferenceLifecycleService.onJoin(conferenceId, userId);
+            return userSession;
+
+        } catch (RuntimeException e) {
+            room.leave(userId);
+
+            if (room.isEmpty()) {
+                rooms.remove(conferenceId);
+                room.release();
+            }
+
+            throw e;
+        }
     }
 
     @Override
@@ -50,6 +67,8 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
 
     @Override
     public void leave(UUID conferenceId, UUID userId) {
+        conferenceLifecycleService.onLeave(conferenceId, userId);
+
         Room room = rooms.get(conferenceId);
         if (room == null) {
             return;

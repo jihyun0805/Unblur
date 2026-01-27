@@ -57,17 +57,7 @@ public class MatchControllerImpl implements MatchController {
     public ResponseEntity<BaseResponse<MatchingQueueResponse>> getQueueStatus(
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        MatchingQueueResponse response = new MatchingQueueResponse(
-                "queue-id",
-                "waiting",
-                true,
-                5,
-                300,
-                "quick",
-                128,
-                LocalDateTime.parse("2024-01-14T14:30:00")
-        );
-
+        MatchingQueueResponse response = matchService.getQueueStatus(userDetails.getUserId());
         return ResponseEntity.ok(BaseResponse.success(200, "OK", response));
     }
 
@@ -77,6 +67,7 @@ public class MatchControllerImpl implements MatchController {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable("request_id") String requestId
     ) {
+        matchService.cancelQuickMatch(userDetails.getUserId(), requestId);
         return ResponseEntity.ok(BaseResponse.success(200, "OK", null));
     }
 

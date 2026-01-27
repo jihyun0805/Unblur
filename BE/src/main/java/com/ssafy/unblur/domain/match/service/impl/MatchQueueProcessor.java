@@ -72,9 +72,9 @@ public class MatchQueueProcessor {
     private final ConferenceRepository conferenceRepository;
 
     /**
-     * 컨퍼런스 참여자 저장 레포지토리
+     * 세션 참여자 저장 레포지토리
      */
-    private final ConferenceParticipantRepository conferenceParticipantRepository;
+    private final ConferenceParticipantRepository participantRepository;
 
     /**
      * 매칭 정책 설정값
@@ -160,6 +160,7 @@ public class MatchQueueProcessor {
                 // 사용자 정보를 찾지 못하면 타임아웃 처리
                 if (user == null) {
                     item.markTimeout();
+                    publishTimeoutEvent(item);
                     continue;
                 }
 
@@ -167,9 +168,26 @@ public class MatchQueueProcessor {
                 boolean matched = tryMatch(item, user, NO_THRESHOLD, policy.immediateTopK());
                 if (!matched) {
                     item.markTimeout();
+                    publishTimeoutEvent(item);
                 }
             }
         }
+    }
+
+    /**
+     * 타임아웃 이벤트를 전송하는 메서드
+     *
+     * @param item 대기열 항목
+     */
+    private void publishTimeoutEvent(MatchQueueItem item) {
+        QuickMatchStageEvent event = QuickMatchStageEvent.builder()
+                .requestId(item.getRequestId().toString())
+                .stage("timeout")
+                .threshold(NO_THRESHOLD)
+                .occurredAt(LocalDateTime.now(clock))
+                .build();
+
+        eventPublisher.publish(item.getRequesterUserId(), MatchEventType.QUICK_TIMEOUT, event);
     }
 
     /**
@@ -470,7 +488,7 @@ public class MatchQueueProcessor {
     }
 
     /**
-     * 매칭 완료 시 컨퍼런스와 참여자를 저장하는 메서드
+     * 매칭 완료 시 컨퍼런스와 참여자를 생성하는 메서드
      *
      * @param requester 요청자 사용자
      * @param recipient 수신자 사용자
@@ -481,29 +499,29 @@ public class MatchQueueProcessor {
             throw new BaseException(ErrorCode.USER_NOT_FOUND);
         }
 
-        // 매칭 완료 시 컨퍼런스 및 참여자 저장
+        // 매칭 완료 시 컨퍼런스 저장(입장 전 대기 상태)
         Conference conference = Conference.builder()
-                .status(ConferenceStatus.ACTIVE)
-                .currentRound(1)
-                .startedAt(LocalDateTime.now(clock))
+                .status(ConferenceStatus.WAITING)
+                .currentRound(0)
                 .build();
 
-        Conference saved = conferenceRepository.save(conference);
+        Conference savedConference = conferenceRepository.save(conference);
 
+        // 참여자 정보 생성
         ConferenceParticipant requesterParticipant = ConferenceParticipant.builder()
-                .conference(saved)
+                .conference(savedConference)
                 .user(requester)
                 .build();
 
         ConferenceParticipant recipientParticipant = ConferenceParticipant.builder()
-                .conference(saved)
+                .conference(savedConference)
                 .user(recipient)
                 .build();
 
-        conferenceParticipantRepository.save(requesterParticipant);
-        conferenceParticipantRepository.save(recipientParticipant);
+        participantRepository.save(requesterParticipant);
+        participantRepository.save(recipientParticipant);
 
-        return saved;
+        return savedConference;
     }
 
     /**
