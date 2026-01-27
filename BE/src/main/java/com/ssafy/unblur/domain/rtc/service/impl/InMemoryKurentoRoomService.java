@@ -4,7 +4,6 @@ import com.ssafy.unblur.common.exception.BaseException;
 import com.ssafy.unblur.common.exception.ErrorCode;
 import com.ssafy.unblur.domain.match.service.ConferenceLifecycleService;
 import com.ssafy.unblur.domain.rtc.config.KurentoClientProvider;
-import com.ssafy.unblur.domain.rtc.exception.UserNotJoinedException;
 import com.ssafy.unblur.domain.rtc.model.UserSession;
 import com.ssafy.unblur.domain.rtc.service.KurentoRoomService;
 import lombok.RequiredArgsConstructor;
@@ -223,7 +222,7 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
         private UserSession getUserSession(UUID userId) {
             UserSession userSession = participants.get(userId);
             if (userSession == null) {
-                throw new UserNotJoinedException(userId);
+                throw new BaseException(ErrorCode.USER_NOT_JOINED);
             }
 
             return userSession;
