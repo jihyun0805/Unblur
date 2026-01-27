@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.util.Map;
 import java.util.UUID;
 
 @Getter
@@ -40,7 +41,7 @@ public class UserProfileResponseDto {
     private String bio; // User 엔티티의 intro와 매핑
 
     @Schema(description = "설문 상세 데이터 (JSON 형식)", example = "{'산과 바다 중에 어디가 좋으신가요?' : '둘 다', '전화와 카톡 중 어떤 걸 선호하시나요?' : '카톡'}")
-    private Object surveyData; // User 엔티티의 detailedInfo와 매핑
+    private Map<String, Object> surveyData; // User 엔티티의 detailedInfo와 매핑
 
     @Schema(description = "관심사 태그 목록", example = "[\"코딩\", \"등산\", \"영화\"]")
     private String[] interestTags;
