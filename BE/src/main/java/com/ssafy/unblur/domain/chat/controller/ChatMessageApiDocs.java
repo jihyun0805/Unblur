@@ -1,9 +1,9 @@
 package com.ssafy.unblur.domain.chat.controller;
 
 import com.ssafy.unblur.common.response.BaseResponse;
-import com.ssafy.unblur.domain.chat.dto.ChatMessagePageResponseDto;
-import com.ssafy.unblur.domain.chat.dto.ChatReadEventDto;
-import com.ssafy.unblur.domain.chat.dto.ChatReadRequestDto;
+import com.ssafy.unblur.domain.chat.dto.response.ChatMessagePageResponseDto;
+import com.ssafy.unblur.domain.chat.dto.event.ChatReadEventDto;
+import com.ssafy.unblur.domain.chat.dto.request.ChatReadRequestDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;

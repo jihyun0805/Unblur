@@ -1,12 +1,13 @@
-package com.ssafy.unblur.domain.chat.controller;
+package com.ssafy.unblur.domain.chat.controller.impl;
 
 import com.ssafy.unblur.common.exception.BaseException;
 import com.ssafy.unblur.common.exception.ErrorCode;
 import com.ssafy.unblur.common.response.BaseResponse;
 import com.ssafy.unblur.common.util.SecurityUtil;
-import com.ssafy.unblur.domain.chat.dto.ChatMessagePageResponseDto;
-import com.ssafy.unblur.domain.chat.dto.ChatReadEventDto;
-import com.ssafy.unblur.domain.chat.dto.ChatReadRequestDto;
+import com.ssafy.unblur.domain.chat.controller.ChatMessageApiDocs;
+import com.ssafy.unblur.domain.chat.dto.response.ChatMessagePageResponseDto;
+import com.ssafy.unblur.domain.chat.dto.event.ChatReadEventDto;
+import com.ssafy.unblur.domain.chat.dto.request.ChatReadRequestDto;
 import com.ssafy.unblur.domain.chat.service.ChatMessageService;
 import io.swagger.v3.oas.annotations.Parameter;
 import lombok.RequiredArgsConstructor;

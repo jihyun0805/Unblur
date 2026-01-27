@@ -1,4 +1,4 @@
-package com.ssafy.unblur.domain.chat.dto;
+package com.ssafy.unblur.domain.chat.dto.response;
 
 import java.util.List;
 
