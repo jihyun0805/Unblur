@@ -50,10 +50,10 @@ public class SignupDto {
     @Schema(description = "지역 정보", example = "SEOUL")
     private Region region;
 
-    @Schema(description = "설문 응답 상세 데이터(JSON")
-    private Map<String, Object> detailedInfo;
+    @Schema(description = "설문 상세 데이터 (JSON 형식)", example = "[{\"QuestionId\": \"1\", \"Answer\": \"B\"}, {\"QuestionId\": \"2\", \"Answer\": \"A\"}]")
+    private List<Map<String, Object>> detailedInfo;
 
     @NotEmpty(message = "관심사를 최소 하나 이상 선택해주세요.")
-    @Schema(description = "관심사 태그 목록", example = "['코딩', '만화']")
+    @Schema(description = "관심사 태그 목록", example = "[\"코딩\", \"만화\"]")
     private List<String> interestTags;
 }

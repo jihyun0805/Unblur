@@ -3,6 +3,7 @@ package com.ssafy.unblur.common.response;
 import com.ssafy.unblur.domain.auth.dto.LoginResponseDto;
 import com.ssafy.unblur.domain.auth.dto.SignupResponseDto;
 import com.ssafy.unblur.domain.user.dto.UserProfileResponseDto;
+import com.ssafy.unblur.domain.user.dto.UserSurveyResponseDto;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 public class SwaggerResponses {
@@ -83,10 +84,40 @@ public class SwaggerResponses {
         @Schema(description = "상태 코드", example = "200")
         public int statusCode;
 
-        @Schema(description = "응답 메시지", example =  "프로필 조회 성공")
+        @Schema(description = "응답 메시지", example = "프로필 조회 성공")
         public String message;
 
         @Schema(description = "응답 데이터")
         private UserProfileResponseDto data;
+    }
+
+    @Schema(description = "설문조사 정보 조회 성공")
+    public static class SurveyResponse extends BaseResponse<UserSurveyResponseDto> {
+        @Schema(description = "성공 여부", example = "true")
+        public boolean isSuccess;
+
+        @Schema(description = "상태 코드", example = "200")
+        public int statusCode;
+
+        @Schema(description = "응답 메시지", example = "설문조사 정보 조회 성공")
+        public String message;
+
+        @Schema(description = "응답 데이터")
+        private UserSurveyResponseDto data;
+    }
+
+    @Schema(description = "설문조사 정보 수정 성공")
+    public static class SurveyUpdateResponse extends BaseResponse<UserSurveyResponseDto> {
+        @Schema(description = "성공 여부", example = "true")
+        public boolean isSuccess;
+
+        @Schema(description = "상태 코드", example = "200")
+        public int statusCode;
+
+        @Schema(description = "응답 메시지", example = "설문조사 정보 수정 성공")
+        public String message;
+
+        @Schema(description = "응답 데이터")
+        private UserSurveyResponseDto data;
     }
 }
