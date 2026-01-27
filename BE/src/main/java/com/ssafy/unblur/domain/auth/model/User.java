@@ -1,6 +1,7 @@
 package com.ssafy.unblur.domain.auth.model;
 
 import com.ssafy.unblur.domain.auth.dto.SignupDto;
+import com.ssafy.unblur.domain.user.dto.UserProfileUpdateRequestDto;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -180,10 +181,6 @@ public class User {
 
     /**
      * SignupDto와 암호화된 비밀번호를 받아 User 엔티티를 생성합니다.
-     *
-     * @param dto             회원가입 정보
-     * @param encodedPassword 암호화된 비밀번호
-     * @return 생성된 User 엔티티
      */
     public static User from(SignupDto dto, String encodedPassword) {
         return User.builder()
@@ -199,6 +196,9 @@ public class User {
                 .build();
     }
 
+    /**
+     * 회원 탈퇴를 진행하여 유저의 정보를 변경합니다.
+     */
     public void withdraw() {
         this.active = false; // 어떤 필드를 사용할 지에 대해서는 논의 후 결정
         this.deletedAt = LocalDateTime.now();
@@ -215,8 +215,45 @@ public class User {
         this.lastActiveAt = null;
     }
 
+    /**
+     * 사용자의 만 나이를 계산합니다.
+     */
     public int getAge() {
         if (this.birthDate == null) return 0;
         return Period.between(birthDate, LocalDate.now()).getYears();
+    }
+
+    /**
+     * 사용자 프로필 정보를 업데이트합니다.
+     */
+    public void updateProfile(UserProfileUpdateRequestDto dto) {
+
+        if(dto.getNickname() != null && !dto.getNickname().isBlank()) {
+            this.nickname = dto.getNickname();
+        }
+
+        if (dto.getBirthDate() != null) {
+            this.birthDate = dto.getBirthDate();
+        }
+
+        if (dto.getGender() != null) {
+            this.gender = dto.getGender();
+        }
+
+        if (dto.getRegion() != null) {
+            this.region = dto.getRegion();
+        }
+
+        if (dto.getMbti() != null) {
+            this.mbti = dto.getMbti();
+        }
+
+        if (dto.getIntro() != null) {
+            this.intro = dto.getIntro();
+        }
+
+        if (dto.getInterestTags() != null) {
+            this.interestTags = dto.getInterestTags().toArray(String[]::new);
+        }
     }
 }
