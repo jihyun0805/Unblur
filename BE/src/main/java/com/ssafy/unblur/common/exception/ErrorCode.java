@@ -28,6 +28,11 @@ public enum ErrorCode {
     MATCH_ALREADY_HANDLED(HttpStatus.CONFLICT, "MATCH-004", "이미 처리된 매칭 요청입니다."),
     MATCH_TARGET_OFFLINE(HttpStatus.CONFLICT, "MATCH-005", "상대가 현재 수락할 수 없는 상태입니다."),
 
+    CONFERENCE_NOT_FOUND(HttpStatus.NOT_FOUND, "CONF-001", "세션을 찾을 수 없습니다."),
+    CONFERENCE_NOT_PARTICIPANT(HttpStatus.FORBIDDEN, "CONF-002", "해당 세션의 참여자가 아닙니다."),
+    CONFERENCE_ALREADY_COMPLETED(HttpStatus.CONFLICT, "CONF-003", "이미 종료된 세션입니다."),
+    CONFERENCE_MAX_ROUND_REACHED(HttpStatus.CONFLICT, "CONF-004", "최대 라운드에 도달했습니다."),
+
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "COMMON-001", "서버 내부 오류가 발생했습니다."),
     INVALID_INPUT_VALUE(HttpStatus.BAD_REQUEST, "COMMON-002", "잘못된 요청 값입니다."),
     NOTNULL_INPUT_VALUE(HttpStatus.BAD_REQUEST, "COMMON-003", "필수 입력 값이 누락되었습니다.");

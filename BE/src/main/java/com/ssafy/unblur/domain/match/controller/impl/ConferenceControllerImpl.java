@@ -5,6 +5,7 @@ import com.ssafy.unblur.common.security.auth.CustomUserDetails;
 import com.ssafy.unblur.domain.match.controller.ConferenceController;
 import com.ssafy.unblur.domain.match.dto.AdvanceRoundRequest;
 import com.ssafy.unblur.domain.match.dto.AdvanceRoundResponse;
+import com.ssafy.unblur.domain.match.service.ConferenceService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +16,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.UUID;
+
 /**
  * 세션(컨퍼런스) 라운드 관리 컨트롤러
  */
@@ -23,10 +26,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class ConferenceControllerImpl implements ConferenceController {
 
+    private final ConferenceService conferenceService;
+
     /**
      * 다음 라운드 진행 API
-     * <p>
-     * TODO: 실제 라운드 전환 로직 구현 필요
      *
      * @param userDetails  인증 사용자 정보
      * @param conferenceId 세션 ID
@@ -40,18 +43,11 @@ public class ConferenceControllerImpl implements ConferenceController {
             @PathVariable("conference_id") String conferenceId,
             @Valid @RequestBody AdvanceRoundRequest request
     ) {
-        // TODO: 실제 구현 - ConferenceService.advanceRound() 호출
-        // 1. 세션 조회 및 권한 검증
-        // 2. 현재 라운드 종료 처리
-        // 3. proceed=true면 다음 라운드 시작, false면 세션 종료
-        // 4. SSE로 상대방에게 알림
-
-        // 더미 응답
-        AdvanceRoundResponse response = AdvanceRoundResponse.builder()
-                .conferenceId(conferenceId)
-                .currentRound(request.proceed() ? 2 : 1)
-                .status(request.proceed() ? "active" : "completed")
-                .build();
+        AdvanceRoundResponse response = conferenceService.advanceRound(
+                UUID.fromString(conferenceId),
+                userDetails.getUserId(),
+                request.proceed()
+        );
 
         return ResponseEntity.ok(BaseResponse.success(200, "OK", response));
     }
