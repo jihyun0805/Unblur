@@ -1,9 +1,6 @@
 package com.ssafy.unblur.domain.user.controller;
 
-import com.ssafy.unblur.common.exception.BaseException;
-import com.ssafy.unblur.common.exception.ErrorCode;
 import com.ssafy.unblur.common.response.BaseResponse;
-import com.ssafy.unblur.common.util.SecurityUtil;
 import com.ssafy.unblur.domain.user.dto.UserProfileResponseDto;
 import com.ssafy.unblur.domain.user.dto.UserProfileUpdateRequestDto;
 import com.ssafy.unblur.domain.user.service.UserService;
@@ -23,41 +20,28 @@ public class UserController implements UserApiDocs {
     @Override
     @DeleteMapping("/me")
     public ResponseEntity<BaseResponse<Void>> withdraw(HttpServletResponse response) {
-        String currentUserEmail = SecurityUtil.getCurrentUserEmail()
-                .orElseThrow(() -> new BaseException(ErrorCode.UNAUTHORIZED));
-
-        userService.withdraw(currentUserEmail);
-
+        userService.withdraw();
         response.addCookie(clearRefreshTokenCookie());
-
         return ResponseEntity.ok(
-                BaseResponse.onSuccess("회원 탈퇴가 성공적으로 처리되었습니다.", null)
+                BaseResponse.onSuccess("회원 탈퇴 성공", null)
         );
     }
 
     @Override
     @GetMapping("/me")
     public ResponseEntity<BaseResponse<UserProfileResponseDto>> getMyProfile() {
-        String email = SecurityUtil.getCurrentUserEmail()
-                .orElseThrow(() -> new BaseException(ErrorCode.UNAUTHORIZED));
-
-        UserProfileResponseDto response = userService.getMyProfile(email);
-
+        UserProfileResponseDto response = userService.getMyProfile();
         return ResponseEntity.ok(
-                BaseResponse.onSuccess("내 정보 조회가 성공적으로 처리되었습니다.", response)
+                BaseResponse.onSuccess("프로필 조회 성공", response)
         );
     }
 
     @Override
     @PatchMapping("/me")
     public ResponseEntity<BaseResponse<UserProfileResponseDto>> updateMyProfile(@RequestBody UserProfileUpdateRequestDto dto) {
-        String email = SecurityUtil.getCurrentUserEmail()
-                .orElseThrow(() -> new BaseException(ErrorCode.UNAUTHORIZED));
-
-        UserProfileResponseDto updatedProfile = userService.updateMyProfile(email, dto);
-
+        UserProfileResponseDto updatedProfile = userService.updateMyProfile(dto);
         return ResponseEntity.ok(
-                BaseResponse.onSuccess("내 정보 수정이 성공적으로 처리되었습니다.", updatedProfile)
+                BaseResponse.onSuccess("프로필 수정 성공", updatedProfile)
         );
     }
 

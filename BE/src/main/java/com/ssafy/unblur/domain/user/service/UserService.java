@@ -2,6 +2,7 @@ package com.ssafy.unblur.domain.user.service;
 
 import com.ssafy.unblur.common.exception.BaseException;
 import com.ssafy.unblur.common.exception.ErrorCode;
+import com.ssafy.unblur.common.util.SecurityUtil;
 import com.ssafy.unblur.domain.auth.model.User;
 import com.ssafy.unblur.domain.auth.service.AuthService;
 import com.ssafy.unblur.domain.auth.service.RefreshTokenService;
@@ -22,7 +23,10 @@ public class UserService {
      * 회원 탈퇴를 진행합니다.
      */
     @Transactional
-    public void withdraw(String email) {
+    public void withdraw() {
+        String email = SecurityUtil.getCurrentUserEmail()
+                .orElseThrow(() -> new BaseException(ErrorCode.UNAUTHORIZED));
+
         User user = authService.findUserByEmail(email)
                 .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
 
@@ -35,7 +39,10 @@ public class UserService {
      * 현재 로그인된 사용자의 프로필 정보를 조회합니다.
      */
     @Transactional(readOnly = true)
-    public UserProfileResponseDto getMyProfile(String email) {
+    public UserProfileResponseDto getMyProfile() {
+        String email = SecurityUtil.getCurrentUserEmail()
+                .orElseThrow(() -> new BaseException(ErrorCode.UNAUTHORIZED));
+
         User user = authService.findUserByEmail(email)
                 .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
 
@@ -51,7 +58,10 @@ public class UserService {
      * 현재 로그인된 사용자의 프로필 정보를 수정합니다.
      */
     @Transactional
-    public UserProfileResponseDto updateMyProfile(String email, UserProfileUpdateRequestDto dto) {
+    public UserProfileResponseDto updateMyProfile(UserProfileUpdateRequestDto dto) {
+        String email = SecurityUtil.getCurrentUserEmail()
+                .orElseThrow(() -> new BaseException(ErrorCode.UNAUTHORIZED));
+
         User user = authService.findUserByEmail(email)
                 .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
 
@@ -64,5 +74,4 @@ public class UserService {
 
         return UserProfileResponseDto.from(user);
     }
-
 }
