@@ -30,7 +30,9 @@ public class MatchControllerImpl implements MatchController {
             @Valid @RequestBody FastMatchingRequest request
     ) {
         MatchingQueueResponse response = matchService.startQuickMatch(userDetails.getUserId(), request);
-        return ResponseEntity.ok(BaseResponse.success(200, "OK", response));
+        return ResponseEntity.ok(
+                BaseResponse.onSuccess("빠른 매칭 요청이 성공적으로 처리되었습니다.", response)
+        );
     }
 
     @Override
@@ -49,7 +51,9 @@ public class MatchControllerImpl implements MatchController {
                 LocalDateTime.parse("2024-01-14T14:30:00")
         );
 
-        return ResponseEntity.ok(BaseResponse.success(200, "OK", response));
+        return ResponseEntity.ok(
+                BaseResponse.onSuccess("1:1 매칭 요청이 성공적으로 처리되었습니다.", response)
+        );
     }
 
     @Override
@@ -58,7 +62,9 @@ public class MatchControllerImpl implements MatchController {
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         MatchingQueueResponse response = matchService.getQueueStatus(userDetails.getUserId());
-        return ResponseEntity.ok(BaseResponse.success(200, "OK", response));
+        return ResponseEntity.ok(
+                BaseResponse.onSuccess("매칭 대기열 상태 조회가 성공적으로 처리되었습니다.", response)
+        );
     }
 
     @Override
@@ -68,7 +74,9 @@ public class MatchControllerImpl implements MatchController {
             @PathVariable("request_id") String requestId
     ) {
         matchService.cancelQuickMatch(userDetails.getUserId(), requestId);
-        return ResponseEntity.ok(BaseResponse.success(200, "OK", null));
+        return ResponseEntity.ok(
+                BaseResponse.onSuccess("빠른 매칭 요청이 성공적으로 취소되었습니다.", null)
+        );
     }
 
     @Override
@@ -87,7 +95,9 @@ public class MatchControllerImpl implements MatchController {
                 LocalDateTime.parse("2024-01-14T14:30:00")
         );
 
-        return ResponseEntity.ok(BaseResponse.success(200, "OK", response));
+        return ResponseEntity.ok(
+                BaseResponse.onSuccess("1:1 매칭 요청이 성공적으로 수락되었습니다.", response)
+        );
     }
 
     @Override
@@ -106,7 +116,9 @@ public class MatchControllerImpl implements MatchController {
                 LocalDateTime.parse("2024-01-14T14:30:00")
         );
 
-        return ResponseEntity.ok(BaseResponse.success(200, "OK", response));
+        return ResponseEntity.ok(
+                BaseResponse.onSuccess("1:1 매칭 요청이 성공적으로 거절되었습니다.", response)
+        );
     }
 
 }

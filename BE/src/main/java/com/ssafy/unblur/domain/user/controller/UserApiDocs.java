@@ -1,6 +1,5 @@
 package com.ssafy.unblur.domain.user.controller;
 
-import com.ssafy.unblur.common.exception.ErrorResponse;
 import com.ssafy.unblur.common.response.BaseResponse;
 import com.ssafy.unblur.common.response.SwaggerResponses;
 import com.ssafy.unblur.domain.user.dto.UserProfileResponseDto;
@@ -28,13 +27,13 @@ public interface UserApiDocs {
             responseCode = "401",
             description = "인증되지 않은 사용자",
             content = @Content(
-                    schema = @Schema(implementation = ErrorResponse.class),
+                    schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
                               "statusCode": 401,
                               "message": "로그인이 필요합니다.",
-                              "code": "AUTH-007"
+                              "errorCode": "AUTH-007"
                             }
                             """)
             )
@@ -42,13 +41,13 @@ public interface UserApiDocs {
     @ApiResponse(
             responseCode = "404",
             description = "사용자를 찾을 수 없음",
-            content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+            content = @Content(schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
                               "statusCode": 404,
                               "message": "사용자를 찾을 수 없습니다.",
-                              "code": "USER-001"
+                              "errorCode": "USER-001"
                             }
                             """)
             )
@@ -66,13 +65,13 @@ public interface UserApiDocs {
             responseCode = "401",
             description = "인증되지 않은 사용자",
             content = @Content(
-                    schema = @Schema(implementation = ErrorResponse.class),
+                    schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
                               "statusCode": 401,
                               "message": "로그인이 필요합니다.",
-                              "code": "AUTH-007"
+                              "errorCode": "AUTH-007"
                             }
                             """)
             )
@@ -80,13 +79,13 @@ public interface UserApiDocs {
     @ApiResponse(
             responseCode = "404",
             description = "사용자를 찾을 수 없음",
-            content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+            content = @Content(schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
                               "statusCode": 404,
                               "message": "사용자를 찾을 수 없습니다.",
-                              "code": "USER-001"
+                              "errorCode": "USER-001"
                             }
                             """)
             )

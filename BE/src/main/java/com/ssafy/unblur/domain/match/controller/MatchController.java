@@ -1,6 +1,5 @@
 package com.ssafy.unblur.domain.match.controller;
 
-import com.ssafy.unblur.common.exception.ErrorResponse;
 import com.ssafy.unblur.common.response.BaseResponse;
 import com.ssafy.unblur.common.security.auth.CustomUserDetails;
 import com.ssafy.unblur.domain.match.dto.FastMatchingRequest;
@@ -68,13 +67,13 @@ public interface MatchController {
             responseCode = "400",
             description = "잘못된 요청",
             content = @Content(
-                    schema = @Schema(implementation = ErrorResponse.class),
+                    schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
                               "statusCode": 400,
                               "message": "잘못된 요청 값입니다.",
-                              "code": "COMMON-002"
+                              "errorCode": "COMMON-002"
                             }""")
             )
     )
@@ -82,13 +81,13 @@ public interface MatchController {
             responseCode = "401",
             description = "로그인이 필요합니다.",
             content = @Content(
-                    schema = @Schema(implementation = ErrorResponse.class),
+                    schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
                               "statusCode": 401,
                               "message": "로그인이 필요합니다.",
-                              "code": "AUTH-007"
+                              "errorCode": "AUTH-007"
                             }""")
             )
     )
@@ -96,13 +95,13 @@ public interface MatchController {
             responseCode = "409",
             description = "이미 대기열에 등록됨",
             content = @Content(
-                    schema = @Schema(implementation = ErrorResponse.class),
+                    schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
                               "statusCode": 409,
                               "message": "이미 대기열에 등록되어 있습니다.",
-                              "code": "MATCH-002"
+                              "errorCode": "MATCH-002"
                             }""")
             )
     )
@@ -154,13 +153,13 @@ public interface MatchController {
             responseCode = "400",
             description = "잘못된 요청",
             content = @Content(
-                    schema = @Schema(implementation = ErrorResponse.class),
+                    schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
                               "statusCode": 400,
                               "message": "잘못된 요청 값입니다.",
-                              "code": "COMMON-002"
+                              "errorCode": "COMMON-002"
                             }""")
             )
     )
@@ -168,13 +167,13 @@ public interface MatchController {
             responseCode = "401",
             description = "로그인이 필요합니다.",
             content = @Content(
-                    schema = @Schema(implementation = ErrorResponse.class),
+                    schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
                               "statusCode": 401,
                               "message": "로그인이 필요합니다.",
-                              "code": "AUTH-007"
+                              "errorCode": "AUTH-007"
                             }""")
             )
     )
@@ -182,13 +181,13 @@ public interface MatchController {
             responseCode = "404",
             description = "대상 사용자를 찾을 수 없음",
             content = @Content(
-                    schema = @Schema(implementation = ErrorResponse.class),
+                    schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
                               "statusCode": 404,
                               "message": "대상 사용자를 찾을 수 없습니다.",
-                              "code": "MATCH-003"
+                              "errorCode": "MATCH-003"
                             }""")
             )
     )
@@ -196,13 +195,13 @@ public interface MatchController {
             responseCode = "409",
             description = "이미 대기열에 등록됨",
             content = @Content(
-                    schema = @Schema(implementation = ErrorResponse.class),
+                    schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
                               "statusCode": 409,
                               "message": "이미 대기열에 등록되어 있습니다.",
-                              "code": "MATCH-002"
+                              "errorCode": "MATCH-002"
                             }""")
             )
     )
@@ -210,13 +209,13 @@ public interface MatchController {
             responseCode = "409",
             description = "상대가 현재 수락 불가(오프라인)",
             content = @Content(
-                    schema = @Schema(implementation = ErrorResponse.class),
+                    schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
                               "statusCode": 409,
                               "message": "상대가 현재 수락할 수 없는 상태입니다.",
-                              "code": "MATCH-005"
+                              "errorCode": "MATCH-005"
                             }""")
             )
     )
@@ -260,13 +259,13 @@ public interface MatchController {
             responseCode = "401",
             description = "로그인이 필요합니다.",
             content = @Content(
-                    schema = @Schema(implementation = ErrorResponse.class),
+                    schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
                               "statusCode": 401,
                               "message": "로그인이 필요합니다.",
-                              "code": "AUTH-007"
+                              "errorCode": "AUTH-007"
                             }""")
             )
     )
@@ -274,13 +273,13 @@ public interface MatchController {
             responseCode = "404",
             description = "대기열 요청을 찾을 수 없음",
             content = @Content(
-                    schema = @Schema(implementation = ErrorResponse.class),
+                    schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
                               "statusCode": 404,
                               "message": "매칭 요청을 찾을 수 없습니다.",
-                              "code": "MATCH-001"
+                              "errorCode": "MATCH-001"
                             }""")
             )
     )
@@ -313,13 +312,13 @@ public interface MatchController {
             responseCode = "400",
             description = "잘못된 요청",
             content = @Content(
-                    schema = @Schema(implementation = ErrorResponse.class),
+                    schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
                               "statusCode": 400,
                               "message": "잘못된 요청 값입니다.",
-                              "code": "COMMON-002"
+                              "errorCode": "COMMON-002"
                             }""")
             )
     )
@@ -327,13 +326,13 @@ public interface MatchController {
             responseCode = "401",
             description = "로그인이 필요합니다.",
             content = @Content(
-                    schema = @Schema(implementation = ErrorResponse.class),
+                    schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
                               "statusCode": 401,
                               "message": "로그인이 필요합니다.",
-                              "code": "AUTH-007"
+                              "errorCode": "AUTH-007"
                             }""")
             )
     )
@@ -341,13 +340,13 @@ public interface MatchController {
             responseCode = "404",
             description = "매칭 요청을 찾을 수 없음",
             content = @Content(
-                    schema = @Schema(implementation = ErrorResponse.class),
+                    schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
                               "statusCode": 404,
                               "message": "매칭 요청을 찾을 수 없습니다.",
-                              "code": "MATCH-001"
+                              "errorCode": "MATCH-001"
                             }""")
             )
     )
@@ -390,13 +389,13 @@ public interface MatchController {
             responseCode = "400",
             description = "잘못된 요청",
             content = @Content(
-                    schema = @Schema(implementation = ErrorResponse.class),
+                    schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
                               "statusCode": 400,
                               "message": "잘못된 요청 값입니다.",
-                              "code": "COMMON-002"
+                              "errorCode": "COMMON-002"
                             }""")
             )
     )
@@ -404,13 +403,13 @@ public interface MatchController {
             responseCode = "401",
             description = "로그인이 필요합니다.",
             content = @Content(
-                    schema = @Schema(implementation = ErrorResponse.class),
+                    schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
                               "statusCode": 401,
                               "message": "로그인이 필요합니다.",
-                              "code": "AUTH-007"
+                              "errorCode": "AUTH-007"
                             }""")
             )
     )
@@ -418,13 +417,13 @@ public interface MatchController {
             responseCode = "403",
             description = "대상 사용자만 수락할 수 있음",
             content = @Content(
-                    schema = @Schema(implementation = ErrorResponse.class),
+                    schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
                               "statusCode": 403,
                               "message": "해당 기능에 접근할 권한이 없습니다.",
-                              "code": "AUTH-008"
+                              "errorCode": "AUTH-008"
                             }""")
             )
     )
@@ -432,13 +431,13 @@ public interface MatchController {
             responseCode = "404",
             description = "매칭 요청을 찾을 수 없음",
             content = @Content(
-                    schema = @Schema(implementation = ErrorResponse.class),
+                    schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
                               "statusCode": 404,
                               "message": "매칭 요청을 찾을 수 없습니다.",
-                              "code": "MATCH-001"
+                              "errorCode": "MATCH-001"
                             }""")
             )
     )
@@ -446,13 +445,13 @@ public interface MatchController {
             responseCode = "409",
             description = "이미 처리된 매칭 요청",
             content = @Content(
-                    schema = @Schema(implementation = ErrorResponse.class),
+                    schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
                               "statusCode": 409,
                               "message": "이미 처리된 매칭 요청입니다.",
-                              "code": "MATCH-004"
+                              "errorCode": "MATCH-004"
                             }""")
             )
     )
@@ -495,13 +494,13 @@ public interface MatchController {
             responseCode = "400",
             description = "잘못된 요청",
             content = @Content(
-                    schema = @Schema(implementation = ErrorResponse.class),
+                    schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
                               "statusCode": 400,
                               "message": "잘못된 요청 값입니다.",
-                              "code": "COMMON-002"
+                              "errorCode": "COMMON-002"
                             }""")
             )
     )
@@ -509,13 +508,13 @@ public interface MatchController {
             responseCode = "401",
             description = "로그인이 필요합니다.",
             content = @Content(
-                    schema = @Schema(implementation = ErrorResponse.class),
+                    schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
                               "statusCode": 401,
                               "message": "로그인이 필요합니다.",
-                              "code": "AUTH-007"
+                              "errorCode": "AUTH-007"
                             }""")
             )
     )
@@ -523,13 +522,13 @@ public interface MatchController {
             responseCode = "403",
             description = "대상 사용자만 거절할 수 있음",
             content = @Content(
-                    schema = @Schema(implementation = ErrorResponse.class),
+                    schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
                               "statusCode": 403,
                               "message": "해당 기능에 접근할 권한이 없습니다.",
-                              "code": "AUTH-008"
+                              "errorCode": "AUTH-008"
                             }""")
             )
     )
@@ -537,13 +536,13 @@ public interface MatchController {
             responseCode = "404",
             description = "매칭 요청을 찾을 수 없음",
             content = @Content(
-                    schema = @Schema(implementation = ErrorResponse.class),
+                    schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
                               "statusCode": 404,
                               "message": "매칭 요청을 찾을 수 없습니다.",
-                              "code": "MATCH-001"
+                              "errorCode": "MATCH-001"
                             }""")
             )
     )
@@ -551,13 +550,13 @@ public interface MatchController {
             responseCode = "409",
             description = "이미 처리된 매칭 요청",
             content = @Content(
-                    schema = @Schema(implementation = ErrorResponse.class),
+                    schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
                               "statusCode": 409,
                               "message": "이미 처리된 매칭 요청입니다.",
-                              "code": "MATCH-004"
+                              "errorCode": "MATCH-004"
                             }""")
             )
     )

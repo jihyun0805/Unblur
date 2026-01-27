@@ -29,7 +29,7 @@ public class ConferenceHistoryController implements ConferenceHistoryApiDocs {
         ConferenceHistoryResponseDto response = conferenceHistoryService.getMyConferenceHistory(currentUserEmail, pageable);
 
         return ResponseEntity.ok(
-                new BaseResponse<>(200, "컨퍼런스 이력 조회 성공", response)
+                BaseResponse.onSuccess("컨퍼런스 이력 조회에 성공했습니다.", response)
         );
     }
 }

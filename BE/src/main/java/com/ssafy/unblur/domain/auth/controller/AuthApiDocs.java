@@ -1,6 +1,5 @@
 package com.ssafy.unblur.domain.auth.controller;
 
-import com.ssafy.unblur.common.exception.ErrorResponse;
 import com.ssafy.unblur.common.response.BaseResponse;
 import com.ssafy.unblur.common.response.SwaggerResponses;
 import com.ssafy.unblur.domain.auth.dto.LoginRequestDto;
@@ -34,13 +33,12 @@ public interface AuthApiDocs {
             responseCode = "400",
             description = "유효하지 않은 입력 값 (이메일 형식 오류, 필수값 누락 등)",
             content = @Content(
-                    schema = @Schema(implementation = ErrorResponse.class),
+                    schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
                               "statusCode": 400,
-                              "message": "입력 값이 유효하지 않습니다.",
-                              "code": "COMMON-002"
+                              "message": "[COMMON-002] 입력 값이 유효하지 않습니다.",
                             }
                             """)
             )
@@ -49,7 +47,7 @@ public interface AuthApiDocs {
             responseCode = "409",
             description = "중복 오류 (이메일 또는 닉네임)",
             content = @Content(
-                    schema = @Schema(implementation = ErrorResponse.class),
+                    schema = @Schema(implementation = BaseResponse.class),
                     examples = {
                             @ExampleObject(
                                     name = "이메일 중복",
@@ -58,7 +56,7 @@ public interface AuthApiDocs {
                                             "isSuccess": false,
                                             "statusCode": 409,
                                             "message": "이미 존재하는 이메일입니다.",
-                                            "code": "USER-003"
+                                            "errorCode": "USER-003"
                                             }
                                             """
                             ),
@@ -116,13 +114,13 @@ public interface AuthApiDocs {
             responseCode = "401",
             description = "비밀번호 불일치",
             content = @Content(
-                    schema = @Schema(implementation = ErrorResponse.class),
+                    schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                             "isSuccess": false,
                             "statusCode": 401,
                             "message": "아이디 또는 비밀번호가 일치하지 않습니다.",
-                            "code": "AUTH-002"
+                            "errorCode": "AUTH-002"
                             }
                             """)
             )
@@ -131,13 +129,13 @@ public interface AuthApiDocs {
             responseCode = "403",
             description = "비활성화된 계정",
             content = @Content(
-                    schema = @Schema(implementation = ErrorResponse.class),
+                    schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                             "isSuccess": false,
                             "statusCode": 403,
                             "message": "비활성화된 계정입니다.",
-                            "code": "USER-005"
+                            "errorCode": "USER-005"
                             }
                             """)
             )
@@ -146,13 +144,13 @@ public interface AuthApiDocs {
             responseCode = "404",
             description = "존재하지 않는 사용자",
             content = @Content(
-                    schema = @Schema(implementation = ErrorResponse.class),
+                    schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                             "isSuccess": false,
                             "statusCode": 404,
                             "message": "사용자를 찾을 수 없습니다.",
-                            "code": "USER-001"
+                            "errorCode": "USER-001"
                             }
                             }
                             """)
@@ -175,13 +173,13 @@ public interface AuthApiDocs {
             responseCode = "401",
             description = "유효하지 않은 Refresh Token",
             content = @Content(
-                    schema = @Schema(implementation = ErrorResponse.class),
+                    schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                             "isSuccess": false,
                             "statusCode": 401,
                             "message": "유효하지 않은 토큰입니다.",
-                            "code": "AUTH-003"
+                            "errorCode": "AUTH-003"
                             }
                             """)
             )
@@ -190,13 +188,13 @@ public interface AuthApiDocs {
             responseCode = "401",
             description = "만료된 Refresh Token",
             content = @Content(
-                    schema = @Schema(implementation = ErrorResponse.class),
+                    schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                             "isSuccess": false,
                             "statusCode": 401,
                             "message": "만료된 토큰입니다.",
-                            "code": "AUTH-004"
+                            "errorCode": "AUTH-004"
                             }
                             """)
             )
@@ -205,13 +203,13 @@ public interface AuthApiDocs {
             responseCode = "404",
             description = "토큰의 사용자를 찾을 수 없음",
             content = @Content(
-                    schema = @Schema(implementation = ErrorResponse.class),
+                    schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                             "isSuccess": false,
                             "statusCode": 404,
                             "message": "사용자를 찾을 수 없습니다.",
-                            "code": "USER-001"
+                            "errorCode": "USER-001"
                             }
                             """)
             )

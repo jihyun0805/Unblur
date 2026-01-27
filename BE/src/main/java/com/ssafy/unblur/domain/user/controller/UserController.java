@@ -33,7 +33,7 @@ public class UserController implements UserApiDocs {
         response.addCookie(clearRefreshTokenCookie());
 
         return ResponseEntity.ok(
-                new BaseResponse<>(200, "회원 탈퇴가 성공적으로 처리되었습니다.", null)
+                BaseResponse.onSuccess("회원 탈퇴가 성공적으로 처리되었습니다.", null)
         );
     }
 
@@ -45,7 +45,7 @@ public class UserController implements UserApiDocs {
         UserProfileResponseDto response = userService.getMyProfile(email);
 
         return ResponseEntity.ok(
-                new BaseResponse<>(200, "내 정보 조회가 성공적으로 처리되었습니다.", response)
+                BaseResponse.onSuccess("내 정보 조회가 성공적으로 처리되었습니다.", response)
         );
     }
 

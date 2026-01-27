@@ -1,7 +1,7 @@
 package com.ssafy.unblur.domain.match.controller;
 
+import com.ssafy.unblur.common.response.BaseResponse;
 import com.ssafy.unblur.common.security.auth.CustomUserDetails;
-import com.ssafy.unblur.common.exception.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -33,13 +33,13 @@ public interface MatchSseController {
             responseCode = "401",
             description = "로그인이 필요합니다.",
             content = @Content(
-                    schema = @Schema(implementation = ErrorResponse.class),
+                    schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
                               "statusCode": 401,
                               "message": "로그인이 필요합니다.",
-                              "code": "AUTH-007"
+                              "errorCode": "AUTH-007"
                             }""")
             )
     )
@@ -47,13 +47,13 @@ public interface MatchSseController {
             responseCode = "403",
             description = "접근 권한이 없습니다.",
             content = @Content(
-                    schema = @Schema(implementation = ErrorResponse.class),
+                    schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
                               "statusCode": 403,
                               "message": "접근 권한이 없습니다.",
-                              "code": "AUTH-008"
+                              "errorCode": "AUTH-008"
                             }""")
             )
     )
@@ -61,13 +61,13 @@ public interface MatchSseController {
             responseCode = "409",
             description = "이미 SSE 연결이 열려있습니다.",
             content = @Content(
-                    schema = @Schema(implementation = ErrorResponse.class),
+                    schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
                               "statusCode": 409,
                               "message": "이미 SSE 연결이 열려 있습니다.",
-                              "code": "MATCH-006"
+                              "errorCode": "MATCH-006"
                             }""")
             )
     )

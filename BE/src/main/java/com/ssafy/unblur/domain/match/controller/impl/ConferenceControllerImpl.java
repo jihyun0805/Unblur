@@ -49,6 +49,8 @@ public class ConferenceControllerImpl implements ConferenceController {
                 request.proceed()
         );
 
-        return ResponseEntity.ok(BaseResponse.success(200, "OK", response));
+        return ResponseEntity.ok(
+                BaseResponse.onSuccess("다음 라운드 진행에 성공했습니다.", response)
+        );
     }
 }
