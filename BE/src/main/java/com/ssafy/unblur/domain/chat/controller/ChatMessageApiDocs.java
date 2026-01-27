@@ -1,14 +1,11 @@
 package com.ssafy.unblur.domain.chat.controller;
 
-import com.ssafy.unblur.common.exception.ErrorResponse;
 import com.ssafy.unblur.common.response.BaseResponse;
 import com.ssafy.unblur.domain.chat.dto.ChatMessagePageResponseDto;
 import com.ssafy.unblur.domain.chat.dto.ChatReadEventDto;
 import com.ssafy.unblur.domain.chat.dto.ChatReadRequestDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -26,21 +23,9 @@ public interface ChatMessageApiDocs {
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "조회 성공"),
-            @ApiResponse(
-                    responseCode = "401",
-                    description = "인증 실패",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
-            ),
-            @ApiResponse(
-                    responseCode = "403",
-                    description = "접근 권한 없음",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
-            ),
-            @ApiResponse(
-                    responseCode = "500",
-                    description = "서버 오류",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
-            )
+            @ApiResponse(responseCode = "401", description = "인증 실패"),
+            @ApiResponse(responseCode = "403", description = "접근 권한 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
     })
     @Parameter(name = "conferenceId", description = "대화방 ID")
     @Parameter(name = "page", description = "페이지 번호 (0부터 시작)", example = "0")
@@ -56,28 +41,18 @@ public interface ChatMessageApiDocs {
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "읽음 처리 성공"),
-            @ApiResponse(
-                    responseCode = "401",
-                    description = "인증 실패",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
-            ),
-            @ApiResponse(
-                    responseCode = "403",
-                    description = "접근 권한 없음",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
-            ),
-            @ApiResponse(
-                    responseCode = "500",
-                    description = "서버 오류",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
-            )
+            @ApiResponse(responseCode = "401", description = "인증 실패"),
+            @ApiResponse(responseCode = "403", description = "접근 권한 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
     })
     ResponseEntity<BaseResponse<ChatReadEventDto>> markAsRead(
             @Parameter(description = "대화방 ID") UUID conferenceId,
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     description = "읽음 처리 요청",
                     required = true,
-                    content = @Content(schema = @Schema(implementation = ChatReadRequestDto.class))
+                    content = @io.swagger.v3.oas.annotations.media.Content(
+                            schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = ChatReadRequestDto.class)
+                    )
             )
             ChatReadRequestDto request
     );

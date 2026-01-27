@@ -41,7 +41,7 @@ public class ChatMessageController implements ChatMessageApiDocs {
                 .orElseThrow(() -> new BaseException(ErrorCode.UNAUTHORIZED));
 
         ChatMessagePageResponseDto response = chatMessageService.getMessages(conferenceId, pageable, email);
-        return ResponseEntity.ok(new BaseResponse<>(200, "대화방 메시지 조회 성공", response));
+        return ResponseEntity.ok(BaseResponse.onSuccess("대화방 메시지 조회 성공", response));
     }
 
     @PostMapping("/read")
@@ -53,6 +53,6 @@ public class ChatMessageController implements ChatMessageApiDocs {
                 .orElseThrow(() -> new BaseException(ErrorCode.UNAUTHORIZED));
 
         ChatReadEventDto response = chatMessageService.markAsRead(conferenceId, request.lastReadAt(), email);
-        return ResponseEntity.ok(new BaseResponse<>(200, "읽음 처리 성공", response));
+        return ResponseEntity.ok(BaseResponse.onSuccess("읽음 처리 성공", response));
     }
 }
