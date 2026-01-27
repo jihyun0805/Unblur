@@ -192,6 +192,10 @@ public class User {
                 .nickname(dto.getNickname())
                 .birthDate(dto.getBirthDate())
                 .gender(dto.getGender())
+                .region(dto.getRegion())
+                .detailedInfo(dto.getDetailedInfo())
+                .interestTags(dto.getInterestTags() != null ?
+                        dto.getInterestTags().toArray(String[]::new) : new String[0])
                 .build();
     }
 

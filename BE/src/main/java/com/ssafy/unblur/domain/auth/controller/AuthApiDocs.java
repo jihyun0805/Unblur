@@ -47,32 +47,33 @@ public interface AuthApiDocs {
     )
     @ApiResponse(
             responseCode = "409",
-            description = "이메일 중복",
+            description = "중복 오류 (이메일 또는 닉네임)",
             content = @Content(
                     schema = @Schema(implementation = ErrorResponse.class),
-                    examples = @ExampleObject(value = """
-                            {
-                            "isSuccess": false,
-                            "statusCode": 409,
-                            "message": "이미 존재하는 이메일입니다.",
-                            "code": "USER-003"
-                            }
-                            """)
-            )
-    )
-    @ApiResponse(
-            responseCode = "409",
-            description = "닉네임 중복",
-            content = @Content(
-                    schema = @Schema(implementation = ErrorResponse.class),
-                    examples = @ExampleObject(value = """
-                            {
-                            "isSuccess": false,
-                            "statusCode": 409,
-                            "message": "이미 존재하는 닉네임입니다.",
-                            "code": "USER-004"
-                            }
-                            """)
+                    examples = {
+                            @ExampleObject(
+                                    name = "이메일 중복",
+                                    value = """
+                                            {
+                                            "isSuccess": false,
+                                            "statusCode": 409,
+                                            "message": "이미 존재하는 이메일입니다.",
+                                            "code": "USER-003"
+                                            }
+                                            """
+                            ),
+                            @ExampleObject(
+                                    name = "닉네임 중복",
+                                    value = """
+                                            {
+                                            "isSuccess": false,
+                                            "statusCode": 409,
+                                            "message": "이미 존재하는 닉네임입니다.",
+                                            "code": "USER-004"
+                                            }
+                                            """
+                            )
+                    }
             )
     )
     ResponseEntity<BaseResponse<SignupResponseDto>> signUp(@RequestBody SignupDto signUpDto);
@@ -84,8 +85,7 @@ public interface AuthApiDocs {
      * @return 성공 시 200 상태 코드와 함께 중복 여부(true: 중복)를 반환
      */
     @Operation(summary = "이메일 중복 확인", description = "입력받은 이메일이 DB에 존재하는지 확인합니다.")
-    @ApiResponse(responseCode = "200", description = "조회 성공 (true: 중복됨, false: 사용 가능)", content = @Content(schema = @Schema(implementation = SwaggerResponses.VoidResponse.class)))
-    @ApiResponse(responseCode = "400", description = "유효하지 않은 이메일 형식", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "200", description = "조회 성공 (true: 중복됨, false: 사용 가능)", content = @Content(schema = @Schema(implementation = SwaggerResponses.DuplicateCheckResponse.class)))
     ResponseEntity<BaseResponse<Boolean>> checkEmail(
             @Parameter(description = "이메일 주소", example = "test@ssafy.com")
             String email);
@@ -98,7 +98,6 @@ public interface AuthApiDocs {
      */
     @Operation(summary = "닉네임 중복 확인", description = "닉네임 중복 여부를 체크합니다.")
     @ApiResponse(responseCode = "200", description = "조회 성공 (true: 중복됨, false: 사용 가능)", content = @Content(schema = @Schema(implementation = SwaggerResponses.DuplicateCheckResponse.class)))
-    @ApiResponse(responseCode = "400", description = "유효하지 않은 닉네임 형식", content = @Content(schema = @Schema(implementation = BaseResponse.class)))
     ResponseEntity<BaseResponse<Boolean>> checkNickname(
             @Parameter(description = "중복 확인할 닉네임", example = "unblur")
             String nickname);
@@ -112,10 +111,53 @@ public interface AuthApiDocs {
      * @return 성공 시 200 상태 코드와 함께 Access Token 정보를 반환
      */
     @Operation(summary = "로그인", description = "이메일과 비밀번호로 로그인합니다. 성공 시 Access Token(Body/Header)과 Refresh Token(Cookie)을 발급합니다.")
-    @ApiResponse(responseCode = "200", description = "로그인 성공", content = @Content(schema = @Schema(allOf = {BaseResponse.class}, subTypes = {LoginResponseDto.class})))
-    @ApiResponse(responseCode = "401", description = "비밀번호 불일치", content = @Content(schema = @Schema(implementation = BaseResponse.class)))
-    @ApiResponse(responseCode = "403", description = "비활성화된 계정", content = @Content(schema = @Schema(implementation = BaseResponse.class)))
-    @ApiResponse(responseCode = "404", description = "존재하지 않는 사용자", content = @Content(schema = @Schema(implementation = BaseResponse.class)))
+    @ApiResponse(responseCode = "200", description = "로그인 성공", content = @Content(schema = @Schema(implementation = SwaggerResponses.LoginResponse.class)))
+    @ApiResponse(
+            responseCode = "401",
+            description = "비밀번호 불일치",
+            content = @Content(
+                    schema = @Schema(implementation = ErrorResponse.class),
+                    examples = @ExampleObject(value = """
+                            {
+                            "isSuccess": false,
+                            "statusCode": 401,
+                            "message": "아이디 또는 비밀번호가 일치하지 않습니다.",
+                            "code": "AUTH-002"
+                            }
+                            """)
+            )
+    )
+    @ApiResponse(
+            responseCode = "403",
+            description = "비활성화된 계정",
+            content = @Content(
+                    schema = @Schema(implementation = ErrorResponse.class),
+                    examples = @ExampleObject(value = """
+                            {
+                            "isSuccess": false,
+                            "statusCode": 403,
+                            "message": "비활성화된 계정입니다.",
+                            "code": "USER-005"
+                            }
+                            """)
+            )
+    )
+    @ApiResponse(
+            responseCode = "404",
+            description = "존재하지 않는 사용자",
+            content = @Content(
+                    schema = @Schema(implementation = ErrorResponse.class),
+                    examples = @ExampleObject(value = """
+                            {
+                            "isSuccess": false,
+                            "statusCode": 404,
+                            "message": "사용자를 찾을 수 없습니다.",
+                            "code": "USER-001"
+                            }
+                            }
+                            """)
+            )
+    )
     ResponseEntity<BaseResponse<LoginResponseDto>> login(@RequestBody LoginRequestDto loginRequest, HttpServletResponse response);
 
     /**
@@ -128,16 +170,74 @@ public interface AuthApiDocs {
      * @return 성공 시 200 상태 코드와 함께 새로 생성된 Access Token을 반환
      */
     @Operation(summary = "토큰 재발급", description = "쿠키의 Refresh Token을 검증하여 Access Token과 Refresh Token을 모두 재발급(Rotation)합니다.")
-    @ApiResponse(responseCode = "200", description = "토큰 재발급 성공", content = @Content(schema = @Schema(implementation = LoginResponseDto.class)))
-    @ApiResponse(responseCode = "401", description = "유효하지 않거나 만료된 Refresh Token", content = @Content(schema = @Schema(implementation = BaseResponse.class)))
+    @ApiResponse(responseCode = "200", description = "토큰 재발급 성공", content = @Content(schema = @Schema(implementation = SwaggerResponses.RefreshTokenResponse.class)))
+    @ApiResponse(
+            responseCode = "401",
+            description = "유효하지 않은 Refresh Token",
+            content = @Content(
+                    schema = @Schema(implementation = ErrorResponse.class),
+                    examples = @ExampleObject(value = """
+                            {
+                            "isSuccess": false,
+                            "statusCode": 401,
+                            "message": "유효하지 않은 토큰입니다.",
+                            "code": "AUTH-003"
+                            }
+                            """)
+            )
+    )
+    @ApiResponse(
+            responseCode = "401",
+            description = "만료된 Refresh Token",
+            content = @Content(
+                    schema = @Schema(implementation = ErrorResponse.class),
+                    examples = @ExampleObject(value = """
+                            {
+                            "isSuccess": false,
+                            "statusCode": 401,
+                            "message": "만료된 토큰입니다.",
+                            "code": "AUTH-004"
+                            }
+                            """)
+            )
+    )
+    @ApiResponse(
+            responseCode = "404",
+            description = "토큰의 사용자를 찾을 수 없음",
+            content = @Content(
+                    schema = @Schema(implementation = ErrorResponse.class),
+                    examples = @ExampleObject(value = """
+                            {
+                            "isSuccess": false,
+                            "statusCode": 404,
+                            "message": "사용자를 찾을 수 없습니다.",
+                            "code": "USER-001"
+                            }
+                            """)
+            )
+    )
     ResponseEntity<BaseResponse<LoginResponseDto>> reissue(
             @Parameter(hidden = true) HttpServletRequest request,
             @Parameter(hidden = true) HttpServletResponse response);
 
 
     @Operation(summary = "로그아웃", description = "현재 사용자를 로그아웃 처리합니다. 클라이언트의 Refresh Token 쿠키를 삭제하고 서버의 Refresh Token을 무효화합니다.")
-    @ApiResponse(responseCode = "200", description = "로그아웃 성공", content = @Content(schema = @Schema(implementation = BaseResponse.class)))
-    @ApiResponse(responseCode = "401", description = "인증되지 않은 사용자", content = @Content(schema = @Schema(implementation = BaseResponse.class)))
+    @ApiResponse(responseCode = "200", description = "로그아웃 성공", content = @Content(schema = @Schema(implementation = SwaggerResponses.VoidResponse.class)))
+    @ApiResponse(
+            responseCode = "401",
+            description = "인증되지 않은 사용자",
+            content = @Content(
+                    schema = @Schema(implementation = BaseResponse.class),
+                    examples = @ExampleObject(value = """
+                            {
+                            "isSuccess": false,
+                            "statusCode": 401,
+                            "message": "로그인이 필요합니다.",
+                            "code": "AUTH-007"
+                            }
+                            """)
+            )
+    )
     ResponseEntity<BaseResponse<Void>> logout(HttpServletResponse response);
 }
 
