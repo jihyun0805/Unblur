@@ -5,15 +5,13 @@ import com.ssafy.unblur.common.exception.ErrorCode;
 import com.ssafy.unblur.common.response.BaseResponse;
 import com.ssafy.unblur.common.util.SecurityUtil;
 import com.ssafy.unblur.domain.user.dto.UserProfileResponseDto;
+import com.ssafy.unblur.domain.user.dto.UserProfileUpdateRequestDto;
 import com.ssafy.unblur.domain.user.service.UserService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/users")
@@ -37,15 +35,29 @@ public class UserController implements UserApiDocs {
         );
     }
 
+    @Override
     @GetMapping("/me")
     public ResponseEntity<BaseResponse<UserProfileResponseDto>> getMyProfile() {
         String email = SecurityUtil.getCurrentUserEmail()
-                .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
+                .orElseThrow(() -> new BaseException(ErrorCode.UNAUTHORIZED));
 
         UserProfileResponseDto response = userService.getMyProfile(email);
 
         return ResponseEntity.ok(
                 BaseResponse.onSuccess("내 정보 조회가 성공적으로 처리되었습니다.", response)
+        );
+    }
+
+    @Override
+    @PatchMapping("/me")
+    public ResponseEntity<BaseResponse<UserProfileResponseDto>> updateMyProfile(@RequestBody UserProfileUpdateRequestDto dto) {
+        String email = SecurityUtil.getCurrentUserEmail()
+                .orElseThrow(() -> new BaseException(ErrorCode.UNAUTHORIZED));
+
+        UserProfileResponseDto updatedProfile = userService.updateMyProfile(email, dto);
+
+        return ResponseEntity.ok(
+                BaseResponse.onSuccess("내 정보 수정이 성공적으로 처리되었습니다.", updatedProfile)
         );
     }
 
