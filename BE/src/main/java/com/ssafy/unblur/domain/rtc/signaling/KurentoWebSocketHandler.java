@@ -2,7 +2,8 @@ package com.ssafy.unblur.domain.rtc.signaling;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ssafy.unblur.domain.rtc.exception.IceCandidateSendException;
+import com.ssafy.unblur.common.exception.BaseException;
+import com.ssafy.unblur.common.exception.ErrorCode;
 import com.ssafy.unblur.domain.rtc.model.UserSession;
 import com.ssafy.unblur.domain.rtc.service.KurentoRoomService;
 import com.ssafy.unblur.domain.rtc.service.RtcSessionStore;
@@ -287,7 +288,8 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
             ));
 
         } catch (IOException e) {
-            throw new IceCandidateSendException("Failed to send ICE candidate", e);
+            log.error("ICE candidate 전송 실패. sessionId={}", session.getId(), e);
+            throw new BaseException(ErrorCode.ICE_CANDIDATE_SEND_FAILED);
         }
     }
 
