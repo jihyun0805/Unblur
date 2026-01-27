@@ -68,6 +68,10 @@ public class AuthService {
      * 이 때 중복이 발견되면 프로세스를 즉시 중단시키고 {@link ErrorCode#DUPLICATE_EMAIL} 예외를 던집니다.
      */
     private void validateDuplicateEmail(String email) {
+        if (email == null || !email.matches("^[A-za-z0-9+_.-]+@(.+)$")) {
+            throw new BaseException(ErrorCode.INVALID_EMAIL_FORMAT);
+        }
+
         if (userRepository.existsByEmail(email)) {
             log.warn("중복된 이메일 입니다: {}", email);
             throw new BaseException(ErrorCode.DUPLICATE_EMAIL);
