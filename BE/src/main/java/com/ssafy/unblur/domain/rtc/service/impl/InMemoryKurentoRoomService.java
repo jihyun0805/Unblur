@@ -156,14 +156,14 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
          */
         String processOffer(UUID userId, String sdpOffer) {
             UserSession userSession = getUserSession(userId);
-            String sdpAnswer = userSession.getWebRtcEndpoint().processOffer(sdpOffer);
-            userSession.getWebRtcEndpoint().gatherCandidates();
+            String sdpAnswer = userSession.webRtcEndpoint().processOffer(sdpOffer);
+            userSession.webRtcEndpoint().gatherCandidates();
 
             // 1:1 연결을 위해 상대방과 양방향으로 연결
             for (UserSession other : participants.values()) {
-                if (!other.getUserId().equals(userId)) {
-                    userSession.getWebRtcEndpoint().connect(other.getWebRtcEndpoint());
-                    other.getWebRtcEndpoint().connect(userSession.getWebRtcEndpoint());
+                if (!other.userId().equals(userId)) {
+                    userSession.webRtcEndpoint().connect(other.webRtcEndpoint());
+                    other.webRtcEndpoint().connect(userSession.webRtcEndpoint());
                 }
             }
             return sdpAnswer;
@@ -177,7 +177,7 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
          */
         void addIceCandidate(UUID userId, IceCandidate candidate) {
             UserSession userSession = getUserSession(userId);
-            userSession.getWebRtcEndpoint().addIceCandidate(candidate);
+            userSession.webRtcEndpoint().addIceCandidate(candidate);
         }
 
         /**
@@ -189,7 +189,7 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
             UserSession userSession = participants.remove(userId);
 
             if (userSession != null) {
-                userSession.getWebRtcEndpoint().release();
+                userSession.webRtcEndpoint().release();
                 log.info("RTC 사용자 퇴장. conferenceId={}, userId={}, size={}", conferenceId, userId, participants.size());
             }
         }

@@ -159,7 +159,7 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
         sessionInfos.put(session.getId(), new SessionInfo(conferenceId, userId));
         sessionStore.bindUser(session.getId(), userId);
 
-        userSession.getWebRtcEndpoint().addIceCandidateFoundListener(event -> {
+        userSession.webRtcEndpoint().addIceCandidateFoundListener(event -> {
             IceCandidate candidate = event.getCandidate();
             sendCandidate(session, candidate);
         });
