@@ -23,7 +23,7 @@ export default function MainRouteLayout({ children }: { children: React.ReactNod
     }
   }, [user, isLoading, router])
 
-  const isSessionOrMbti = pathname?.startsWith("/session") || pathname === "/mbti"
+  const isSessionOrMbti = pathname?.startsWith("/session") || pathname?.startsWith("/mbti")
   const handleLogout = () => {
     logout()
     setShowLogoutConfirm(false)

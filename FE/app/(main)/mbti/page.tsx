@@ -13,7 +13,7 @@ export default function MbtiRoutePage() {
       onBack={() => router.push("/home")}
       onComplete={(mbti) => {
         updateUser({ mbti })
-        router.push("/home")
+        router.push(`/mbti/result?type=${encodeURIComponent(mbti)}`)
       }}
     />
   )
