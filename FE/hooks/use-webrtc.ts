@@ -52,56 +52,108 @@ export function useWebRTC({
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null)
   const signalingClientRef = useRef<WebRTCSignalingClient | null>(null)
   const localStreamRef = useRef<MediaStream | null>(null)
+  const isMutedRef = useRef(isMuted)
+  const isVideoEnabledRef = useRef(isVideoEnabled)
 
-  // 로컬 스트림 초기화
+  // ref 동기화
+  useEffect(() => {
+    isMutedRef.current = isMuted
+  }, [isMuted])
+
+  useEffect(() => {
+    isVideoEnabledRef.current = isVideoEnabled
+  }, [isVideoEnabled])
+
+  // 로컬 스트림 초기화 - 카메라와 마이크 개별 확인
   const initLocalStream = useCallback(async () => {
-    try {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error("MediaDevices API를 사용할 수 없습니다")
-      }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error("MediaDevices API를 사용할 수 없습니다")
+    }
 
-      const stream = await navigator.mediaDevices.getUserMedia({
+    let videoStream: MediaStream | null = null
+    let audioStream: MediaStream | null = null
+    let cameraError: string | null = null
+    let micError: string | null = null
+
+    // 카메라 개별 확인
+    try {
+      videoStream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "user", width: 640, height: 480 },
+        audio: false,
+      })
+      console.log("[WebRTC] Camera access granted")
+    } catch (err: any) {
+      console.error("[WebRTC] Camera access error:", err?.name, err?.message)
+      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+        cameraError = "카메라 권한이 거부되었습니다."
+      } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+        cameraError = "카메라를 찾을 수 없습니다."
+      } else if (err.name === "NotReadableError" || err.name === "TrackStartError") {
+        cameraError = "카메라에 접근할 수 없습니다. 다른 애플리케이션에서 사용 중일 수 있습니다."
+      } else {
+        cameraError = "카메라에 접근할 수 없습니다."
+      }
+    }
+
+    // 마이크 개별 확인
+    try {
+      audioStream = await navigator.mediaDevices.getUserMedia({
+        video: false,
         audio: true,
       })
-
-      localStreamRef.current = stream
-      setLocalStream(stream)
-
-      // 로컬 비디오 요소에 스트림 연결
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream
-      }
-
-      // 오디오 트랙 mute 상태 적용
-      stream.getAudioTracks().forEach((track) => {
-        track.enabled = !isMuted
-      })
-
-      // 비디오 트랙 enabled 상태 적용
-      stream.getVideoTracks().forEach((track) => {
-        track.enabled = isVideoEnabled
-      })
-
-      return stream
+      console.log("[WebRTC] Microphone access granted")
     } catch (err: any) {
-      console.error("[WebRTC] Failed to get user media:", err)
-      let errorMessage = "카메라/마이크에 접근할 수 없습니다"
-      
+      console.error("[WebRTC] Microphone access error:", err?.name, err?.message)
       if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
-        errorMessage = "카메라/마이크 권한이 거부되었습니다. 브라우저 설정에서 권한을 허용해주세요."
+        micError = "마이크 권한이 거부되었습니다."
       } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
-        errorMessage = "카메라/마이크를 찾을 수 없습니다. 장치가 연결되어 있는지 확인해주세요."
+        micError = "마이크를 찾을 수 없습니다."
       } else if (err.name === "NotReadableError" || err.name === "TrackStartError") {
-        errorMessage = "카메라/마이크에 접근할 수 없습니다. 다른 애플리케이션에서 사용 중일 수 있습니다."
-      } else if (err.message) {
-        errorMessage = err.message
+        micError = "마이크에 접근할 수 없습니다. 다른 애플리케이션에서 사용 중일 수 있습니다."
+      } else {
+        micError = "마이크에 접근할 수 없습니다."
       }
-      
-      setError(errorMessage)
-      throw err
     }
-  }, [localVideoRef, isMuted, isVideoEnabled])
+
+    // 둘 다 실패한 경우 에러
+    if (!videoStream && !audioStream) {
+      const errorMessage = [cameraError, micError].filter(Boolean).join(" ")
+      setError(errorMessage || "카메라/마이크에 접근할 수 없습니다")
+      throw new Error(errorMessage)
+    }
+
+    // 개별 에러가 있으면 경고 표시 (하나라도 성공하면 계속 진행)
+    if (cameraError || micError) {
+      const warningMessage = [cameraError, micError].filter(Boolean).join(" ")
+      setError(warningMessage)
+    }
+
+    // 스트림 합치기
+    const combinedStream = new MediaStream()
+    
+    if (videoStream) {
+      videoStream.getVideoTracks().forEach(track => {
+        track.enabled = isVideoEnabledRef.current
+        combinedStream.addTrack(track)
+      })
+    }
+    if (audioStream) {
+      audioStream.getAudioTracks().forEach(track => {
+        track.enabled = !isMutedRef.current
+        combinedStream.addTrack(track)
+      })
+    }
+
+    localStreamRef.current = combinedStream
+    setLocalStream(combinedStream)
+
+    // 로컬 비디오 요소에 스트림 연결
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = combinedStream
+    }
+
+    return combinedStream
+  }, [localVideoRef])
 
   // PeerConnection 생성
   const createPeerConnection = useCallback(() => {
