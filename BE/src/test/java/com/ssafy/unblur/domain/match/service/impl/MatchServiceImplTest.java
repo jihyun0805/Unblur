@@ -12,6 +12,9 @@ import com.ssafy.unblur.domain.match.model.MatchEventType;
 import com.ssafy.unblur.domain.match.model.MatchQueueItem;
 import com.ssafy.unblur.domain.match.model.MatchQueueStatus;
 import com.ssafy.unblur.domain.match.model.MatchQueueType;
+import com.ssafy.unblur.domain.match.dto.OneOnOneMatchRequest;
+import com.ssafy.unblur.domain.match.dto.OneOnOneMatchResponse;
+import com.ssafy.unblur.domain.match.repository.ConferenceParticipantRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRepository;
 import com.ssafy.unblur.domain.match.repository.MatchCandidateRepository;
 import com.ssafy.unblur.domain.match.repository.MatchCandidateRepository.MatchCandidate;
@@ -79,6 +82,12 @@ class MatchServiceImplTest {
     @Mock
     private MatchEventPublisher eventPublisher;
 
+    @Mock
+    private ConferenceRepository conferenceRepository;
+
+    @Mock
+    private ConferenceParticipantRepository participantRepository;
+
     @Captor
     private ArgumentCaptor<MatchQueueItem> itemCaptor;
 
@@ -92,7 +101,9 @@ class MatchServiceImplTest {
                 queueProcessor,
                 eventPublisher,
                 policy,
-                FIXED_CLOCK
+                FIXED_CLOCK,
+                conferenceRepository,
+                participantRepository
         );
     }
 
@@ -195,11 +206,13 @@ class MatchServiceImplTest {
             UserRepository localUserRepository = mock(UserRepository.class);
             MatchCandidateRepository candidateRepository = mock(MatchCandidateRepository.class);
             ConferenceRepository conferenceRepository = mock(ConferenceRepository.class);
+            ConferenceParticipantRepository localParticipantRepo = mock(ConferenceParticipantRepository.class);
             MatchQueueProcessor localProcessor = new MatchQueueProcessor(
                     localQueueStore,
                     localUserRepository,
                     candidateRepository,
                     conferenceRepository,
+                    localParticipantRepo,
                     policy,
                     (userId, type, response) -> {
                     },
@@ -213,7 +226,9 @@ class MatchServiceImplTest {
                     (userId, type, response) -> {
                     },
                     policy,
-                    FIXED_CLOCK
+                    FIXED_CLOCK,
+                    conferenceRepository,
+                    localParticipantRepo
             );
 
             UUID requesterId = UUID.randomUUID();
@@ -275,6 +290,333 @@ class MatchServiceImplTest {
 
             assertThat(candidateItem.getStatus()).isEqualTo(MatchQueueStatus.MATCHED);
             verify(conferenceRepository).save(any(Conference.class));
+        }
+    }
+
+    @Nested
+    @DisplayName("startOneOnOneMatch")
+    class StartOneOnOneMatch {
+
+        @Test
+        @DisplayName("대상 사용자가 존재하지 않으면 오류가 발생한다")
+        void throwWhenTargetNotFound() {
+            // given: 대상 사용자가 존재하지 않으면
+            UUID userId = UUID.randomUUID();
+            UUID targetUserId = UUID.randomUUID();
+            OneOnOneMatchRequest request = new OneOnOneMatchRequest();
+            request.setTargetUserId(targetUserId.toString());
+
+            User requester = User.builder()
+                    .id(userId)
+                    .email("requester@example.com")
+                    .build();
+
+            when(queueStore.existsWaiting(userId, MatchQueueType.ONE_ON_ONE)).thenReturn(false);
+            when(userRepository.findById(userId)).thenReturn(Optional.of(requester));
+            when(userRepository.findById(targetUserId)).thenReturn(Optional.empty());
+
+            // when: 1:1 매칭을 요청할 때
+            BaseException exception = org.junit.jupiter.api.Assertions.assertThrows(
+                    BaseException.class,
+                    () -> matchService.startOneOnOneMatch(userId, request)
+            );
+
+            // then: 대상 사용자 없음 오류가 발생한다
+            assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.MATCH_TARGET_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("대상 사용자가 오프라인이면 오류가 발생한다")
+        void throwWhenTargetOffline() {
+            // given: 대상 사용자가 오프라인이면
+            UUID userId = UUID.randomUUID();
+            UUID targetUserId = UUID.randomUUID();
+            OneOnOneMatchRequest request = new OneOnOneMatchRequest();
+            request.setTargetUserId(targetUserId.toString());
+
+            User requester = User.builder()
+                    .id(userId)
+                    .email("requester@example.com")
+                    .build();
+
+            User target = User.builder()
+                    .id(targetUserId)
+                    .email("target@example.com")
+                    .online(false)
+                    .build();
+
+            when(queueStore.existsWaiting(userId, MatchQueueType.ONE_ON_ONE)).thenReturn(false);
+            when(userRepository.findById(userId)).thenReturn(Optional.of(requester));
+            when(userRepository.findById(targetUserId)).thenReturn(Optional.of(target));
+
+            // when: 1:1 매칭을 요청할 때
+            BaseException exception = org.junit.jupiter.api.Assertions.assertThrows(
+                    BaseException.class,
+                    () -> matchService.startOneOnOneMatch(userId, request)
+            );
+
+            // then: 대상 오프라인 오류가 발생한다
+            assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.MATCH_TARGET_OFFLINE);
+        }
+
+        @Test
+        @DisplayName("정상적으로 1:1 매칭 요청이 생성된다")
+        void createOneOnOneMatchRequest() {
+            // given: 정상적인 조건이 충족되면
+            UUID userId = UUID.randomUUID();
+            UUID targetUserId = UUID.randomUUID();
+            OneOnOneMatchRequest request = new OneOnOneMatchRequest();
+            request.setTargetUserId(targetUserId.toString());
+
+            User requester = User.builder()
+                    .id(userId)
+                    .email("requester@example.com")
+                    .build();
+
+            User target = User.builder()
+                    .id(targetUserId)
+                    .email("target@example.com")
+                    .online(true)
+                    .build();
+
+            when(queueStore.existsWaiting(userId, MatchQueueType.ONE_ON_ONE)).thenReturn(false);
+            when(userRepository.findById(userId)).thenReturn(Optional.of(requester));
+            when(userRepository.findById(targetUserId)).thenReturn(Optional.of(target));
+            when(queueStore.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+            // when: 1:1 매칭을 요청할 때
+            OneOnOneMatchResponse response = matchService.startOneOnOneMatch(userId, request);
+
+            // then: 요청이 생성되고 대상에게 알림이 전송된다
+            verify(queueStore).save(itemCaptor.capture());
+            verify(eventPublisher).publish(eq(targetUserId), eq(MatchEventType.ONE_ON_ONE_REQUESTED), any(OneOnOneMatchResponse.class));
+
+            MatchQueueItem item = itemCaptor.getValue();
+            assertThat(item.getRequesterUserId()).isEqualTo(userId);
+            assertThat(item.getRecipientUserId()).isEqualTo(targetUserId);
+            assertThat(item.getQueueType()).isEqualTo(MatchQueueType.ONE_ON_ONE);
+
+            assertThat(response.requestId()).isNotNull();
+            assertThat(response.status()).isEqualTo("waiting");
+            assertThat(response.queueType()).isEqualTo("one_on_one");
+            assertThat(response.targetUserId()).isEqualTo(targetUserId.toString());
+            assertThat(response.targetStatus()).isEqualTo("pending");
+        }
+
+        @Test
+        @DisplayName("자기 자신에게 매칭 요청 시 오류가 발생한다")
+        void throwWhenTargetIsSelf() {
+            // given: 자기 자신에게 매칭을 요청하면
+            UUID userId = UUID.randomUUID();
+            OneOnOneMatchRequest request = new OneOnOneMatchRequest();
+            request.setTargetUserId(userId.toString());
+
+            // when: 1:1 매칭을 요청할 때
+            BaseException exception = org.junit.jupiter.api.Assertions.assertThrows(
+                    BaseException.class,
+                    () -> matchService.startOneOnOneMatch(userId, request)
+            );
+
+            // then: 잘못된 입력 오류가 발생한다
+            assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INVALID_INPUT_VALUE);
+        }
+
+        @Test
+        @DisplayName("이미 대기 중인 요청이 있으면 오류가 발생한다")
+        void throwWhenAlreadyQueued() {
+            // given: 이미 대기 중인 요청이 있으면
+            UUID userId = UUID.randomUUID();
+            UUID targetUserId = UUID.randomUUID();
+            OneOnOneMatchRequest request = new OneOnOneMatchRequest();
+            request.setTargetUserId(targetUserId.toString());
+
+            when(queueStore.existsWaiting(userId, MatchQueueType.ONE_ON_ONE)).thenReturn(true);
+
+            // when: 1:1 매칭을 요청할 때
+            BaseException exception = org.junit.jupiter.api.Assertions.assertThrows(
+                    BaseException.class,
+                    () -> matchService.startOneOnOneMatch(userId, request)
+            );
+
+            // then: 중복 등록 오류가 발생한다
+            assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.MATCH_ALREADY_QUEUED);
+        }
+    }
+
+    @Nested
+    @DisplayName("acceptOneOnOneMatch")
+    class AcceptOneOnOneMatch {
+
+        @Test
+        @DisplayName("수락 시 컨퍼런스가 생성되고 양쪽에 알림이 전송된다")
+        void acceptCreatesConferenceAndNotifies() {
+            // given: 대기 중인 1:1 매칭 요청이 있으면
+            UUID requesterId = UUID.randomUUID();
+            UUID recipientId = UUID.randomUUID();
+            UUID requestId = UUID.randomUUID();
+
+            MatchQueueItem item = MatchQueueItem.builder()
+                    .requestId(requestId)
+                    .requesterUserId(requesterId)
+                    .recipientUserId(recipientId)
+                    .queueType(MatchQueueType.ONE_ON_ONE)
+                    .createdAt(LocalDateTime.now(FIXED_CLOCK))
+                    .filters(Map.of())
+                    .build();
+
+            User requester = User.builder()
+                    .id(requesterId)
+                    .email("requester@example.com")
+                    .build();
+
+            User recipient = User.builder()
+                    .id(recipientId)
+                    .email("recipient@example.com")
+                    .build();
+
+            when(queueStore.findByRequestId(requestId)).thenReturn(Optional.of(item));
+            when(userRepository.findById(requesterId)).thenReturn(Optional.of(requester));
+            when(userRepository.findById(recipientId)).thenReturn(Optional.of(recipient));
+            when(conferenceRepository.save(any(Conference.class)))
+                    .thenAnswer(invocation -> invocation.getArgument(0));
+
+            // when: 수신자가 수락할 때
+            OneOnOneMatchResponse response = matchService.acceptOneOnOneMatch(recipientId, requestId.toString());
+
+            // then: 컨퍼런스가 생성되고 양쪽에 알림이 전송된다
+            assertThat(item.getStatus()).isEqualTo(MatchQueueStatus.MATCHED);
+            verify(conferenceRepository).save(any(Conference.class));
+            verify(participantRepository, times(2)).save(any());
+            verify(eventPublisher).publish(eq(requesterId), eq(MatchEventType.ONE_ON_ONE_ACCEPTED), any());
+            verify(eventPublisher).publish(eq(recipientId), eq(MatchEventType.ONE_ON_ONE_ACCEPTED), any());
+
+            assertThat(response.status()).isEqualTo("matched");
+            assertThat(response.targetStatus()).isEqualTo("accepted");
+        }
+
+        @Test
+        @DisplayName("수신자가 아닌 사용자가 수락하면 오류가 발생한다")
+        void throwWhenNotRecipient() {
+            // given: 수신자가 아닌 사용자가 수락하려 하면
+            UUID requesterId = UUID.randomUUID();
+            UUID recipientId = UUID.randomUUID();
+            UUID otherUserId = UUID.randomUUID();
+            UUID requestId = UUID.randomUUID();
+
+            MatchQueueItem item = MatchQueueItem.builder()
+                    .requestId(requestId)
+                    .requesterUserId(requesterId)
+                    .recipientUserId(recipientId)
+                    .queueType(MatchQueueType.ONE_ON_ONE)
+                    .createdAt(LocalDateTime.now(FIXED_CLOCK))
+                    .filters(Map.of())
+                    .build();
+
+            when(queueStore.findByRequestId(requestId)).thenReturn(Optional.of(item));
+
+            // when: 다른 사용자가 수락할 때
+            BaseException exception = org.junit.jupiter.api.Assertions.assertThrows(
+                    BaseException.class,
+                    () -> matchService.acceptOneOnOneMatch(otherUserId, requestId.toString())
+            );
+
+            // then: 요청 없음 오류가 발생한다
+            assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.MATCH_REQUEST_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("이미 처리된 요청을 수락하면 오류가 발생한다")
+        void throwWhenAlreadyHandled() {
+            // given: 이미 처리된 요청이면
+            UUID requesterId = UUID.randomUUID();
+            UUID recipientId = UUID.randomUUID();
+            UUID requestId = UUID.randomUUID();
+
+            MatchQueueItem item = MatchQueueItem.builder()
+                    .requestId(requestId)
+                    .requesterUserId(requesterId)
+                    .recipientUserId(recipientId)
+                    .queueType(MatchQueueType.ONE_ON_ONE)
+                    .createdAt(LocalDateTime.now(FIXED_CLOCK))
+                    .filters(Map.of())
+                    .build();
+            item.markMatched(LocalDateTime.now(FIXED_CLOCK));
+
+            when(queueStore.findByRequestId(requestId)).thenReturn(Optional.of(item));
+
+            // when: 수신자가 수락할 때
+            BaseException exception = org.junit.jupiter.api.Assertions.assertThrows(
+                    BaseException.class,
+                    () -> matchService.acceptOneOnOneMatch(recipientId, requestId.toString())
+            );
+
+            // then: 이미 처리됨 오류가 발생한다
+            assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.MATCH_ALREADY_HANDLED);
+        }
+    }
+
+    @Nested
+    @DisplayName("declineOneOnOneMatch")
+    class DeclineOneOnOneMatch {
+
+        @Test
+        @DisplayName("거절 시 요청자에게 거절 알림이 전송된다")
+        void declineNotifiesRequester() {
+            // given: 대기 중인 1:1 매칭 요청이 있으면
+            UUID requesterId = UUID.randomUUID();
+            UUID recipientId = UUID.randomUUID();
+            UUID requestId = UUID.randomUUID();
+
+            MatchQueueItem item = MatchQueueItem.builder()
+                    .requestId(requestId)
+                    .requesterUserId(requesterId)
+                    .recipientUserId(recipientId)
+                    .queueType(MatchQueueType.ONE_ON_ONE)
+                    .createdAt(LocalDateTime.now(FIXED_CLOCK))
+                    .filters(Map.of())
+                    .build();
+
+            when(queueStore.findByRequestId(requestId)).thenReturn(Optional.of(item));
+
+            // when: 수신자가 거절할 때
+            OneOnOneMatchResponse response = matchService.declineOneOnOneMatch(recipientId, requestId.toString());
+
+            // then: 요청자에게 거절 알림이 전송된다
+            assertThat(item.getStatus()).isEqualTo(MatchQueueStatus.DECLINED);
+            verify(eventPublisher).publish(eq(requesterId), eq(MatchEventType.ONE_ON_ONE_DECLINED), any());
+
+            assertThat(response.status()).isEqualTo("declined");
+            assertThat(response.targetStatus()).isEqualTo("declined");
+        }
+
+        @Test
+        @DisplayName("수신자가 아닌 사용자가 거절하면 오류가 발생한다")
+        void throwWhenNotRecipient() {
+            // given: 수신자가 아닌 사용자가 거절하려 하면
+            UUID requesterId = UUID.randomUUID();
+            UUID recipientId = UUID.randomUUID();
+            UUID otherUserId = UUID.randomUUID();
+            UUID requestId = UUID.randomUUID();
+
+            MatchQueueItem item = MatchQueueItem.builder()
+                    .requestId(requestId)
+                    .requesterUserId(requesterId)
+                    .recipientUserId(recipientId)
+                    .queueType(MatchQueueType.ONE_ON_ONE)
+                    .createdAt(LocalDateTime.now(FIXED_CLOCK))
+                    .filters(Map.of())
+                    .build();
+
+            when(queueStore.findByRequestId(requestId)).thenReturn(Optional.of(item));
+
+            // when: 다른 사용자가 거절할 때
+            BaseException exception = org.junit.jupiter.api.Assertions.assertThrows(
+                    BaseException.class,
+                    () -> matchService.declineOneOnOneMatch(otherUserId, requestId.toString())
+            );
+
+            // then: 요청 없음 오류가 발생한다
+            assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.MATCH_REQUEST_NOT_FOUND);
         }
     }
 }

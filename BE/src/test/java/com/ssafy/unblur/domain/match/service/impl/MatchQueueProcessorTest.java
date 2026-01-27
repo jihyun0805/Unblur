@@ -10,6 +10,7 @@ import com.ssafy.unblur.domain.match.model.MatchQueueItem;
 import com.ssafy.unblur.domain.match.model.MatchQueueStatus;
 import com.ssafy.unblur.domain.match.model.MatchQueueType;
 import com.ssafy.unblur.domain.match.dto.QuickMatchResultEvent;
+import com.ssafy.unblur.domain.match.repository.ConferenceParticipantRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRepository;
 import com.ssafy.unblur.domain.match.repository.MatchCandidateRepository;
 import com.ssafy.unblur.domain.match.repository.MatchCandidateRepository.MatchCandidate;
@@ -75,6 +76,9 @@ class MatchQueueProcessorTest {
     private ConferenceRepository conferenceRepository;
 
     @Mock
+    private ConferenceParticipantRepository participantRepository;
+
+    @Mock
     private MatchEventPublisher eventPublisher;
 
     private MatchQueueProcessor processor() {
@@ -83,6 +87,7 @@ class MatchQueueProcessorTest {
                 userRepository,
                 matchCandidateRepository,
                 conferenceRepository,
+                participantRepository,
                 policy,
                 eventPublisher,
                 FIXED_CLOCK
