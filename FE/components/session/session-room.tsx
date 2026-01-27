@@ -111,6 +111,18 @@ export function SessionRoom({
     }
   }, [isConnected, toast])
 
+  // 브라우저 탭/창 닫기 시 확인 대화상자 표시
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+      return ''
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [])
+
   // Timer logic
   useEffect(() => {
     if (currentRound >= 3 || showVote || showGame || showRating || showConfirmLeave || showEndConfirm) return
