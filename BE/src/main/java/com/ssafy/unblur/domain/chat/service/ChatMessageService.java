@@ -2,11 +2,12 @@ package com.ssafy.unblur.domain.chat.service;
 
 import com.ssafy.unblur.common.exception.BaseException;
 import com.ssafy.unblur.common.exception.ErrorCode;
+import com.ssafy.unblur.common.util.SecurityUtil;
 import com.ssafy.unblur.domain.auth.model.User;
 import com.ssafy.unblur.domain.auth.repository.UserRepository;
-import com.ssafy.unblur.domain.chat.dto.response.ChatMessageResponseDto;
-import com.ssafy.unblur.domain.chat.dto.response.ChatMessagePageResponseDto;
 import com.ssafy.unblur.domain.chat.dto.event.ChatReadEventDto;
+import com.ssafy.unblur.domain.chat.dto.response.ChatMessagePageResponseDto;
+import com.ssafy.unblur.domain.chat.dto.response.ChatMessageResponseDto;
 import com.ssafy.unblur.domain.chat.model.ChatMessage;
 import com.ssafy.unblur.domain.chat.repository.ChatMessageRepository;
 import com.ssafy.unblur.domain.match.model.ConferenceParticipant;
@@ -30,9 +31,8 @@ public class ChatMessageService {
     private final ChatMessageRepository chatMessageRepository;
 
     @Transactional(readOnly = true)
-    public ChatMessagePageResponseDto getMessages(UUID conferenceId, Pageable pageable, String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
+    public ChatMessagePageResponseDto getMessages(UUID conferenceId, Pageable pageable) {
+        User user = getCurrentUser();
 
         ConferenceParticipant participant = conferenceParticipantRepository
                 .findByConferenceIdAndUser(conferenceId, user)
@@ -59,9 +59,8 @@ public class ChatMessageService {
     }
 
     @Transactional
-    public ChatReadEventDto markAsRead(UUID conferenceId, LocalDateTime lastReadAt, String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
+    public ChatReadEventDto markAsRead(UUID conferenceId, LocalDateTime lastReadAt) {
+        User user = getCurrentUser();
 
         conferenceParticipantRepository.findByConferenceIdAndUser(conferenceId, user)
                 .orElseThrow(() -> new BaseException(ErrorCode.ACCESS_DENIED));
@@ -70,6 +69,13 @@ public class ChatMessageService {
         conferenceParticipantRepository.updateLastReadAt(conferenceId, user, readAt);
 
         return new ChatReadEventDto(readAt);
+    }
+
+    private User getCurrentUser() {
+        String email = SecurityUtil.getCurrentUserEmail()
+                .orElseThrow(() -> new BaseException(ErrorCode.UNAUTHORIZED));
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
     }
 
     private LocalDateTime resolvePartnerLastReadAt(UUID conferenceId, UUID userId) {
