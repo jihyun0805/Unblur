@@ -21,6 +21,7 @@ public enum ErrorCode {
     USER_PROFILE_INCOMPLETE(HttpStatus.BAD_REQUEST, "AUTH-006", "추가 가입 정보가 아직 부족합니다."),
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "AUTH-007", "로그인이 필요합니다."),
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "AUTH-008", "해당 기능에 접근할 권한이 없습니다."),
+    INVALID_EMAIL_FORMAT(HttpStatus.BAD_REQUEST, "AUTH-009", "유효하지 않은 이메일 형식입니다."),
 
     MATCH_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "MATCH-001", "매칭 요청을 찾을 수 없습니다."),
     MATCH_ALREADY_QUEUED(HttpStatus.CONFLICT, "MATCH-002", "이미 대기열에 등록되어 있습니다."),

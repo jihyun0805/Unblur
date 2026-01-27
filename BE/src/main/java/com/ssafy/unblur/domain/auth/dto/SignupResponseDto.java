@@ -1,3 +1,8 @@
 package com.ssafy.unblur.domain.auth.dto;
 
-public record SignupResponseDto(String email) { }
+import io.swagger.v3.oas.annotations.media.Schema;
+
+public record SignupResponseDto(
+        @Schema(description = "등록된 사용자 이메일", example = "ssafy@unblur.com")
+        String email
+) { }

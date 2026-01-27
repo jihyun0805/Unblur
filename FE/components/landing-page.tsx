@@ -18,6 +18,7 @@ export function LandingPage() {
       imageOpacity={30}
       overlayClassName="bg-gradient-to-b from-background/50 via-background/30 to-background/50"
       useNextImage={true}
+      className="h-screen flex flex-col overflow-hidden"
     >
       {/* Header */}
       <Header
@@ -25,8 +26,9 @@ export function LandingPage() {
         onRegisterClick={() => setShowRegister(true)}
       />
 
+      <main className="flex-1 overflow-y-auto custom-scrollbar">
         {/* Hero Section */}
-        <section className="pt-32 sm:pt-40 pb-16 sm:pb-24 px-4">
+        <section className="pt-12 sm:pt-20 pb-16 sm:pb-24 px-4">
           <div className="max-w-6xl mx-auto text-center">
             <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold mb-6 sm:mb-8 text-balance">
               <span className="text-foreground">얼굴보다</span>
@@ -256,6 +258,7 @@ export function LandingPage() {
             <p className="text-sm text-muted-foreground">© 2026 Unblur. All rights reserved.</p>
           </div>
         </footer>
+      </main>
 
         {/* Modals */}
         <LoginModal

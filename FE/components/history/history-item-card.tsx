@@ -7,9 +7,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Calendar, Clock, MessageCircle, Thermometer, Heart, MoreVertical } from "lucide-react"
+import { Calendar, Clock, MessageCircle, Heart, MoreVertical } from "lucide-react"
 import type { HistoryItem } from "@/lib/history-types"
-import { getRoundProgress, getTemperatureColor } from "./utils"
+import { getRoundProgress } from "./utils"
 
 interface HistoryItemCardProps {
   item: HistoryItem
@@ -42,10 +42,6 @@ export function HistoryItemCard({ item, onProfileClick, onChatClick, onBlock, on
           >
             {item.partnerNickname}
           </button>
-          <span className={`text-xs flex items-center gap-0.5 ${getTemperatureColor(item.partnerTemp)}`}>
-            <Thermometer className="w-3 h-3" />
-            {item.partnerTemp.toFixed(1)}°
-          </span>
           {isBlocked && (
             <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">차단됨</span>
           )}

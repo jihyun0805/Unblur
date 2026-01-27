@@ -32,14 +32,15 @@ public class AuthController implements AuthApiDocs {
         String createdUserId = authService.signUp(signUpDto);
         SignupResponseDto responseDto = new SignupResponseDto(createdUserId);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(BaseResponse.success(201, "회원가입이 완료되었습니다.", responseDto));
+                .body(new BaseResponse<>(201, "회원가입 완료", responseDto));
     }
 
     @Override
     @GetMapping("/check-email")
     public ResponseEntity<BaseResponse<Boolean>> checkEmail(@RequestParam String email) {
+        boolean isDuplicate = authService.isEmailDuplicate(email);
         return ResponseEntity.ok(
-                BaseResponse.success(200, "OK", authService.isEmailDuplicate(email))
+                new BaseResponse<>(200, "이메일 중복 확인 완료", isDuplicate)
         );
     }
 
@@ -47,7 +48,7 @@ public class AuthController implements AuthApiDocs {
     @GetMapping("/check-nickname")
     public ResponseEntity<BaseResponse<Boolean>> checkNickname(@RequestParam String nickname) {
         return ResponseEntity.ok(
-                BaseResponse.success(200, "OK", authService.isNicknameDuplicate(nickname))
+                new BaseResponse<>(200, "닉네임 중복 확인 완료", authService.isNicknameDuplicate(nickname))
         );
     }
 
@@ -71,7 +72,7 @@ public class AuthController implements AuthApiDocs {
         LoginResponseDto loginResponse = new LoginResponseDto(accessToken);
 
         return ResponseEntity.ok(
-                BaseResponse.success(200, "OK", loginResponse)
+                new BaseResponse<>(200, "로그인 성공", loginResponse)
         );
     }
 
@@ -87,7 +88,7 @@ public class AuthController implements AuthApiDocs {
         response.addCookie(createRefreshTokenCookie(result.getRefreshToken()));
 
         return ResponseEntity.ok(
-                BaseResponse.success(200, "토큰 재발행 성공", new LoginResponseDto(result.getAccessToken()))
+                new BaseResponse<>(200, "토큰 재발행 성공", new LoginResponseDto(result.getAccessToken()))
         );
     }
 
@@ -102,7 +103,7 @@ public class AuthController implements AuthApiDocs {
         response.addCookie(clearRefreshTokenCookie());
 
         return ResponseEntity.ok(
-                BaseResponse.success(200, "로그아웃 성공", null)
+                new BaseResponse<>(200, "로그아웃 성공", null)
         );
     }
 
