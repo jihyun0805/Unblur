@@ -26,7 +26,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/conferences/{conferenceId}")
 @RequiredArgsConstructor
-public class ChatMessageController {
+public class ChatMessageController implements ChatMessageApiDocs {
 
     private final ChatMessageService chatMessageService;
 
