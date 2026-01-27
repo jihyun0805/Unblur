@@ -1,11 +1,12 @@
 package com.ssafy.unblur.domain.rtc.service.impl;
 
+import com.ssafy.unblur.common.exception.BaseException;
+import com.ssafy.unblur.common.exception.ErrorCode;
+import com.ssafy.unblur.domain.match.service.ConferenceLifecycleService;
 import com.ssafy.unblur.domain.rtc.config.KurentoClientProvider;
-import com.ssafy.unblur.domain.rtc.exception.ConferenceRoomNotFoundException;
 import com.ssafy.unblur.domain.rtc.exception.UserNotJoinedException;
 import com.ssafy.unblur.domain.rtc.model.UserSession;
 import com.ssafy.unblur.domain.rtc.service.KurentoRoomService;
-import com.ssafy.unblur.domain.match.service.ConferenceLifecycleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.kurento.client.IceCandidate;
@@ -23,6 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * ConcurrentHashMap 기반 Kurento 방 관리 구현체
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class InMemoryKurentoRoomService implements KurentoRoomService {
@@ -90,7 +92,8 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
     private Room getRoom(UUID conferenceId) {
         Room room = rooms.get(conferenceId);
         if (room == null) {
-            throw new ConferenceRoomNotFoundException(conferenceId);
+            log.warn("존재하지 않는 RTC 방 접근 시도. conferenceId={}", conferenceId);
+            throw new BaseException(ErrorCode.CONFERENCE_NOT_FOUND);
         }
 
         return room;
