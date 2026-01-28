@@ -6,7 +6,7 @@ import com.ssafy.unblur.common.security.auth.CustomUserDetails;
 import com.ssafy.unblur.common.security.handler.CustomAccessDeniedHandler;
 import com.ssafy.unblur.common.security.handler.CustomAuthenticationEntryPoint;
 import com.ssafy.unblur.common.security.jwt.JWTUtil;
-import com.ssafy.unblur.domain.match.controller.impl.MatchControllerImpl;
+import com.ssafy.unblur.domain.match.controller.impl.MatchController;
 import com.ssafy.unblur.domain.match.dto.FastMatchingRequest;
 import com.ssafy.unblur.domain.match.dto.MatchingQueueResponse;
 import com.ssafy.unblur.domain.match.service.MatchService;
@@ -39,7 +39,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(controllers = MatchControllerImpl.class)
+@WebMvcTest(controllers = MatchController.class)
 @Import(SecurityConfig.class)
 @AutoConfigureMockMvc
 @DisplayName("MatchController - 빠른 매칭")

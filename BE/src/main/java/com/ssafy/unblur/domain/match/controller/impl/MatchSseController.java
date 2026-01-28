@@ -1,7 +1,7 @@
 package com.ssafy.unblur.domain.match.controller.impl;
 
 import com.ssafy.unblur.common.security.auth.CustomUserDetails;
-import com.ssafy.unblur.domain.match.controller.MatchSseController;
+import com.ssafy.unblur.domain.match.controller.MatchSseDocs;
 import com.ssafy.unblur.domain.match.service.impl.MatchSseService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -17,7 +17,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @RestController
 @RequestMapping("/api/v1/match")
 @RequiredArgsConstructor
-public class MatchSseControllerImpl implements MatchSseController {
+public class MatchSseController implements MatchSseDocs {
 
     private final MatchSseService matchSseService;
 

@@ -15,7 +15,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @Tag(name = "Matching")
 @SecurityRequirement(name = "bearerAuth")
-public interface MatchSseController {
+public interface MatchSseDocs {
 
     /**
      * 빠른 매칭 상태 스트림을 구독하는 API

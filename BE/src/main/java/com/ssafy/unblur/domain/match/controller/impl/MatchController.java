@@ -2,7 +2,7 @@ package com.ssafy.unblur.domain.match.controller.impl;
 
 import com.ssafy.unblur.common.response.BaseResponse;
 import com.ssafy.unblur.common.security.auth.CustomUserDetails;
-import com.ssafy.unblur.domain.match.controller.MatchController;
+import com.ssafy.unblur.domain.match.controller.MatchApiDocs;
 import com.ssafy.unblur.domain.match.dto.FastMatchingRequest;
 import com.ssafy.unblur.domain.match.dto.MatchingQueueResponse;
 import com.ssafy.unblur.domain.match.dto.OneOnOneMatchRequest;
@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/match")
 @RequiredArgsConstructor
-public class MatchControllerImpl implements MatchController {
+public class MatchController implements MatchApiDocs {
 
     private final MatchService matchService;
 

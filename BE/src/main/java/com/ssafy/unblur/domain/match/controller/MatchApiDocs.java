@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 
 @Tag(name = "Matching", description = "매칭 관련 API")
 @SecurityRequirement(name = "bearerAuth")
-public interface MatchController {
+public interface MatchApiDocs {
 
     /**
      * 빠른 매칭 요청 API
