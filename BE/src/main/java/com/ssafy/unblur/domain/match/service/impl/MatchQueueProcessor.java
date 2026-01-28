@@ -13,7 +13,7 @@ import com.ssafy.unblur.domain.match.repository.ConferenceParticipantRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRepository;
 import com.ssafy.unblur.domain.match.repository.MatchCandidateRepository;
 import com.ssafy.unblur.domain.match.repository.MatchCandidateRepository.MatchCandidate;
-import com.ssafy.unblur.domain.match.service.MatchEventPublisher;
+import com.ssafy.unblur.domain.match.service.MatchSseService;
 import com.ssafy.unblur.domain.match.service.MatchQueueStore;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -70,7 +70,7 @@ public class MatchQueueProcessor {
     /**
      * 매칭 이벤트 전송기
      */
-    private final MatchEventPublisher eventPublisher;
+    private final MatchSseService eventPublisher;
 
     /**
      * 기준 시각 제공용 Clock
@@ -173,7 +173,7 @@ public class MatchQueueProcessor {
                 .occurredAt(LocalDateTime.now(clock))
                 .build();
 
-        eventPublisher.publish(item.getRequesterUserId(), MatchEventType.QUICK_TIMEOUT, event);
+        eventPublisher.publish(item.getRequesterUserId(), SseMatchEventType.QUICK_TIMEOUT, event);
     }
 
     /**
@@ -524,14 +524,14 @@ public class MatchQueueProcessor {
                 .occurredAt(now)
                 .build();
 
-        eventPublisher.publish(item.getRequesterUserId(), MatchEventType.QUICK_RELAXED, event);
+        eventPublisher.publish(item.getRequesterUserId(), SseMatchEventType.QUICK_RELAXED, event);
     }
 
     /**
      * 매칭 완료 이벤트를 전송하는 메서드
      *
-     * @param left     첫 번째 사용자 항목
-     * @param right    두 번째 사용자 항목
+     * @param left      첫 번째 사용자 항목
+     * @param right     두 번째 사용자 항목
      * @param matchedAt 매칭 완료 시각
      */
     private void publishMatchedEvent(MatchQueueItem left, MatchQueueItem right, Conference conference, LocalDateTime matchedAt) {
@@ -555,8 +555,8 @@ public class MatchQueueProcessor {
                 .matchedAt(matchedAt)
                 .build();
 
-        eventPublisher.publish(left.getRequesterUserId(), MatchEventType.QUICK_MATCHED, leftEvent);
-        eventPublisher.publish(right.getRequesterUserId(), MatchEventType.QUICK_MATCHED, rightEvent);
+        eventPublisher.publish(left.getRequesterUserId(), SseMatchEventType.QUICK_MATCHED, leftEvent);
+        eventPublisher.publish(right.getRequesterUserId(), SseMatchEventType.QUICK_MATCHED, rightEvent);
     }
 
     /**

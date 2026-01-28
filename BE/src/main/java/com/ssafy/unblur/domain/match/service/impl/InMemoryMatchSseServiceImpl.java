@@ -1,48 +1,30 @@
 package com.ssafy.unblur.domain.match.service.impl;
 
-import com.ssafy.unblur.domain.match.model.MatchEventType;
-import com.ssafy.unblur.domain.match.service.MatchEventPublisher;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
+import com.ssafy.unblur.domain.match.model.SseMatchEventType;
+import com.ssafy.unblur.domain.match.service.MatchSseService;
+import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 매칭 SSE 알림 전송 서비스
+ * 매칭 SSE 알림 전송 서비스 구현체
  * <p>
  * 단일 인스턴스 환경을 가정한 인메모리 저장 방식이다
  */
-@Component
-@RequiredArgsConstructor
-public class MatchSseService implements MatchEventPublisher {
+@Service
+public class InMemoryMatchSseServiceImpl implements MatchSseService {
 
     /**
      * 사용자별 SSE 연결 저장소
      */
     private final Map<UUID, SseEmitter> emitters = new ConcurrentHashMap<>();
 
-    /**
-     * 사용자가 이미 연결되어 있는지 확인하는 메서드
-     *
-     * @param userId 사용자 ID
-     * @return 연결 중이면 true
-     */
-    public boolean isConnected(UUID userId) {
-        return emitters.containsKey(userId);
-    }
-
-    /**
-     * 매칭 SSE 구독을 생성하는 메서드
-     * <p>
-     * 기존 연결이 있으면 먼저 종료하고 새 연결을 생성한다
-     *
-     * @param userId 사용자 ID
-     * @return SSE emitter
-     */
+    @Override
     public SseEmitter connect(UUID userId) {
         // 기존 연결 정리
         SseEmitter existingEmitter = emitters.remove(userId);
@@ -61,7 +43,7 @@ public class MatchSseService implements MatchEventPublisher {
     }
 
     @Override
-    public void publish(UUID userId, MatchEventType type, Object data) {
+    public void publish(UUID userId, SseMatchEventType type, Object data) {
         send(userId, type.eventName(), data);
     }
 
@@ -84,5 +66,10 @@ public class MatchSseService implements MatchEventPublisher {
         } catch (IOException ex) {
             emitters.remove(userId);
         }
+    }
+
+    @Override
+    public Set<UUID> getConnectedUserIds() {
+        return Set.copyOf(emitters.keySet());
     }
 }

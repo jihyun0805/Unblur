@@ -1,9 +1,6 @@
 package com.ssafy.unblur.domain.match.service;
 
-import com.ssafy.unblur.domain.match.dto.FastMatchingRequest;
-import com.ssafy.unblur.domain.match.dto.MatchingQueueResponse;
-import com.ssafy.unblur.domain.match.dto.OneOnOneMatchRequest;
-import com.ssafy.unblur.domain.match.dto.OneOnOneMatchResponse;
+import com.ssafy.unblur.domain.match.dto.*;
 
 import java.util.UUID;
 
@@ -63,5 +60,14 @@ public interface MatchService {
      * @return 1:1 매칭 응답
      */
     OneOnOneMatchResponse declineOneOnOneMatch(UUID userId, String requestId);
+
+    /**
+     * 현재 온라인인 사용자 중 반대 성별인 랜덤 사용자 목록을 반환하는 메서드
+     *
+     * @param userId 요청 사용자 ID
+     * @param limit  최대 반환 개수
+     * @return 온라인 사용자 목록
+     */
+    OnlineUserListResponse getRandomOnlineUsers(UUID userId, int limit);
 
 }

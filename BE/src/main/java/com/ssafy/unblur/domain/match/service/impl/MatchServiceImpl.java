@@ -2,6 +2,7 @@ package com.ssafy.unblur.domain.match.service.impl;
 
 import com.ssafy.unblur.common.exception.BaseException;
 import com.ssafy.unblur.common.exception.ErrorCode;
+import com.ssafy.unblur.domain.auth.model.Gender;
 import com.ssafy.unblur.domain.auth.model.User;
 import com.ssafy.unblur.domain.auth.repository.UserRepository;
 import com.ssafy.unblur.domain.match.config.MatchConfig.MatchPolicy;
@@ -9,7 +10,7 @@ import com.ssafy.unblur.domain.match.dto.*;
 import com.ssafy.unblur.domain.match.model.*;
 import com.ssafy.unblur.domain.match.repository.ConferenceParticipantRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRepository;
-import com.ssafy.unblur.domain.match.service.MatchEventPublisher;
+import com.ssafy.unblur.domain.match.service.MatchSseService;
 import com.ssafy.unblur.domain.match.service.MatchQueueStore;
 import com.ssafy.unblur.domain.match.service.MatchService;
 import lombok.RequiredArgsConstructor;
@@ -18,9 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * 빠른 매칭 처리 서비스 구현체
@@ -50,7 +49,7 @@ public class MatchServiceImpl implements MatchService {
     /**
      * 매칭 상태 알림 전송기
      */
-    private final MatchEventPublisher eventPublisher;
+    private final MatchSseService eventPublisher;
 
     /**
      * 매칭 정책 설정값
@@ -108,7 +107,7 @@ public class MatchServiceImpl implements MatchService {
         MatchingQueueResponse response = buildResponse(item);
 
         if (!matched) {
-            eventPublisher.publish(userId, MatchEventType.QUICK_WAITING, response);
+            eventPublisher.publish(userId, SseMatchEventType.QUICK_WAITING, response);
         }
 
         return response;
@@ -194,7 +193,7 @@ public class MatchServiceImpl implements MatchService {
                 .occurredAt(LocalDateTime.now(clock))
                 .build();
 
-        eventPublisher.publish(userId, MatchEventType.QUICK_CANCELED, event);
+        eventPublisher.publish(userId, SseMatchEventType.QUICK_CANCELED, event);
     }
 
     /**
@@ -266,7 +265,7 @@ public class MatchServiceImpl implements MatchService {
 
         // 대상 사용자에게 알림 전송
         OneOnOneMatchResponse response = buildOneOnOneResponse(item, "pending");
-        eventPublisher.publish(targetUserId, MatchEventType.ONE_ON_ONE_REQUESTED, response);
+        eventPublisher.publish(targetUserId, SseMatchEventType.ONE_ON_ONE_REQUESTED, response);
 
         return response;
     }
@@ -313,8 +312,8 @@ public class MatchServiceImpl implements MatchService {
         OneOnOneMatchResponse requesterResponse = buildOneOnOneMatchedResponse(item, conference, "accepted");
         OneOnOneMatchResponse recipientResponse = buildOneOnOneMatchedResponse(item, conference, "accepted");
 
-        eventPublisher.publish(item.getRequesterUserId(), MatchEventType.ONE_ON_ONE_ACCEPTED, requesterResponse);
-        eventPublisher.publish(userId, MatchEventType.ONE_ON_ONE_ACCEPTED, recipientResponse);
+        eventPublisher.publish(item.getRequesterUserId(), SseMatchEventType.ONE_ON_ONE_ACCEPTED, requesterResponse);
+        eventPublisher.publish(userId, SseMatchEventType.ONE_ON_ONE_ACCEPTED, recipientResponse);
 
         return recipientResponse;
     }
@@ -349,7 +348,7 @@ public class MatchServiceImpl implements MatchService {
 
         // 요청자에게 거절 이벤트 전송
         OneOnOneMatchResponse requesterResponse = buildOneOnOneResponse(item, "declined");
-        eventPublisher.publish(item.getRequesterUserId(), MatchEventType.ONE_ON_ONE_DECLINED, requesterResponse);
+        eventPublisher.publish(item.getRequesterUserId(), SseMatchEventType.ONE_ON_ONE_DECLINED, requesterResponse);
 
         return buildOneOnOneResponse(item, "declined");
     }
@@ -390,8 +389,8 @@ public class MatchServiceImpl implements MatchService {
     /**
      * 1:1 매칭 완료 응답을 구성하는 메서드
      *
-     * @param item       대기열 항목
-     * @param conference 생성된 컨퍼런스
+     * @param item         대기열 항목
+     * @param conference   생성된 컨퍼런스
      * @param targetStatus 대상 상태
      * @return 1:1 매칭 응답
      */
@@ -437,4 +436,44 @@ public class MatchServiceImpl implements MatchService {
 
         return savedConference;
     }
+
+    @Override
+    public OnlineUserListResponse getRandomOnlineUsers(UUID userId, int limit) {
+        // 사용자 성별 조회
+        Gender myGender = userRepository.findById(userId)
+                .map(User::getGender)
+                .orElse(null);
+
+        // 사용자의 성별 정보가 없으면 빈 목록 반환
+        if (myGender == null) {
+            return OnlineUserListResponse.builder()
+                    .onlineUsers(List.of())
+                    .build();
+        }
+
+        Gender oppositeGender = myGender == Gender.MALE ? Gender.FEMALE : Gender.MALE;
+
+        // 현재 연결된 사용자 중 반대 성별의 사용자 목록 조회
+        Set<UUID> connectedUserIds = eventPublisher.getConnectedUserIds();
+        List<User> oppositeGenderUsers = userRepository.findAllById(connectedUserIds).stream()
+                .filter(user -> user.getGender() == oppositeGender)
+                .toList();
+
+        // 응답용 사용자 목록 구성
+        List<OnlineUserDto> result;
+        if (oppositeGenderUsers.size() <= limit) {
+            result = oppositeGenderUsers.stream().map(OnlineUserDto::from).toList();
+
+        } else {
+            List<User> shuffled = new ArrayList<>(oppositeGenderUsers);
+            Collections.shuffle(shuffled); // 무작위 섞기
+            result = shuffled.subList(0, limit).stream().map(OnlineUserDto::from).toList();
+        }
+
+        // 응답 반환
+        return OnlineUserListResponse.builder()
+                .onlineUsers(result)
+                .build();
+    }
+
 }

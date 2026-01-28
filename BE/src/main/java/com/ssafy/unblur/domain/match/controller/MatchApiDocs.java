@@ -2,10 +2,7 @@ package com.ssafy.unblur.domain.match.controller;
 
 import com.ssafy.unblur.common.response.BaseResponse;
 import com.ssafy.unblur.common.security.auth.CustomUserDetails;
-import com.ssafy.unblur.domain.match.dto.FastMatchingRequest;
-import com.ssafy.unblur.domain.match.dto.MatchingQueueResponse;
-import com.ssafy.unblur.domain.match.dto.OneOnOneMatchRequest;
-import com.ssafy.unblur.domain.match.dto.OneOnOneMatchResponse;
+import com.ssafy.unblur.domain.match.dto.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -18,6 +15,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @Tag(name = "Matching", description = "매칭 관련 API")
 @SecurityRequirement(name = "bearerAuth")
@@ -564,5 +562,81 @@ public interface MatchApiDocs {
             @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
             @Parameter(description = "매칭 요청 ID", example = "0f4d8f6a-8df6-4fa9-9b9d-2b3bcd0b7b8f")
             @PathVariable("request_id") String requestId
+    );
+
+    /**
+     * 현재 온라인인 랜덤 사용자 목록을 조회하는 API
+     */
+    @Operation(
+            summary = "온라인 사용자 목록 조회",
+            description = "현재 SSE로 연결된 온라인 사용자 중 **본인과 반대 성별**인 사용자를 랜덤으로 최대 limit명 반환합니다."
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "온라인 사용자 목록 조회 성공",
+            content = @Content(
+                    schema = @Schema(implementation = BaseResponse.class),
+                    examples = @ExampleObject(value = """
+                            {
+                              "isSuccess": true,
+                              "statusCode": 200,
+                              "message": "온라인 사용자 목록 조회 성공",
+                              "data": {
+                                "onlineUsers": [
+                                  {
+                                    "id": "550e8400-e29b-41d4-a716-446655440000",
+                                    "nickname": "언블러1",
+                                    "age": 25,
+                                    "gender": "FEMALE",
+                                    "region": "SEOUL",
+                                    "mbti": "INTJ",
+                                    "intro": "안녕하세요! 만나서 반가워요.",
+                                    "interestTags": ["여행", "음악", "독서"],
+                                    "clarityScore": 50
+                                  },
+                                  {
+                                    "id": "550e8400-e29b-41d4-a716-446655440001",
+                                    "nickname": "언블러2",
+                                    "age": 28,
+                                    "gender": "FEMALE",
+                                    "region": "BUSAN",
+                                    "mbti": "ENFP",
+                                    "intro": "반갑습니다! 좋은 인연 만들어요.",
+                                    "interestTags": ["운동", "요리"],
+                                    "clarityScore": 60
+                                  },
+                                    {
+                                        "id": "550e8400-e29b-41d4-a716-446655440002",
+                                        "nickname": "언블러3",
+                                        "age": 22,
+                                        "gender": "FEMALE",
+                                        "region": "DAEGU",
+                                        "mbti": "ISFJ",
+                                        "intro": "안녕하세요! 즐거운 시간 보내요.",
+                                        "interestTags": ["영화", "게임", "사진"],
+                                        "clarityScore": 55
+                                    }
+                                ]
+                              }
+                            }""")
+            )
+    )
+    @ApiResponse(
+            responseCode = "401",
+            description = "로그인이 필요합니다.",
+            content = @Content(
+                    schema = @Schema(implementation = BaseResponse.class),
+                    examples = @ExampleObject(value = """
+                            {
+                              "isSuccess": false,
+                              "statusCode": 401,
+                              "message": "로그인이 필요합니다.",
+                              "errorCode": "AUTH-007"
+                            }""")
+            )
+    )
+    ResponseEntity<BaseResponse<OnlineUserListResponse>> getOnlineUsers(
+            @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Parameter(description = "최대 반환 개수", example = "3") @RequestParam(defaultValue = "3") int limit
     );
 }

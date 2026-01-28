@@ -2,7 +2,7 @@ package com.ssafy.unblur.domain.match.controller.impl;
 
 import com.ssafy.unblur.common.security.auth.CustomUserDetails;
 import com.ssafy.unblur.domain.match.controller.MatchSseDocs;
-import com.ssafy.unblur.domain.match.service.impl.MatchSseService;
+import com.ssafy.unblur.domain.match.service.MatchSseService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
