@@ -10,8 +10,8 @@ export function FloatingTestButton() {
   const pathname = usePathname()
   const [isHovered, setIsHovered] = useState(false)
   
-  // MBTI 페이지에서는 숨기기
-  if (pathname === "/mbti") return null
+  // TEST 페이지에서는 숨기기
+  if (pathname === "/test") return null
 
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
@@ -29,7 +29,7 @@ export function FloatingTestButton() {
       
       {/* 플로팅 버튼 */}
       <Link
-        href="/mbti"
+        href="/test"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         className={cn(

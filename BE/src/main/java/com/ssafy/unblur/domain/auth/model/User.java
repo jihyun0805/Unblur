@@ -17,6 +17,7 @@ import org.hibernate.type.SqlTypes;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Period;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -120,9 +121,10 @@ public class User {
     /**
      * 관심사 태그 목록.
      */
+    @Builder.Default
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "interest_tags", columnDefinition = "text[]")
-    private String[] interestTags;
+    private List<String> interestTags = new ArrayList<>();
 
     /**
      * 관심사/가치관 임베딩 벡터 (384차원).
@@ -193,8 +195,7 @@ public class User {
                 .gender(dto.getGender())
                 .region(dto.getRegion())
                 .detailedInfo(dto.getDetailedInfo())
-                .interestTags(dto.getInterestTags() != null ?
-                        dto.getInterestTags().toArray(String[]::new) : new String[0])
+                .interestTags(dto.getInterestTags() != null ? dto.getInterestTags() : new ArrayList<>())
                 .mbti(dto.getMbti())
                 .intro(dto.getIntro())
                 .build();
@@ -257,7 +258,7 @@ public class User {
         }
 
         if (dto.getInterestTags() != null) {
-            this.interestTags = dto.getInterestTags().toArray(String[]::new);
+            this.interestTags = dto.getInterestTags();
         }
     }
 
