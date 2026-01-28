@@ -52,6 +52,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Swagger 관련 경로
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
+                        // WebSocket/SockJS 핸드셰이크 허용(인증은 STOMP CONNECT에서 처리)
+                        .requestMatchers("/ws/**").permitAll()
                         // 로그인 및 회원가입 경로
                         .requestMatchers(
                                 "/api/v1/auth/register",
