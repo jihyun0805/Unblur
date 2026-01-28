@@ -153,6 +153,14 @@ export function MBTITestPage({ onBack, onComplete, existingMbti, onViewResult, a
     setAnswers({})
   }
 
+  const handleExitToStart = () => {
+    setShowExitConfirm(false)
+    setHasStarted(false)
+    setCurrentCategoryIndex(0)
+    setCurrentQuestionIndex(0)
+    setAnswers({})
+  }
+
   useEffect(() => {
     if (autoStart && !hasStarted && !autoStarted) {
       handleStart()
@@ -257,17 +265,20 @@ export function MBTITestPage({ onBack, onComplete, existingMbti, onViewResult, a
         ) : (
           <>
             {/* Header */}
-            <div className="flex items-center gap-4 mb-8">
-              <Button variant="ghost" size="icon" onClick={handleBack} className="bg-card/50 backdrop-blur">
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
-              <div className="flex-1">
-                <h1 className="text-2xl font-bold text-foreground mb-2">연애 가치관 테스트</h1>
-                <Progress value={progress} className="h-2" />
-                <p className="text-sm text-muted-foreground mt-2">
-                  {answeredQuestions} / {totalQuestions} 질문 완료
-                </p>
+            <div className="mb-8">
+              <div className="flex items-center justify-between gap-3">
+                <h1 className="text-2xl font-bold text-foreground">연애 가치관 테스트</h1>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onBack}
+                  className="bg-card/50 backdrop-blur"
+                  aria-label="홈으로 이동"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
               </div>
+              <Progress value={progress} className="h-2 mt-3" />
             </div>
 
             {/* Question Card */}
@@ -275,14 +286,6 @@ export function MBTITestPage({ onBack, onComplete, existingMbti, onViewResult, a
               <CardHeader>
                 <div className="flex items-center justify-between gap-3">
                   <CardTitle className="text-xl">{currentQuestion.question}</CardTitle>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setShowExitConfirm(true)}
-                    className="bg-card/50 backdrop-blur"
-                  >
-                    <X className="w-5 h-5" />
-                  </Button>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -305,9 +308,30 @@ export function MBTITestPage({ onBack, onComplete, existingMbti, onViewResult, a
                     </button>
                   )
                 })}
-
               </CardContent>
             </Card>
+
+            <div className="mt-6 flex items-center justify-center gap-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleBack}
+                className="h-12 w-12 rounded-full bg-card/60 backdrop-blur border border-border/60 text-xl"
+                aria-label="뒤로가기"
+              >
+                ←
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleNext}
+                disabled={!currentAnswer}
+                className="h-12 w-12 rounded-full bg-card/60 backdrop-blur border border-border/60 text-xl disabled:opacity-40"
+                aria-label="앞으로가기"
+              >
+                →
+              </Button>
+            </div>
           </>
         )}
       </div>
@@ -318,12 +342,12 @@ export function MBTITestPage({ onBack, onComplete, existingMbti, onViewResult, a
             <DialogTitle className="text-center">테스트 종료</DialogTitle>
           </DialogHeader>
           <div className="py-4 text-center">
-            <p className="mb-6 text-sm text-muted-foreground">해당 내용은 저장되지 않습니다. 정말 종료하시겠습니까?</p>
+            <p className="mb-6 text-sm text-muted-foreground">테스트를 종료하시겠습니까?</p>
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => setShowExitConfirm(false)} className="flex-1">
                 취소
               </Button>
-              <Button onClick={onBack} className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90">
+              <Button onClick={handleExitToStart} className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90">
                 종료하기
               </Button>
             </div>
