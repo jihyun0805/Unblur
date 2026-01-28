@@ -21,15 +21,14 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * 세션 입장/퇴장 이벤트를 DB에 기록하는 서비스 구현체
  * <p>
- * 매칭 완료 시 WAITING 상태로 생성된 세션을 기준으로,
- * 실제 RTC 입장 시점에 참여자/라운드 정보를 기록한다.
- * </p>
+ * 매칭 완료 시 WAITING 상태로 생성된 세션을 기준으로, 실제 RTC 입장 시점에 참여자/라운드 정보를 기록한다.
  */
 @Service
 @RequiredArgsConstructor
@@ -73,9 +72,7 @@ public class ConferenceLifecycleServiceImpl implements ConferenceLifecycleServic
     /**
      * 사용자가 세션에 입장했을 때 상태를 기록하는 메서드
      * <p>
-     * 첫 입장 시 참여자 레코드를 만들고, 두 번째 입장까지 완료되면
-     * 세션을 ACTIVE로 전환한 뒤 1라운드를 시작한다.
-     * </p>
+     * 첫 입장 시 참여자 레코드를 만들고, 상대방의 입장까지 완료되면 세션을 ACTIVE로 전환한 뒤 1라운드를 시작한다.
      *
      * @param conferenceId 세션 ID
      * @param userId       사용자 ID
@@ -90,29 +87,37 @@ public class ConferenceLifecycleServiceImpl implements ConferenceLifecycleServic
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
 
-        // 참여자 기록이 없으면 신규 생성
-        ConferenceParticipant participant = participantRepository.findByConference_IdAndUser_Id(conferenceId, userId)
-                .orElseGet(() -> participantRepository.save(
-                        ConferenceParticipant.builder()
-                                .conference(conference)
-                                .user(user)
-                                .build()
-                ));
+        // 이미 참여 기록이 있으면 재입장 처리 (네트워크 끊김 후 재연결)
+        Optional<ConferenceParticipant> existingParticipant = participantRepository.findByConference_IdAndUser_Id(conferenceId, userId);
+        if (existingParticipant.isPresent()) {
+            ConferenceParticipant participant = existingParticipant.get();
 
-        // 재입장인 경우 퇴장 시각 초기화
-        if (participant.getLeftAt() != null) {
-            participant.rejoin();
+            // leftAt이 설정되어 있으면 초기화 (재연결)
+            if (participant.getLeftAt() != null) {
+                participant.rejoin();
+            }
+
+            return;
         }
+
+        // 신규 입장
+        ConferenceParticipant participant = ConferenceParticipant.builder()
+                .conference(conference)
+                .user(user)
+                .joinedAt(LocalDateTime.now(clock))
+                .build();
+
+        participantRepository.save(participant);
 
         lifecycleLock.lock();
         try {
             // 두 명이 모두 입장한 경우 세션을 활성화하고 1라운드 생성
             if (conference.getStatus() == ConferenceStatus.WAITING) {
                 long activeCount = participantRepository.countByConference_IdAndLeftAtIsNull(conferenceId);
+
                 if (activeCount >= 2) {
                     LocalDateTime now = LocalDateTime.now(clock);
                     conference.activate(now);
-                    conferenceRepository.save(conference);
 
                     ConferenceRound round = ConferenceRound.builder()
                             .conference(conference)
@@ -120,6 +125,7 @@ public class ConferenceLifecycleServiceImpl implements ConferenceLifecycleServic
                             .startedAt(now)
                             .status(ConferenceRoundStatus.ACTIVE)
                             .build();
+
                     roundRepository.save(round);
 
                     // 참여자 ID 목록을 가져와서 라운드 타이머 시작
@@ -141,7 +147,6 @@ public class ConferenceLifecycleServiceImpl implements ConferenceLifecycleServic
      * 사용자가 세션에서 퇴장했을 때 상태를 기록하는 메서드
      * <p>
      * 마지막 참여자가 나가면 세션과 진행 중 라운드를 종료한다.
-     * </p>
      *
      * @param conferenceId 세션 ID
      * @param userId       사용자 ID
@@ -165,6 +170,7 @@ public class ConferenceLifecycleServiceImpl implements ConferenceLifecycleServic
         try {
             // 남아 있는 참여자가 없으면 세션/라운드 종료
             long activeCount = participantRepository.countByConference_IdAndLeftAtIsNull(conferenceId);
+
             if (activeCount == 0) {
                 Conference conference = conferenceRepository.findById(conferenceId)
                         .orElse(null);
@@ -172,7 +178,6 @@ public class ConferenceLifecycleServiceImpl implements ConferenceLifecycleServic
                 if (conference != null && conference.getStatus() != ConferenceStatus.COMPLETED) {
                     LocalDateTime now = LocalDateTime.now(clock);
                     conference.complete(now);
-                    conferenceRepository.save(conference);
 
                     roundRepository.findFirstByConference_IdAndStatus(conferenceId, ConferenceRoundStatus.ACTIVE)
                             .ifPresent(round -> round.complete(now));
