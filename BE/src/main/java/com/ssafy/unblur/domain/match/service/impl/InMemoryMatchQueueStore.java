@@ -72,22 +72,6 @@ public class InMemoryMatchQueueStore implements MatchQueueStore {
         return Optional.ofNullable(items.get(requestId));
     }
 
-    @Override
-    public void delete(UUID requestId) {
-        lock.lock(); // 실제 저장소와 인덱스를 함께 삭제해야 하므로 락으로 보호
-
-        try {
-            MatchQueueItem removed = items.remove(requestId);
-
-            if (removed != null) {
-                userIndexes.remove(key(removed.getRequesterUserId(), removed.getQueueType()));
-            }
-
-        } finally {
-            lock.unlock();
-        }
-    }
-
     /**
      * 특정 매칭 유형의 대기 중인 항목만 조회하는 메서드
      *

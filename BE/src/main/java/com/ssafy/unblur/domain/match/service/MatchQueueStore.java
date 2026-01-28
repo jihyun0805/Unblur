@@ -39,13 +39,6 @@ public interface MatchQueueStore {
     Optional<MatchQueueItem> findByUserId(UUID userId, MatchQueueType queueType);
 
     /**
-     * 대기열 항목을 삭제하는 메서드
-     *
-     * @param requestId 요청 ID
-     */
-    void delete(UUID requestId);
-
-    /**
      * 대기 중인 항목 목록을 조회하는 메서드
      *
      * @param queueType 대기열 유형

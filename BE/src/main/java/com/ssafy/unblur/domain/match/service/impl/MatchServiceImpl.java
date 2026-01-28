@@ -243,14 +243,6 @@ public class MatchServiceImpl implements MatchService {
             throw new BaseException(ErrorCode.MATCH_ALREADY_QUEUED);
         }
 
-        // 요청자 정보 조회
-        User requester = userRepository.findById(userId)
-                .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
-
-        // 대상 사용자 정보 조회
-        User target = userRepository.findById(targetUserId)
-                .orElseThrow(() -> new BaseException(ErrorCode.MATCH_TARGET_NOT_FOUND));
-
         // 대상 사용자가 온라인인지 확인
         if (!sseService.isUserConnected(targetUserId)) {
             throw new BaseException(ErrorCode.MATCH_TARGET_OFFLINE);
