@@ -12,6 +12,9 @@ public enum ErrorCode {
     DUPLICATE_EMAIL(HttpStatus.CONFLICT, "USER-003", "이미 존재하는 이메일입니다."),
     DUPLICATE_NICKNAME(HttpStatus.CONFLICT, "USER-004", "이미 존재하는 닉네임입니다."),
     INACTIVE_USER(HttpStatus.FORBIDDEN, "USER-005", "비활성화된 계정입니다."),
+    CANNOT_BLOCK_SELF(HttpStatus.BAD_REQUEST, "USER-006", "자기 자신은 차단할 수 없습니다."),
+    ALREADY_BLOCKED(HttpStatus.CONFLICT, "USER-007", "이미 차단한 사용자입니다."),
+    NOT_BLOCKED_USER(HttpStatus.NOT_FOUND, "USER-008", "차단 목록에 존재하지 않는 사용자입니다."),
 
     INVALID_SOCIAL_SIGNUP_STATE(HttpStatus.BAD_REQUEST, "AUTH-001", "소셜 회원가입 상태가 올바르지 않습니다."),
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "AUTH-002", "아이디 또는 비밀번호가 일치하지 않습니다."),

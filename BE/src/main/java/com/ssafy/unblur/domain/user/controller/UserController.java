@@ -13,6 +13,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.UUID;
+
 @RestController
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
@@ -64,6 +66,26 @@ public class UserController implements UserApiDocs {
         return ResponseEntity.ok(
                 BaseResponse.onSuccess("설문조사 수정 성공", updatedSurvey)
         );
+    }
+
+    @Override
+    @PostMapping("/{user_id}/block")
+    public ResponseEntity<BaseResponse<Void>> blockUser(
+            @PathVariable("user_id") UUID blockedId) {
+
+        userService.blockUser(blockedId);
+        return ResponseEntity.ok(
+                BaseResponse.onSuccess("사용자를 차단했습니다.", null));
+    }
+
+    @Override
+    @DeleteMapping("/{user_id}/block")
+    public ResponseEntity<BaseResponse<Void>> unblockUser(
+            @PathVariable("user_id") UUID blockedId) {
+
+        userService.unblockUser(blockedId);
+        return ResponseEntity.ok(
+                BaseResponse.onSuccess("차단을 해제했습니다.", null));
     }
 
     private Cookie clearRefreshTokenCookie() {
