@@ -8,11 +8,13 @@ import com.ssafy.unblur.domain.auth.repository.UserRepository;
 import com.ssafy.unblur.domain.match.config.MatchConfig.MatchPolicy;
 import com.ssafy.unblur.domain.match.dto.*;
 import com.ssafy.unblur.domain.match.model.*;
+import com.ssafy.unblur.domain.match.model.event.SseMatchEventType;
 import com.ssafy.unblur.domain.match.repository.ConferenceParticipantRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRepository;
-import com.ssafy.unblur.domain.match.service.MatchSseService;
+import com.ssafy.unblur.domain.match.service.MatchEventPublisher;
 import com.ssafy.unblur.domain.match.service.MatchQueueStore;
 import com.ssafy.unblur.domain.match.service.MatchService;
+import com.ssafy.unblur.domain.match.service.MatchSseService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,7 +51,12 @@ public class MatchServiceImpl implements MatchService {
     /**
      * 매칭 상태 알림 전송기
      */
-    private final MatchSseService eventPublisher;
+    private final MatchEventPublisher eventPublisher;
+
+    /**
+     * SSE 서비스 (연결 상태 조회용)
+     */
+    private final MatchSseService sseService;
 
     /**
      * 매칭 정책 설정값
@@ -454,7 +461,7 @@ public class MatchServiceImpl implements MatchService {
         Gender oppositeGender = myGender == Gender.MALE ? Gender.FEMALE : Gender.MALE;
 
         // 현재 연결된 사용자 중 반대 성별의 사용자 목록 조회
-        Set<UUID> connectedUserIds = eventPublisher.getConnectedUserIds();
+        Set<UUID> connectedUserIds = sseService.getConnectedUserIds();
         List<User> oppositeGenderUsers = userRepository.findAllById(connectedUserIds).stream()
                 .filter(user -> user.getGender() == oppositeGender)
                 .toList();

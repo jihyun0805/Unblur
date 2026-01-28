@@ -9,11 +9,12 @@ import com.ssafy.unblur.domain.match.config.MatchConfig.MatchPolicy;
 import com.ssafy.unblur.domain.match.dto.QuickMatchResultEvent;
 import com.ssafy.unblur.domain.match.dto.QuickMatchStageEvent;
 import com.ssafy.unblur.domain.match.model.*;
+import com.ssafy.unblur.domain.match.model.event.SseMatchEventType;
 import com.ssafy.unblur.domain.match.repository.ConferenceParticipantRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRepository;
 import com.ssafy.unblur.domain.match.repository.MatchCandidateRepository;
 import com.ssafy.unblur.domain.match.repository.MatchCandidateRepository.MatchCandidate;
-import com.ssafy.unblur.domain.match.service.MatchSseService;
+import com.ssafy.unblur.domain.match.service.MatchEventPublisher;
 import com.ssafy.unblur.domain.match.service.MatchQueueStore;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -70,7 +71,7 @@ public class MatchQueueProcessor {
     /**
      * 매칭 이벤트 전송기
      */
-    private final MatchSseService eventPublisher;
+    private final MatchEventPublisher eventPublisher;
 
     /**
      * 기준 시각 제공용 Clock

@@ -1,6 +1,6 @@
 package com.ssafy.unblur.domain.match.service;
 
-import com.ssafy.unblur.domain.match.model.SseMatchEventType;
+import com.ssafy.unblur.domain.match.model.event.SseMatchEventType;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.Set;
