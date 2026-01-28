@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast"
 
 export interface RegisterFormData {
   nickname: string
-  username: string
+  email: string
   password: string
   passwordConfirm: string
   birthYear: string
@@ -35,7 +35,7 @@ export interface RegisterFormData {
 
 const initialFormData: RegisterFormData = {
   nickname: "",
-  username: "",
+  email: "",
   password: "",
   passwordConfirm: "",
   birthYear: "",
@@ -67,27 +67,32 @@ export function useRegisterForm() {
   const [formData, setFormData] = useState<RegisterFormData>(initialFormData)
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null)
-  const [checkingUsername, setCheckingUsername] = useState(false)
+  const [emailAvailable, setEmailAvailable] = useState<boolean | null>(null)
+  const [checkingEmail, setCheckingEmail] = useState(false)
   const [nicknameAvailable, setNicknameAvailable] = useState<boolean | null>(null)
   const [checkingNickname, setCheckingNickname] = useState(false)
   const { register } = useAuth()
   const { toast } = useToast()
 
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email)
+  }
+
   const updateFormData = (updates: Partial<RegisterFormData>) => {
     setFormData((prev) => ({ ...prev, ...updates }))
-    // 닉네임이나 아이디가 변경되면 중복 확인 상태 리셋
+    // 닉네임이나 이메일이 변경되면 중복 확인 상태 리셋
     if (updates.nickname !== undefined) {
       setNicknameAvailable(null)
     }
-    if (updates.username !== undefined) {
-      setUsernameAvailable(null)
+    if (updates.email !== undefined) {
+      setEmailAvailable(null)
     }
   }
 
   const resetForm = () => {
     setFormData(initialFormData)
-    setUsernameAvailable(null)
+    setEmailAvailable(null)
     setNicknameAvailable(null)
     setShowPassword(false)
   }
@@ -108,9 +113,7 @@ export function useRegisterForm() {
     }
   }
 
-  const normalizeUsername = (value: string) => value.replace(/[^A-Za-z0-9]/g, "")
   const normalizePassword = (value: string) => value.replace(/[^A-Za-z0-9!*^?_]/g, "")
-  const isUsernameValid = (value: string) => /^[A-Za-z0-9]+$/.test(value)
 
   const checkNickname = async () => {
     if (formData.nickname.length < 2) {
@@ -128,28 +131,28 @@ export function useRegisterForm() {
     setCheckingNickname(false)
   }
 
-  const checkUsername = async () => {
-    if (formData.username.length < 4) {
+  const checkEmail = async () => {
+    if (!formData.email) {
       toast({
-        title: "아이디 오류",
-        description: "아이디는 4자 이상이어야 합니다.",
+        title: "이메일 오류",
+        description: "이메일을 입력해주세요.",
         variant: "destructive",
       })
       return
     }
-    if (!isUsernameValid(formData.username)) {
+    if (!validateEmail(formData.email)) {
       toast({
-        title: "아이디 오류",
-        description: "아이디는 영문과 숫자만 사용할 수 있습니다.",
+        title: "이메일 형식 오류",
+        description: "올바른 이메일 형식을 입력해주세요.",
         variant: "destructive",
       })
       return
     }
-    setCheckingUsername(true)
+    setCheckingEmail(true)
     await new Promise((resolve) => setTimeout(resolve, 300))
     // 실제로는 서버에서 중복 확인
-    setUsernameAvailable(formData.username !== "demo")
-    setCheckingUsername(false)
+    setEmailAvailable(formData.email !== "demo@unblur.com")
+    setCheckingEmail(false)
   }
 
   const calculateAge = (year: string, month: string, day: string) => {
@@ -168,7 +171,7 @@ export function useRegisterForm() {
     const age = calculateAge(formData.birthYear, formData.birthMonth, formData.birthDay)
     const success = await register({
       nickname: formData.nickname,
-      username: formData.username,
+      email: formData.email,
       password: formData.password,
       birthDate: `${formData.birthYear}-${formData.birthMonth.padStart(2, "0")}-${formData.birthDay.padStart(2, "0")}`,
       age,
@@ -206,16 +209,15 @@ export function useRegisterForm() {
     showPassword,
     setShowPassword,
     isLoading,
-    usernameAvailable,
-    checkingUsername,
+    emailAvailable,
+    checkingEmail,
     nicknameAvailable,
     checkingNickname,
     validatePassword,
-    normalizeUsername,
     normalizePassword,
-    isUsernameValid,
+    validateEmail,
     checkNickname,
-    checkUsername,
+    checkEmail,
     calculateAge,
     submitRegistration,
   }

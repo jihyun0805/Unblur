@@ -12,15 +12,14 @@ interface RegisterStep1Props {
   updateFormData: ReturnType<typeof useRegisterForm>["updateFormData"]
   showPassword: boolean
   setShowPassword: ReturnType<typeof useRegisterForm>["setShowPassword"]
-  usernameAvailable: boolean | null
-  checkingUsername: boolean
+  emailAvailable: boolean | null
+  checkingEmail: boolean
   nicknameAvailable: boolean | null
   checkingNickname: boolean
   passwordValidation: ReturnType<ReturnType<typeof useRegisterForm>["validatePassword"]>
-  normalizeUsername: ReturnType<typeof useRegisterForm>["normalizeUsername"]
   normalizePassword: ReturnType<typeof useRegisterForm>["normalizePassword"]
   checkNickname: ReturnType<typeof useRegisterForm>["checkNickname"]
-  checkUsername: ReturnType<typeof useRegisterForm>["checkUsername"]
+  checkEmail: ReturnType<typeof useRegisterForm>["checkEmail"]
   onNext: () => void
   onSwitchToLogin: () => void
 }
@@ -30,15 +29,14 @@ export function RegisterStep1({
   updateFormData,
   showPassword,
   setShowPassword,
-  usernameAvailable,
-  checkingUsername,
+  emailAvailable,
+  checkingEmail,
   nicknameAvailable,
   checkingNickname,
   passwordValidation,
-  normalizeUsername,
   normalizePassword,
   checkNickname,
-  checkUsername,
+  checkEmail,
   onNext,
   onSwitchToLogin,
 }: RegisterStep1Props) {
@@ -72,26 +70,25 @@ export function RegisterStep1({
         )}
       </div>
       <div className="space-y-2">
-        <Label htmlFor="reg-username">아이디</Label>
+        <Label htmlFor="reg-email">이메일</Label>
         <div className="flex gap-2">
           <Input
-            id="reg-username"
-            placeholder="4~16자"
-            value={formData.username}
+            id="reg-email"
+            type="email"
+            placeholder="이메일을 입력하세요"
+            value={formData.email}
             onChange={(e) => {
-              const nextValue = normalizeUsername(e.target.value)
-              updateFormData({ username: nextValue })
+              updateFormData({ email: e.target.value })
             }}
             className="bg-input flex-1"
-            maxLength={16}
           />
-          <Button type="button" variant="outline" onClick={checkUsername} disabled={checkingUsername}>
-            {checkingUsername ? <Loader2 className="w-4 h-4 animate-spin" /> : "중복확인"}
+          <Button type="button" variant="outline" onClick={checkEmail} disabled={checkingEmail}>
+            {checkingEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : "중복확인"}
           </Button>
         </div>
-        {usernameAvailable !== null && (
-          <p className={`text-sm ${usernameAvailable ? "text-green-600" : "text-destructive"}`}>
-            {usernameAvailable ? "사용 가능한 아이디입니다." : "이미 사용 중인 아이디입니다."}
+        {emailAvailable !== null && (
+          <p className={`text-sm ${emailAvailable ? "text-green-600" : "text-destructive"}`}>
+            {emailAvailable ? "사용 가능한 이메일입니다." : "이미 사용 중인 이메일입니다."}
           </p>
         )}
       </div>

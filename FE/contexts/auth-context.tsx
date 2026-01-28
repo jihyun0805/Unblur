@@ -23,8 +23,7 @@ export interface SurveyData {
 }
 
 export interface User {
-  id: string
-  username: string
+  email: string
   nickname: string
   age: number
   gender: "male" | "female"
@@ -39,7 +38,7 @@ export interface User {
 interface AuthContextType {
   user: User | null
   isLoading: boolean
-  login: (username: string, password: string, rememberMe?: boolean) => Promise<boolean>
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<boolean>
   register: (data: RegisterData) => Promise<boolean>
   logout: () => void
   deleteAccount: (password: string) => Promise<boolean>
@@ -49,7 +48,7 @@ interface AuthContextType {
 
 interface RegisterData {
   nickname: string
-  username: string
+  email: string
   password: string
   birthDate: string
   age: number
@@ -63,9 +62,8 @@ interface RegisterData {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 const MOCK_USERS: { [key: string]: User & { password: string } } = {
-  demo: {
-    id: "1",
-    username: "demo",
+  "demo@unblur.com": {
+    email: "demo@unblur.com",
     nickname: "민수",
     age: 28,
     gender: "male",
@@ -105,13 +103,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loadUser()
   }, [])
 
-  const login = async (username: string, password: string, rememberMe = false): Promise<boolean> => {
+  const login = async (email: string, password: string, rememberMe = false): Promise<boolean> => {
     await new Promise((resolve) => setTimeout(resolve, 500))
 
-    const mockUser = MOCK_USERS[username]
+    const mockUser = MOCK_USERS[email]
     const storedUser = localStorage.getItem("mock_registered_user")
     const registeredUser = storedUser ? (JSON.parse(storedUser) as User & { password: string }) : null
-    const candidate = mockUser ?? (registeredUser?.username === username ? registeredUser : null)
+    const candidate = mockUser ?? (registeredUser?.email === email ? registeredUser : null)
 
     if (candidate && candidate.password === password) {
       const { password: _, ...userData } = candidate
@@ -128,8 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await new Promise((resolve) => setTimeout(resolve, 500))
 
     const newUser: User & { password: string } = {
-      id: Date.now().toString(),
-      username: data.username,
+      email: data.email,
       nickname: data.nickname,
       age: data.age,
       gender: data.gender,
@@ -175,11 +172,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const deleteAccount = async (password: string): Promise<boolean> => {
     await new Promise((resolve) => setTimeout(resolve, 500))
 
-    if (!user?.username) {
+    if (!user?.email) {
       return false
     }
 
-    const mockUser = MOCK_USERS[user.username]
+    const mockUser = MOCK_USERS[user.email]
     if (mockUser) {
       if (mockUser.password !== password) {
         return false
