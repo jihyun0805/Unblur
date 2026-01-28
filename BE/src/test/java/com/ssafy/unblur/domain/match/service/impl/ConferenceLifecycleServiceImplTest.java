@@ -10,6 +10,7 @@ import com.ssafy.unblur.domain.match.model.ConferenceStatus;
 import com.ssafy.unblur.domain.match.repository.ConferenceParticipantRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRoundRepository;
+import com.ssafy.unblur.domain.rtc.service.RoundTimerService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -24,11 +25,13 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -52,6 +55,9 @@ class ConferenceLifecycleServiceImplTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private RoundTimerService roundTimerService;
+
     @Captor
     private ArgumentCaptor<ConferenceRound> roundCaptor;
 
@@ -64,6 +70,7 @@ class ConferenceLifecycleServiceImplTest {
                 participantRepository,
                 roundRepository,
                 userRepository,
+                roundTimerService,
                 FIXED_CLOCK
         );
     }
@@ -100,6 +107,20 @@ class ConferenceLifecycleServiceImplTest {
             when(roundRepository.save(any(ConferenceRound.class)))
                     .thenAnswer(invocation -> invocation.getArgument(0));
 
+            // 참여자 목록 반환을 위한 설정
+            UUID otherUserId = UUID.randomUUID();
+            User otherUser = User.builder().id(otherUserId).email("other@example.com").build();
+            ConferenceParticipant participant1 = ConferenceParticipant.builder()
+                    .conference(conference)
+                    .user(user)
+                    .build();
+            ConferenceParticipant participant2 = ConferenceParticipant.builder()
+                    .conference(conference)
+                    .user(otherUser)
+                    .build();
+            when(participantRepository.findByConference_IdAndLeftAtIsNull(conferenceId))
+                    .thenReturn(List.of(participant1, participant2));
+
             // when: 입장 이벤트를 기록할 때
             service.onJoin(conferenceId, userId);
 
@@ -113,6 +134,9 @@ class ConferenceLifecycleServiceImplTest {
             ConferenceRound savedRound = roundCaptor.getValue();
             assertThat(savedRound.getRoundNumber()).isEqualTo(1);
             assertThat(savedRound.getStatus()).isEqualTo(ConferenceRoundStatus.ACTIVE);
+
+            // 라운드 타이머가 시작되었는지 확인
+            verify(roundTimerService).startRoundTimer(eq(conferenceId), eq(1), any());
         }
     }
 
@@ -163,6 +187,9 @@ class ConferenceLifecycleServiceImplTest {
             assertThat(round.getStatus()).isEqualTo(ConferenceRoundStatus.COMPLETED);
             assertThat(round.getEndedAt()).isEqualTo(expectedNow);
             assertThat(round.getDurationSeconds()).isEqualTo(300);
+
+            // 타이머 서비스 정리가 호출되었는지 확인
+            verify(roundTimerService).cleanup(conferenceId);
         }
     }
 }

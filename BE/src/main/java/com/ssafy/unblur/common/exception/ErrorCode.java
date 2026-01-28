@@ -23,6 +23,9 @@ public enum ErrorCode {
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "AUTH-008", "해당 기능에 접근할 권한이 없습니다."),
     INVALID_EMAIL_FORMAT(HttpStatus.BAD_REQUEST, "AUTH-009", "유효하지 않은 이메일 형식입니다."),
 
+    ICE_CANDIDATE_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "RTC-001", "ICE candidate 전송에 실패했습니다."),
+    USER_NOT_JOINED(HttpStatus.FORBIDDEN, "RTC-002", "방에 참여하지 않은 사용자입니다."),
+
     MATCH_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "MATCH-001", "매칭 요청을 찾을 수 없습니다."),
     MATCH_ALREADY_QUEUED(HttpStatus.CONFLICT, "MATCH-002", "이미 대기열에 등록되어 있습니다."),
     MATCH_TARGET_NOT_FOUND(HttpStatus.NOT_FOUND, "MATCH-003", "대상 사용자를 찾을 수 없습니다."),

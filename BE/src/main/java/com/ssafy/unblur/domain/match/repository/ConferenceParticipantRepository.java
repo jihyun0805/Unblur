@@ -49,6 +49,15 @@ public interface ConferenceParticipantRepository extends JpaRepository<Conferenc
      */
     List<ConferenceParticipant> findByConference_Id(UUID conferenceId);
 
+    /**
+     * 세션 내 현재 입장 중인 참여자 목록을 조회하는 메서드
+     *
+     * @param conferenceId 세션 ID
+     * @return 입장 중인 참여자 목록
+     */
+    @EntityGraph(attributePaths = {"user"})
+    List<ConferenceParticipant> findByConference_IdAndLeftAtIsNull(UUID conferenceId);
+
     @EntityGraph(attributePaths = {"conference"})
     Page<ConferenceParticipant> findByUserOrderByConferenceCreatedAtDesc(User user, Pageable pageable);
 

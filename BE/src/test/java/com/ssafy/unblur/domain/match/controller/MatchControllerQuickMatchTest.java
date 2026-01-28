@@ -3,11 +3,15 @@ package com.ssafy.unblur.domain.match.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.unblur.common.config.SecurityConfig;
 import com.ssafy.unblur.common.security.auth.CustomUserDetails;
+import com.ssafy.unblur.common.security.handler.CustomAccessDeniedHandler;
+import com.ssafy.unblur.common.security.handler.CustomAuthenticationEntryPoint;
 import com.ssafy.unblur.common.security.jwt.JWTUtil;
 import com.ssafy.unblur.domain.match.controller.impl.MatchControllerImpl;
 import com.ssafy.unblur.domain.match.dto.FastMatchingRequest;
 import com.ssafy.unblur.domain.match.dto.MatchingQueueResponse;
 import com.ssafy.unblur.domain.match.service.MatchService;
+import jakarta.servlet.http.HttpServletResponse;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -26,7 +30,9 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -50,6 +56,22 @@ class MatchControllerQuickMatchTest {
 
     @MockitoBean
     private JWTUtil jwtUtil;
+
+    @MockitoBean
+    private CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
+
+    @MockitoBean
+    private CustomAccessDeniedHandler customAccessDeniedHandler;
+
+    @BeforeEach
+    void setUp() throws Exception {
+        // 인증 실패 시 403 반환하도록 설정
+        doAnswer(invocation -> {
+            HttpServletResponse response = invocation.getArgument(1);
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            return null;
+        }).when(customAuthenticationEntryPoint).commence(any(), any(), any());
+    }
 
     @Nested
     @DisplayName("POST /api/v1/match/quick")
@@ -88,7 +110,7 @@ class MatchControllerQuickMatchTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.isSuccess").value(true))
                     .andExpect(jsonPath("$.statusCode").value(200))
-                    .andExpect(jsonPath("$.message").value("OK"))
+                    .andExpect(jsonPath("$.message").value("빠른 매칭 요청이 성공적으로 처리되었습니다."))
                     .andExpect(jsonPath("$.data.requestId").value("queue-id"));
 
             ArgumentCaptor<FastMatchingRequest> captor = ArgumentCaptor.forClass(FastMatchingRequest.class);

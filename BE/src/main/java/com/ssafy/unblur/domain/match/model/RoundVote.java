@@ -61,4 +61,13 @@ public class RoundVote {
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    /**
+     * 투표 결과를 업데이트하는 메서드
+     *
+     * @param wantsContinue 연장 의사 여부
+     */
+    public void updateVote(boolean wantsContinue) {
+        this.wantsContinue = wantsContinue;
+    }
 }
