@@ -133,8 +133,11 @@ export function MBTITestPage({ onBack, onComplete, existingMbti, onViewResult, a
   const currentCategory = testSections[currentCategoryIndex]
   const currentQuestion = currentCategory.questions[currentQuestionIndex]
   const totalQuestions = testSections.reduce((sum, cat) => sum + cat.questions.length, 0)
-  const answeredQuestions = Object.keys(answers).length
-  const progress = (answeredQuestions / totalQuestions) * 100
+  const currentQuestionNumber =
+    testSections.slice(0, currentCategoryIndex).reduce((sum, cat) => sum + cat.questions.length, 0) +
+    currentQuestionIndex +
+    1
+  const progress = (currentQuestionNumber / totalQuestions) * 100
 
   const questionKey = `${currentCategoryIndex}-${currentQuestionIndex}`
   const currentAnswer = answers[questionKey]
