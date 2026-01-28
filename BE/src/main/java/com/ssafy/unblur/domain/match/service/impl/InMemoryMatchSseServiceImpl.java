@@ -72,4 +72,9 @@ public class InMemoryMatchSseServiceImpl implements MatchSseService {
     public Set<UUID> getConnectedUserIds() {
         return Set.copyOf(emitters.keySet());
     }
+
+    @Override
+    public boolean isUserConnected(UUID userId) {
+        return emitters.containsKey(userId);
+    }
 }

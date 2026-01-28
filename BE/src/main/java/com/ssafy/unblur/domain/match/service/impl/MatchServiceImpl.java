@@ -252,7 +252,7 @@ public class MatchServiceImpl implements MatchService {
                 .orElseThrow(() -> new BaseException(ErrorCode.MATCH_TARGET_NOT_FOUND));
 
         // 대상 사용자가 온라인인지 확인
-        if (!target.isOnline()) {
+        if (!sseService.isUserConnected(targetUserId)) {
             throw new BaseException(ErrorCode.MATCH_TARGET_OFFLINE);
         }
 

@@ -136,12 +136,6 @@ public class User {
     private float[] interestsVector;
 
     /**
-     * 온라인 상태.
-     */
-    @Column(name = "is_online", nullable = false)
-    private boolean online;
-
-    /**
      * 마지막 활동 시각.
      */
     @Column(name = "last_active_at")

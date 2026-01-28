@@ -34,4 +34,12 @@ public interface MatchSseService {
      * @return 연결된 사용자 ID Set
      */
     Set<UUID> getConnectedUserIds();
+
+    /**
+     * 특정 사용자가 SSE에 연결되어 있는지 확인하는 메서드
+     *
+     * @param userId 사용자 ID
+     */
+    boolean isUserConnected(UUID userId);
+
 }
