@@ -1,9 +1,6 @@
 package com.ssafy.unblur.domain.match.service;
 
-import com.ssafy.unblur.domain.match.dto.FastMatchingRequest;
-import com.ssafy.unblur.domain.match.dto.MatchingQueueResponse;
-import com.ssafy.unblur.domain.match.dto.OneOnOneMatchRequest;
-import com.ssafy.unblur.domain.match.dto.OneOnOneMatchResponse;
+import com.ssafy.unblur.domain.match.dto.*;
 
 import java.util.UUID;
 
@@ -22,7 +19,7 @@ public interface MatchService {
     MatchingQueueResponse startQuickMatch(UUID userId, FastMatchingRequest request);
 
     /**
-     * 빠른 매칭 취소 요청 처리하는 메서드
+     * 빠른 매칭 취소 요청을 처리하는 메서드
      *
      * @param userId    사용자 ID
      * @param requestId 매칭 요청 ID
@@ -30,7 +27,7 @@ public interface MatchService {
     void cancelQuickMatch(UUID userId, String requestId);
 
     /**
-     * 매칭 대기 상태 조회하는 메서드
+     * 매칭 대기 상태를 조회하는 메서드
      *
      * @param userId 사용자 ID
      * @return 대기열 상태 (대기 중인 요청이 없으면 null)
@@ -63,5 +60,14 @@ public interface MatchService {
      * @return 1:1 매칭 응답
      */
     OneOnOneMatchResponse declineOneOnOneMatch(UUID userId, String requestId);
+
+    /**
+     * 현재 온라인인 사용자 중 반대 성별인 랜덤 사용자 목록을 반환하는 메서드
+     *
+     * @param userId 요청 사용자 ID
+     * @param limit  최대 반환 개수
+     * @return 온라인 사용자 목록
+     */
+    OnlineUserListResponse getRandomOnlineUsers(UUID userId, int limit);
 
 }

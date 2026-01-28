@@ -3,16 +3,11 @@ package com.ssafy.unblur.domain.match.service.impl;
 import com.ssafy.unblur.domain.match.model.MatchQueueItem;
 import com.ssafy.unblur.domain.match.model.MatchQueueStatus;
 import com.ssafy.unblur.domain.match.model.MatchQueueType;
-import com.ssafy.unblur.domain.match.service.MatchQueueStore;
+import com.ssafy.unblur.domain.match.service.MatchQueueService;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -22,7 +17,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * 단일 인스턴스 환경과 재시작 시 데이터 유실을 감안한 구현체이다.
  */
 @Component
-public class InMemoryMatchQueueStore implements MatchQueueStore {
+public class InMemoryMatchQueueService implements MatchQueueService {
 
     /**
      * 요청 ID 기준 대기열 저장소
@@ -75,22 +70,6 @@ public class InMemoryMatchQueueStore implements MatchQueueStore {
         }
 
         return Optional.ofNullable(items.get(requestId));
-    }
-
-    @Override
-    public void delete(UUID requestId) {
-        lock.lock(); // 실제 저장소와 인덱스를 함께 삭제해야 하므로 락으로 보호
-
-        try {
-            MatchQueueItem removed = items.remove(requestId);
-
-            if (removed != null) {
-                userIndexes.remove(key(removed.getRequesterUserId(), removed.getQueueType()));
-            }
-
-        } finally {
-            lock.unlock();
-        }
     }
 
     /**

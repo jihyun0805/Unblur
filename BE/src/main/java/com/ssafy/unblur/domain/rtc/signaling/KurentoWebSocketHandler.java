@@ -125,13 +125,16 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         log.info("WebSocket 종료. sessionId={}, code={}, reason={}", session.getId(), status.getCode(), status.getReason());
 
+        // 세션 정보 정리
         SessionInfo info = sessionInfos.remove(session.getId());
         sessionLocks.remove(session.getId());
 
+        // 룸 퇴장 처리
         if (info != null && info.conferenceId != null) {
             kurentoRoomService.leave(info.conferenceId, info.userId);
         }
 
+        // 세션 저장소에서 제거
         sessionStore.remove(session.getId());
     }
 
@@ -148,14 +151,17 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
      * @throws IOException 전송 중 오류
      */
     private void handleRegister(WebSocketSession session, JsonNode payload) throws IOException {
+        // 사용자 ID 추출
         UUID userId = parseUuid(session, payload, "userId");
         if (userId == null) {
             return;
         }
 
+        // 세션 정보 저장
         sessionInfos.put(session.getId(), new SessionInfo(null, userId));
         sessionStore.bindUser(session.getId(), userId);
 
+        // 등록 완료 메시지 전송
         SignalingMessages.Registered registeredMessage = SignalingMessages.Registered.builder()
                 .userId(userId.toString())
                 .build();
@@ -171,20 +177,24 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
      * @throws IOException 전송 중 오류
      */
     private void handleJoin(WebSocketSession session, JsonNode payload) throws IOException {
+        // 방 ID 및 사용자 ID 추출
         UUID conferenceId = parseUuid(session, payload, "conferenceId");
         UUID userId = parseUuid(session, payload, "userId");
         if (conferenceId == null || userId == null) {
             return;
         }
 
+        // Kurento 룸 서비스에 입장 요청
         UserSession userSession = kurentoRoomService.join(conferenceId, userId, session);
         sessionInfos.put(session.getId(), new SessionInfo(conferenceId, userId));
         sessionStore.bindUser(session.getId(), userId);
 
+        // ICE Candidate 이벤트 리스너 등록
         userSession.webRtcEndpoint().addIceCandidateFoundListener(event ->
                 sendCandidate(session, event.getCandidate())
         );
 
+        // 입장 완료 메시지 전송
         SignalingMessages.Joined joinedMessage = SignalingMessages.Joined.builder()
                 .conferenceId(conferenceId.toString())
                 .userId(userId.toString())
@@ -201,15 +211,18 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
      * @throws IOException 전송 중 오류
      */
     private void handleOffer(WebSocketSession session, JsonNode payload) throws IOException {
+        // 방 ID 및 사용자 ID 추출
         UUID conferenceId = parseUuid(session, payload, "conferenceId");
         UUID userId = parseUuid(session, payload, "userId");
         if (conferenceId == null || userId == null) {
             return;
         }
 
+        // SDP Offer 처리 및 Answer 생성
         String sdpOffer = payload.get("sdpOffer").asText();
         String sdpAnswer = kurentoRoomService.processOffer(conferenceId, userId, sdpOffer);
 
+        // Answer 메시지 전송
         SignalingMessages.Answer answerMessage = SignalingMessages.Answer.builder()
                 .sdpAnswer(sdpAnswer)
                 .build();
@@ -225,12 +238,14 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
      * @throws IOException 전송 중 오류
      */
     private void handleCandidate(WebSocketSession session, JsonNode payload) throws IOException {
+        // 방 ID 및 사용자 ID 추출
         UUID conferenceId = parseUuid(session, payload, "conferenceId");
         UUID userId = parseUuid(session, payload, "userId");
         if (conferenceId == null || userId == null) {
             return;
         }
 
+        // ICE Candidate 정보 추출
         JsonNode candidateNode = payload.get("candidate");
         if (candidateNode == null) {
             SignalingMessages.Error errorMessage = SignalingMessages.Error.builder()
@@ -241,10 +256,12 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
+        // ICE Candidate 추가
         String candidate = candidateNode.get("candidate").asText();
         String sdpMid = candidateNode.get("sdpMid").asText();
         int sdpMLineIndex = candidateNode.get("sdpMLineIndex").asInt();
 
+        // Kurento 룸 서비스에 ICE Candidate 전달
         kurentoRoomService.addIceCandidate(conferenceId, userId, new IceCandidate(candidate, sdpMid, sdpMLineIndex));
     }
 
@@ -252,12 +269,14 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
      * 라운드 투표
      */
     private void handleVote(WebSocketSession session, JsonNode payload) throws IOException {
+        // 방 ID 및 사용자 ID 추출
         UUID conferenceId = parseUuid(session, payload, "conferenceId");
         UUID userId = parseUuid(session, payload, "userId");
         if (conferenceId == null || userId == null) {
             return;
         }
 
+        // 투표 값 추출 및 검증
         JsonNode voteNode = payload.get("vote");
         if (voteNode == null || voteNode.isNull()) {
             SignalingMessages.Error errorMessage = SignalingMessages.Error.builder()
@@ -268,6 +287,7 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
+        // 투표 처리
         String voteValue = voteNode.asText().toUpperCase();
         VoteChoice vote;
         try {
@@ -282,8 +302,10 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
+        // 라운드 투표 서비스에 투표 반영
         roundVoteService.processVote(conferenceId, userId, vote);
 
+        // 투표 수신 메시지 전송
         SignalingMessages.VoteReceived voteReceivedMessage = SignalingMessages.VoteReceived.builder()
                 .conferenceId(conferenceId.toString())
                 .userId(userId.toString())
@@ -300,14 +322,17 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
      * @throws IOException 전송 중 오류
      */
     private void handleLeave(WebSocketSession session, JsonNode payload) throws IOException {
+        // 방 ID 및 사용자 ID 추출
         UUID conferenceId = parseUuid(session, payload, "conferenceId");
         UUID userId = parseUuid(session, payload, "userId");
         if (conferenceId == null || userId == null) {
             return;
         }
 
+        // Kurento 룸 서비스에 퇴장 요청
         kurentoRoomService.leave(conferenceId, userId);
 
+        // 퇴장 완료 메시지 전송
         SignalingMessages.Left leftMessage = SignalingMessages.Left.builder()
                 .userId(userId.toString())
                 .build();
@@ -323,6 +348,7 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
      */
     private void sendCandidate(WebSocketSession session, IceCandidate candidate) {
         try {
+            // ICE Candidate 메시지 생성 및 전송
             SignalingMessages.Candidate candidateMessage = SignalingMessages.Candidate.from(candidate);
             send(session, candidateMessage);
 
@@ -345,6 +371,7 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
      * @throws IOException 전송 중 오류
      */
     private UUID parseUuid(WebSocketSession session, JsonNode payload, String field) throws IOException {
+        // 필드 추출 및 검증
         JsonNode node = payload.get(field);
         if (node == null || node.isNull()) {
             SignalingMessages.Error errorMessage = SignalingMessages.Error.builder()
@@ -355,6 +382,7 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
             return null;
         }
 
+        // UUID 파싱
         String raw = node.asText();
         try {
             return UUID.fromString(raw);
@@ -374,14 +402,16 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
      * @throws IOException 전송 중 오류
      */
     private void send(WebSocketSession session, Object message) throws IOException {
+        // 세션 열림 여부 확인
         if (!session.isOpen()) {
             return;
         }
 
+        // 세션별 락을 통해 동시 전송 충돌 방지
         Object lock = sessionLocks.computeIfAbsent(session.getId(), id -> new Object());
         synchronized (lock) {
             if (session.isOpen()) {
-                session.sendMessage(new TextMessage(objectMapper.writeValueAsString(message)));
+                session.sendMessage(new TextMessage(objectMapper.writeValueAsString(message))); // 메시지 전송
             }
         }
     }

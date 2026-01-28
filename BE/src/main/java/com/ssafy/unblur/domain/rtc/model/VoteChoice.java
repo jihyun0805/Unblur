@@ -13,12 +13,5 @@ public enum VoteChoice {
     /**
      * 세션 종료
      */
-    END;
-
-    /**
-     * boolean으로 변환 (PROCEED = true, END = false)
-     */
-    public boolean toWantsContinue() {
-        return this == PROCEED;
-    }
+    END
 }

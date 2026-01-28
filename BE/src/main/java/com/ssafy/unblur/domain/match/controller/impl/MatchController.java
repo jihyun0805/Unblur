@@ -2,11 +2,8 @@ package com.ssafy.unblur.domain.match.controller.impl;
 
 import com.ssafy.unblur.common.response.BaseResponse;
 import com.ssafy.unblur.common.security.auth.CustomUserDetails;
-import com.ssafy.unblur.domain.match.controller.MatchController;
-import com.ssafy.unblur.domain.match.dto.FastMatchingRequest;
-import com.ssafy.unblur.domain.match.dto.MatchingQueueResponse;
-import com.ssafy.unblur.domain.match.dto.OneOnOneMatchRequest;
-import com.ssafy.unblur.domain.match.dto.OneOnOneMatchResponse;
+import com.ssafy.unblur.domain.match.controller.MatchApiDocs;
+import com.ssafy.unblur.domain.match.dto.*;
 import com.ssafy.unblur.domain.match.service.MatchService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/v1/match")
 @RequiredArgsConstructor
-public class MatchControllerImpl implements MatchController {
+public class MatchController implements MatchApiDocs {
 
     private final MatchService matchService;
 
@@ -95,6 +92,17 @@ public class MatchControllerImpl implements MatchController {
         );
         return ResponseEntity.ok(
                 BaseResponse.onSuccess("1:1 매칭 요청이 성공적으로 거절되었습니다.", response)
+        );
+    }
+
+    @GetMapping("/online-users")
+    public ResponseEntity<BaseResponse<OnlineUserListResponse>> getOnlineUsers(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(defaultValue = "3") int limit
+    ) {
+        OnlineUserListResponse response = matchService.getRandomOnlineUsers(userDetails.getUserId(), limit);
+        return ResponseEntity.ok(
+                BaseResponse.onSuccess("온라인 사용자 목록 조회 성공", response)
         );
     }
 

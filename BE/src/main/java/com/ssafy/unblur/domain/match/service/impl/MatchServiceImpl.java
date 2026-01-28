@@ -2,35 +2,26 @@ package com.ssafy.unblur.domain.match.service.impl;
 
 import com.ssafy.unblur.common.exception.BaseException;
 import com.ssafy.unblur.common.exception.ErrorCode;
+import com.ssafy.unblur.domain.auth.model.Gender;
+import com.ssafy.unblur.domain.auth.model.User;
+import com.ssafy.unblur.domain.auth.repository.UserRepository;
 import com.ssafy.unblur.domain.match.config.MatchConfig.MatchPolicy;
-import com.ssafy.unblur.domain.match.dto.FastMatchingRequest;
-import com.ssafy.unblur.domain.match.dto.MatchingQueueResponse;
-import com.ssafy.unblur.domain.match.dto.OneOnOneMatchRequest;
-import com.ssafy.unblur.domain.match.dto.OneOnOneMatchResponse;
-import com.ssafy.unblur.domain.match.dto.QuickMatchStageEvent;
-import com.ssafy.unblur.domain.match.model.Conference;
-import com.ssafy.unblur.domain.match.model.ConferenceParticipant;
-import com.ssafy.unblur.domain.match.model.ConferenceStatus;
-import com.ssafy.unblur.domain.match.model.MatchEventType;
-import com.ssafy.unblur.domain.match.model.MatchQueueItem;
-import com.ssafy.unblur.domain.match.model.MatchQueueStatus;
-import com.ssafy.unblur.domain.match.model.MatchQueueType;
+import com.ssafy.unblur.domain.match.dto.*;
+import com.ssafy.unblur.domain.match.model.*;
+import com.ssafy.unblur.domain.match.model.event.SseMatchEventType;
 import com.ssafy.unblur.domain.match.repository.ConferenceParticipantRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRepository;
 import com.ssafy.unblur.domain.match.service.MatchEventPublisher;
-import com.ssafy.unblur.domain.match.service.MatchQueueStore;
+import com.ssafy.unblur.domain.match.service.MatchQueueService;
 import com.ssafy.unblur.domain.match.service.MatchService;
-import com.ssafy.unblur.domain.auth.model.User;
-import com.ssafy.unblur.domain.auth.repository.UserRepository;
+import com.ssafy.unblur.domain.match.service.MatchSseService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * 빠른 매칭 처리 서비스 구현체
@@ -45,7 +36,7 @@ public class MatchServiceImpl implements MatchService {
     /**
      * 매칭 대기열 저장소
      */
-    private final MatchQueueStore queueStore;
+    private final MatchQueueService matchQueueService;
 
     /**
      * 사용자 조회 레포지토리
@@ -61,6 +52,11 @@ public class MatchServiceImpl implements MatchService {
      * 매칭 상태 알림 전송기
      */
     private final MatchEventPublisher eventPublisher;
+
+    /**
+     * SSE 서비스 (연결 상태 조회용)
+     */
+    private final MatchSseService sseService;
 
     /**
      * 매칭 정책 설정값
@@ -93,7 +89,7 @@ public class MatchServiceImpl implements MatchService {
     @Transactional
     public MatchingQueueResponse startQuickMatch(UUID userId, FastMatchingRequest request) {
         // 동일 사용자가 이미 대기 중이면 중복 등록 방지
-        if (queueStore.existsWaiting(userId, MatchQueueType.QUICK)) {
+        if (matchQueueService.existsWaiting(userId, MatchQueueType.QUICK)) {
             throw new BaseException(ErrorCode.MATCH_ALREADY_QUEUED);
         }
 
@@ -110,7 +106,7 @@ public class MatchServiceImpl implements MatchService {
                 .filters(request.getFilters())
                 .build();
 
-        queueStore.save(item);
+        matchQueueService.save(item);
 
         // 즉시 매칭 1회 시도
         boolean matched = queueProcessor.tryImmediateMatch(item, user);
@@ -118,7 +114,7 @@ public class MatchServiceImpl implements MatchService {
         MatchingQueueResponse response = buildResponse(item);
 
         if (!matched) {
-            eventPublisher.publish(userId, MatchEventType.QUICK_WAITING, response);
+            eventPublisher.publish(userId, SseMatchEventType.QUICK_WAITING, response);
         }
 
         return response;
@@ -132,7 +128,7 @@ public class MatchServiceImpl implements MatchService {
      */
     private MatchingQueueResponse buildResponse(MatchQueueItem item) {
         // 현재 대기열 기준으로 순번/대기시간을 계산
-        List<MatchQueueItem> waiting = queueStore.findWaitingByType(MatchQueueType.QUICK);
+        List<MatchQueueItem> waiting = matchQueueService.findWaitingByType(MatchQueueType.QUICK);
         int waitingCount = waiting.size();
 
         Integer position = null;
@@ -182,7 +178,7 @@ public class MatchServiceImpl implements MatchService {
             throw new BaseException(ErrorCode.MATCH_REQUEST_NOT_FOUND);
         }
 
-        MatchQueueItem item = queueStore.findByRequestId(parsedRequestId)
+        MatchQueueItem item = matchQueueService.findByRequestId(parsedRequestId)
                 .orElseThrow(() -> new BaseException(ErrorCode.MATCH_REQUEST_NOT_FOUND));
 
         // 본인의 요청인지 확인
@@ -204,7 +200,7 @@ public class MatchServiceImpl implements MatchService {
                 .occurredAt(LocalDateTime.now(clock))
                 .build();
 
-        eventPublisher.publish(userId, MatchEventType.QUICK_CANCELED, event);
+        eventPublisher.publish(userId, SseMatchEventType.QUICK_CANCELED, event);
     }
 
     /**
@@ -215,7 +211,7 @@ public class MatchServiceImpl implements MatchService {
      */
     @Override
     public MatchingQueueResponse getQueueStatus(UUID userId) {
-        return queueStore.findByUserId(userId, MatchQueueType.QUICK)
+        return matchQueueService.findByUserId(userId, MatchQueueType.QUICK)
                 .map(this::buildResponse)
                 .orElse(null);
     }
@@ -243,20 +239,12 @@ public class MatchServiceImpl implements MatchService {
         }
 
         // 동일 사용자가 이미 대기 중이면 중복 등록 방지
-        if (queueStore.existsWaiting(userId, MatchQueueType.ONE_ON_ONE)) {
+        if (matchQueueService.existsWaiting(userId, MatchQueueType.ONE_ON_ONE)) {
             throw new BaseException(ErrorCode.MATCH_ALREADY_QUEUED);
         }
 
-        // 요청자 정보 조회
-        User requester = userRepository.findById(userId)
-                .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
-
-        // 대상 사용자 정보 조회
-        User target = userRepository.findById(targetUserId)
-                .orElseThrow(() -> new BaseException(ErrorCode.MATCH_TARGET_NOT_FOUND));
-
         // 대상 사용자가 온라인인지 확인
-        if (!target.isOnline()) {
+        if (!sseService.isUserConnected(targetUserId)) {
             throw new BaseException(ErrorCode.MATCH_TARGET_OFFLINE);
         }
 
@@ -272,11 +260,11 @@ public class MatchServiceImpl implements MatchService {
                 .filters(Map.of())
                 .build();
 
-        queueStore.save(item);
+        matchQueueService.save(item);
 
         // 대상 사용자에게 알림 전송
         OneOnOneMatchResponse response = buildOneOnOneResponse(item, "pending");
-        eventPublisher.publish(targetUserId, MatchEventType.ONE_ON_ONE_REQUESTED, response);
+        eventPublisher.publish(targetUserId, SseMatchEventType.ONE_ON_ONE_REQUESTED, response);
 
         return response;
     }
@@ -293,7 +281,7 @@ public class MatchServiceImpl implements MatchService {
     public OneOnOneMatchResponse acceptOneOnOneMatch(UUID userId, String requestId) {
         UUID parsedRequestId = parseRequestId(requestId);
 
-        MatchQueueItem item = queueStore.findByRequestId(parsedRequestId)
+        MatchQueueItem item = matchQueueService.findByRequestId(parsedRequestId)
                 .orElseThrow(() -> new BaseException(ErrorCode.MATCH_REQUEST_NOT_FOUND));
 
         // 수신자 본인인지 확인
@@ -323,8 +311,8 @@ public class MatchServiceImpl implements MatchService {
         OneOnOneMatchResponse requesterResponse = buildOneOnOneMatchedResponse(item, conference, "accepted");
         OneOnOneMatchResponse recipientResponse = buildOneOnOneMatchedResponse(item, conference, "accepted");
 
-        eventPublisher.publish(item.getRequesterUserId(), MatchEventType.ONE_ON_ONE_ACCEPTED, requesterResponse);
-        eventPublisher.publish(userId, MatchEventType.ONE_ON_ONE_ACCEPTED, recipientResponse);
+        eventPublisher.publish(item.getRequesterUserId(), SseMatchEventType.ONE_ON_ONE_ACCEPTED, requesterResponse);
+        eventPublisher.publish(userId, SseMatchEventType.ONE_ON_ONE_ACCEPTED, recipientResponse);
 
         return recipientResponse;
     }
@@ -341,7 +329,7 @@ public class MatchServiceImpl implements MatchService {
     public OneOnOneMatchResponse declineOneOnOneMatch(UUID userId, String requestId) {
         UUID parsedRequestId = parseRequestId(requestId);
 
-        MatchQueueItem item = queueStore.findByRequestId(parsedRequestId)
+        MatchQueueItem item = matchQueueService.findByRequestId(parsedRequestId)
                 .orElseThrow(() -> new BaseException(ErrorCode.MATCH_REQUEST_NOT_FOUND));
 
         // 수신자 본인인지 확인
@@ -359,7 +347,7 @@ public class MatchServiceImpl implements MatchService {
 
         // 요청자에게 거절 이벤트 전송
         OneOnOneMatchResponse requesterResponse = buildOneOnOneResponse(item, "declined");
-        eventPublisher.publish(item.getRequesterUserId(), MatchEventType.ONE_ON_ONE_DECLINED, requesterResponse);
+        eventPublisher.publish(item.getRequesterUserId(), SseMatchEventType.ONE_ON_ONE_DECLINED, requesterResponse);
 
         return buildOneOnOneResponse(item, "declined");
     }
@@ -400,8 +388,8 @@ public class MatchServiceImpl implements MatchService {
     /**
      * 1:1 매칭 완료 응답을 구성하는 메서드
      *
-     * @param item       대기열 항목
-     * @param conference 생성된 컨퍼런스
+     * @param item         대기열 항목
+     * @param conference   생성된 컨퍼런스
      * @param targetStatus 대상 상태
      * @return 1:1 매칭 응답
      */
@@ -447,4 +435,44 @@ public class MatchServiceImpl implements MatchService {
 
         return savedConference;
     }
+
+    @Override
+    public OnlineUserListResponse getRandomOnlineUsers(UUID userId, int limit) {
+        // 사용자 성별 조회
+        Gender myGender = userRepository.findById(userId)
+                .map(User::getGender)
+                .orElse(null);
+
+        // 사용자의 성별 정보가 없으면 빈 목록 반환
+        if (myGender == null) {
+            return OnlineUserListResponse.builder()
+                    .onlineUsers(List.of())
+                    .build();
+        }
+
+        Gender oppositeGender = myGender == Gender.MALE ? Gender.FEMALE : Gender.MALE;
+
+        // 현재 연결된 사용자 중 반대 성별의 사용자 목록 조회
+        Set<UUID> connectedUserIds = sseService.getConnectedUserIds();
+        List<User> oppositeGenderUsers = userRepository.findAllById(connectedUserIds).stream()
+                .filter(user -> user.getGender() == oppositeGender)
+                .toList();
+
+        // 응답용 사용자 목록 구성
+        List<OnlineUserDto> result;
+        if (oppositeGenderUsers.size() <= limit) {
+            result = oppositeGenderUsers.stream().map(OnlineUserDto::from).toList();
+
+        } else {
+            List<User> shuffled = new ArrayList<>(oppositeGenderUsers);
+            Collections.shuffle(shuffled); // 무작위 섞기
+            result = shuffled.subList(0, limit).stream().map(OnlineUserDto::from).toList();
+        }
+
+        // 응답 반환
+        return OnlineUserListResponse.builder()
+                .onlineUsers(result)
+                .build();
+    }
+
 }

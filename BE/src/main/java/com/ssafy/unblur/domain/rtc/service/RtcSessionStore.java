@@ -1,9 +1,9 @@
 package com.ssafy.unblur.domain.rtc.service;
 
+import org.springframework.web.socket.WebSocketSession;
+
 import java.util.Optional;
 import java.util.UUID;
-
-import org.springframework.web.socket.WebSocketSession;
 
 /**
  * WebSocket 세션 저장소 인터페이스

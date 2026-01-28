@@ -28,13 +28,24 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequiredArgsConstructor
 public class InMemoryKurentoRoomService implements KurentoRoomService {
 
+    /**
+     * Kurento 클라이언트 제공자
+     */
     private final KurentoClientProvider kurentoClientProvider;
+
+    /**
+     * 회의 생명주기 서비스
+     */
     private final ConferenceLifecycleService conferenceLifecycleService;
 
+    /**
+     * 방 정보 저장소
+     */
     private final Map<UUID, Room> rooms = new ConcurrentHashMap<>();
 
     @Override
     public UserSession join(UUID conferenceId, UUID userId, WebSocketSession session) {
+        // 방이 없으면 새로 생성하고, 있으면 기존 방을 사용
         Room room = rooms.computeIfAbsent(conferenceId, this::createRoom);
         UserSession userSession = room.join(userId, session);
 
