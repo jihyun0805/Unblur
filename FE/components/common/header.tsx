@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { Menu, X, Brain, History, User, LogOut } from "lucide-react"
+import { Menu, X, Home, History, User, LogOut } from "lucide-react"
 
 interface HeaderProps {
   onLogout?: () => void
@@ -61,11 +61,11 @@ export function Header({ onLogout, onLoginClick, onRegisterClick }: HeaderProps)
         {/* Desktop Navigation */}
         {user ? (
           <nav className="hidden sm:flex items-center gap-2">
-            <Button variant={isActive("/test") ? "secondary" : "ghost"} size="sm" asChild className="group relative">
-              <Link href="/test">
-                <Brain className="w-4 h-4" />
+            <Button variant={isActive("/home") ? "secondary" : "ghost"} size="sm" asChild className="group relative">
+              <Link href="/home">
+                <Home className="w-4 h-4" />
                 <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-popover text-popover-foreground text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                  MBTI 테스트
+                  홈
                 </span>
               </Link>
             </Button>
@@ -115,14 +115,14 @@ export function Header({ onLogout, onLoginClick, onRegisterClick }: HeaderProps)
               {user ? (
                 <>
                   <Button
-                    variant={isActive("/test") ? "secondary" : "ghost"}
+                    variant={isActive("/home") ? "secondary" : "ghost"}
                     className="justify-start"
                     asChild
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    <Link href="/test">
-                      <Brain className="w-4 h-4 mr-2" />
-                      MBTI 테스트
+                    <Link href="/home">
+                      <Home className="w-4 h-4 mr-2" />
+                      홈
                     </Link>
                   </Button>
                   <Button
