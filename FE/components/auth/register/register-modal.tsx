@@ -114,17 +114,6 @@ export function RegisterModal({ open, onOpenChange, onSwitchToLogin }: RegisterM
       })
       return false
     }
-
-    const age = calculateAge(formData.birthYear, formData.birthMonth, formData.birthDay)
-    if (age < 20 || age > 39) {
-      toast({
-        title: "나이 제한",
-        description: "블라인드 소개팅은 2030 세대(20~39세)를 위한 서비스입니다.",
-        variant: "destructive",
-      })
-      return false
-    }
-
     return true
   }
 
