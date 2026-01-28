@@ -270,6 +270,7 @@ export function RegisterModal({ open, onOpenChange, onSwitchToLogin }: RegisterM
             checkingNickname={checkingNickname}
             passwordValidation={passwordValidation}
             normalizePassword={normalizePassword}
+            validateEmail={validateEmail}
             checkNickname={checkNickname}
             checkEmail={checkEmail}
             onNext={handleNext}
