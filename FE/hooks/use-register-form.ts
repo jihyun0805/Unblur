@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
+import * as authApi from "@/lib/api/auth"
 
 export interface RegisterFormData {
   nickname: string
@@ -125,10 +126,19 @@ export function useRegisterForm() {
       return
     }
     setCheckingNickname(true)
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    // 실제로는 서버에서 중복 확인
-    setNicknameAvailable(formData.nickname !== "테스트")
-    setCheckingNickname(false)
+    try {
+      const isDuplicate = await authApi.checkNickname(formData.nickname)
+      setNicknameAvailable(!isDuplicate)
+    } catch (error: any) {
+      toast({
+        title: "닉네임 확인 실패",
+        description: error.message || "닉네임 중복 확인에 실패했습니다.",
+        variant: "destructive",
+      })
+      setNicknameAvailable(null)
+    } finally {
+      setCheckingNickname(false)
+    }
   }
 
   const checkEmail = async () => {
@@ -149,10 +159,19 @@ export function useRegisterForm() {
       return
     }
     setCheckingEmail(true)
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    // 실제로는 서버에서 중복 확인
-    setEmailAvailable(formData.email !== "demo@unblur.com")
-    setCheckingEmail(false)
+    try {
+      const isDuplicate = await authApi.checkEmail(formData.email)
+      setEmailAvailable(!isDuplicate)
+    } catch (error: any) {
+      toast({
+        title: "이메일 확인 실패",
+        description: error.message || "이메일 중복 확인에 실패했습니다.",
+        variant: "destructive",
+      })
+      setEmailAvailable(null)
+    } finally {
+      setCheckingEmail(false)
+    }
   }
 
   const calculateAge = (year: string, month: string, day: string) => {
