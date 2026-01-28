@@ -61,8 +61,8 @@ export function Header({ onLogout, onLoginClick, onRegisterClick }: HeaderProps)
         {/* Desktop Navigation */}
         {user ? (
           <nav className="hidden sm:flex items-center gap-2">
-            <Button variant={isActive("/mbti") ? "secondary" : "ghost"} size="sm" asChild className="group relative">
-              <Link href="/mbti">
+            <Button variant={isActive("/test") ? "secondary" : "ghost"} size="sm" asChild className="group relative">
+              <Link href="/test">
                 <Brain className="w-4 h-4" />
                 <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-popover text-popover-foreground text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
                   MBTI 테스트
@@ -115,12 +115,12 @@ export function Header({ onLogout, onLoginClick, onRegisterClick }: HeaderProps)
               {user ? (
                 <>
                   <Button
-                    variant={isActive("/mbti") ? "secondary" : "ghost"}
+                    variant={isActive("/test") ? "secondary" : "ghost"}
                     className="justify-start"
                     asChild
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    <Link href="/mbti">
+                    <Link href="/test">
                       <Brain className="w-4 h-4 mr-2" />
                       MBTI 테스트
                     </Link>

@@ -55,7 +55,7 @@ export default function MainRouteLayout({ children }: { children: React.ReactNod
   return (
     <>
       {isSessionOrMbti ? (
-        pathname === "/mbti" ? (
+        pathname === "/test" ? (
           <BackgroundLayout>{children}</BackgroundLayout>
         ) : (
           children
