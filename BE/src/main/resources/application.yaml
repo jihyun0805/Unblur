@@ -12,6 +12,9 @@ spring:
     hibernate:
       ddl-auto: create
 
+server:
+  forward-headers-strategy: framework
+
 kurento:
   ws:
     uri: ws://localhost:8888/kurento

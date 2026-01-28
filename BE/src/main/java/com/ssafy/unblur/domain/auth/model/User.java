@@ -195,6 +195,8 @@ public class User {
                 .detailedInfo(dto.getDetailedInfo())
                 .interestTags(dto.getInterestTags() != null ?
                         dto.getInterestTags().toArray(String[]::new) : new String[0])
+                .mbti(dto.getMbti())
+                .intro(dto.getIntro())
                 .build();
     }
 
@@ -263,8 +265,8 @@ public class User {
      * 사용자의 관심사/가치관 설문조사 정보를 업데이트 합니다.
      */
     public void updateSurvey(UserSurveyUpdateRequestDto dto) {
-        if(dto.getSurveyData() != null) {
-            this.detailedInfo = dto.getSurveyData();
+        if(dto.getDetailedInfo() != null) {
+            this.detailedInfo = dto.getDetailedInfo();
         }
     }
 }
