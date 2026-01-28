@@ -13,7 +13,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-@Tag(name = "Matching", description = "매칭 관련 SSE API")
+@Tag(name = "Matching")
 @SecurityRequirement(name = "bearerAuth")
 public interface MatchSseController {
 

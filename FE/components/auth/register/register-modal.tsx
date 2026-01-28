@@ -31,16 +31,15 @@ export function RegisterModal({ open, onOpenChange, onSwitchToLogin }: RegisterM
     showPassword,
     setShowPassword,
     isLoading,
-    usernameAvailable,
-    checkingUsername,
+    emailAvailable,
+    checkingEmail,
     nicknameAvailable,
     checkingNickname,
     validatePassword,
-    normalizeUsername,
     normalizePassword,
-    isUsernameValid,
+    validateEmail,
     checkNickname,
-    checkUsername,
+    checkEmail,
     calculateAge,
     submitRegistration,
   } = useRegisterForm()
@@ -49,7 +48,7 @@ export function RegisterModal({ open, onOpenChange, onSwitchToLogin }: RegisterM
   const passwordValidation = validatePassword(formData.password)
 
   const validateStep1 = () => {
-    if (!formData.nickname || !formData.username || !formData.password) {
+    if (!formData.nickname || !formData.email || !formData.password) {
       toast({
         title: "입력 오류",
         description: "모든 필드를 입력해주세요.",
@@ -67,28 +66,19 @@ export function RegisterModal({ open, onOpenChange, onSwitchToLogin }: RegisterM
       return false
     }
 
-    if (formData.username.length > 16) {
+    if (!validateEmail(formData.email)) {
       toast({
-        title: "입력 오류",
-        description: "아이디는 16자 이내로 입력해주세요.",
+        title: "이메일 형식 오류",
+        description: "올바른 이메일 형식을 입력해주세요.",
         variant: "destructive",
       })
       return false
     }
 
-    if (!isUsernameValid(formData.username)) {
+    if (emailAvailable !== true) {
       toast({
-        title: "아이디 오류",
-        description: "아이디는 영문과 숫자만 사용할 수 있습니다.",
-        variant: "destructive",
-      })
-      return false
-    }
-
-    if (usernameAvailable !== true) {
-      toast({
-        title: "아이디 확인 필요",
-        description: "아이디 중복 확인을 해주세요.",
+        title: "이메일 확인 필요",
+        description: "이메일 중복 확인을 해주세요.",
         variant: "destructive",
       })
       return false
@@ -285,15 +275,14 @@ export function RegisterModal({ open, onOpenChange, onSwitchToLogin }: RegisterM
             updateFormData={updateFormData}
             showPassword={showPassword}
             setShowPassword={setShowPassword}
-            usernameAvailable={usernameAvailable}
-            checkingUsername={checkingUsername}
+            emailAvailable={emailAvailable}
+            checkingEmail={checkingEmail}
             nicknameAvailable={nicknameAvailable}
             checkingNickname={checkingNickname}
             passwordValidation={passwordValidation}
-            normalizeUsername={normalizeUsername}
             normalizePassword={normalizePassword}
             checkNickname={checkNickname}
-            checkUsername={checkUsername}
+            checkEmail={checkEmail}
             onNext={handleNext}
             onSwitchToLogin={onSwitchToLogin}
           />

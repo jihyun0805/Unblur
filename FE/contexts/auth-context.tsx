@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { apiFetch, clearAuthToken, getAuthToken, setAuthToken } from "@/lib/api"
+import * as authApi from "@/lib/api/auth"
 
 export interface SurveyData {
   dateStyle?: string
@@ -23,8 +24,7 @@ export interface SurveyData {
 }
 
 export interface User {
-  id: string
-  username: string
+  email: string
   nickname: string
   age: number
   gender: "male" | "female"
@@ -39,9 +39,9 @@ export interface User {
 interface AuthContextType {
   user: User | null
   isLoading: boolean
-  login: (username: string, password: string, rememberMe?: boolean) => Promise<boolean>
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<boolean>
   register: (data: RegisterData) => Promise<boolean>
-  logout: () => void
+  logout: () => Promise<void>
   deleteAccount: (password: string) => Promise<boolean>
   updateUser: (data: Partial<User>) => void
   updateTemperature: (rating: number) => void
@@ -49,7 +49,7 @@ interface AuthContextType {
 
 interface RegisterData {
   nickname: string
-  username: string
+  email: string
   password: string
   birthDate: string
   age: number
@@ -62,21 +62,6 @@ interface RegisterData {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-const MOCK_USERS: { [key: string]: User & { password: string } } = {
-  demo: {
-    id: "1",
-    username: "demo",
-    nickname: "민수",
-    age: 28,
-    gender: "male",
-    region: "서울",
-    birthDate: "1997-03-15",
-    bio: "커피를 좋아하는 개발자입니다.",
-    mbti: "INTJ",
-    temperature: 36.5,
-    password: "demo1234!",
-  },
-}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -105,52 +90,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loadUser()
   }, [])
 
-  const login = async (username: string, password: string, rememberMe = false): Promise<boolean> => {
-    await new Promise((resolve) => setTimeout(resolve, 500))
-
-    const mockUser = MOCK_USERS[username]
-    const storedUser = localStorage.getItem("mock_registered_user")
-    const registeredUser = storedUser ? (JSON.parse(storedUser) as User & { password: string }) : null
-    const candidate = mockUser ?? (registeredUser?.username === username ? registeredUser : null)
-
-    if (candidate && candidate.password === password) {
-      const { password: _, ...userData } = candidate
-      setUser(userData)
-      setAuthToken("mock_jwt_token")
-      localStorage.setItem("user", JSON.stringify(userData))
-      localStorage.setItem("mock_user_password", password)
-      return true
+  const login = async (email: string, password: string, rememberMe = false): Promise<boolean> => {
+    try {
+      await authApi.login(email, password)
+      
+      // 로그인 성공 후 사용자 정보 조회
+      try {
+        const response = await apiFetch("/api/v1/users/me")
+        const userData = (await response.json()) as User
+        setUser(userData)
+        localStorage.setItem("user", JSON.stringify(userData))
+        return true
+      } catch (error) {
+        // 사용자 정보 조회 실패 시에도 로그인은 성공한 것으로 처리
+        console.error("사용자 정보 조회 실패:", error)
+        return true
+      }
+    } catch (error: any) {
+      console.error("로그인 실패:", error)
+      return false
     }
-    return false
   }
 
   const register = async (data: RegisterData): Promise<boolean> => {
-    await new Promise((resolve) => setTimeout(resolve, 500))
+    try {
+      // RegisterData를 SignupRequest로 변환
+      const signupRequest: authApi.SignupRequest = {
+        email: data.email,
+        password: data.password,
+        nickname: data.nickname,
+        birthDate: data.birthDate,
+        gender: data.gender === "male" ? "MALE" : "FEMALE",
+        region: data.region ? authApi.convertRegionToCode(data.region) : undefined,
+        detailedInfo: data.surveyData ? authApi.convertSurveyDataToDetailedInfo(data.surveyData) : undefined,
+        interestTags: data.surveyData?.interests || [],
+        mbti: data.mbti as authApi.SignupRequest["mbti"] | undefined,
+        intro: data.bio,
+      }
 
-    const newUser: User & { password: string } = {
-      id: Date.now().toString(),
-      username: data.username,
-      nickname: data.nickname,
-      age: data.age,
-      gender: data.gender,
-      region: data.region,
-      birthDate: data.birthDate,
-      mbti: data.mbti,
-      bio: data.bio,
-      surveyData: data.surveyData,
-      temperature: 36.5,
-      password: data.password,
+      await authApi.signup(signupRequest)
+      return true
+    } catch (error: any) {
+      console.error("회원가입 실패:", error)
+      return false
     }
-
-    localStorage.setItem("mock_registered_user", JSON.stringify(newUser))
-    localStorage.setItem("mock_user_password", data.password)
-    return true
   }
 
-  const logout = () => {
-    setUser(null)
-    clearAuthToken()
-    localStorage.removeItem("mock_user_password")
+  const logout = async () => {
+    try {
+      await authApi.logout()
+    } catch (error) {
+      console.error("로그아웃 API 호출 실패:", error)
+    } finally {
+      setUser(null)
+      clearAuthToken()
+    }
   }
 
   const updateUser = (data: Partial<User>) => {
@@ -173,26 +167,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 
   const deleteAccount = async (password: string): Promise<boolean> => {
-    await new Promise((resolve) => setTimeout(resolve, 500))
-
-    if (!user?.username) {
+    try {
+      // TODO: 백엔드에 계정 삭제 API가 구현되면 연결
+      // 현재는 로그아웃만 수행
+      await logout()
+      return true
+    } catch (error) {
+      console.error("계정 삭제 실패:", error)
       return false
     }
-
-    const mockUser = MOCK_USERS[user.username]
-    if (mockUser) {
-      if (mockUser.password !== password) {
-        return false
-      }
-    } else {
-      const savedPassword = localStorage.getItem("mock_user_password")
-      if (!savedPassword || savedPassword !== password) {
-        return false
-      }
-    }
-
-    logout()
-    return true
   }
 
   return (

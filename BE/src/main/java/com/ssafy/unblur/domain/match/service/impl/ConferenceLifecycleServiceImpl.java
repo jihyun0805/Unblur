@@ -13,12 +13,14 @@ import com.ssafy.unblur.domain.match.repository.ConferenceParticipantRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRoundRepository;
 import com.ssafy.unblur.domain.match.service.ConferenceLifecycleService;
+import com.ssafy.unblur.domain.rtc.service.RoundTimerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -52,6 +54,11 @@ public class ConferenceLifecycleServiceImpl implements ConferenceLifecycleServic
      * 사용자 조회 레포지토리
      */
     private final UserRepository userRepository;
+
+    /**
+     * 라운드 타이머 서비스
+     */
+    private final RoundTimerService roundTimerService;
 
     /**
      * 기준 시각 제공용 Clock
@@ -114,6 +121,14 @@ public class ConferenceLifecycleServiceImpl implements ConferenceLifecycleServic
                             .status(ConferenceRoundStatus.ACTIVE)
                             .build();
                     roundRepository.save(round);
+
+                    // 참여자 ID 목록을 가져와서 라운드 타이머 시작
+                    List<UUID> participantIds = participantRepository.findByConference_IdAndLeftAtIsNull(conferenceId)
+                            .stream()
+                            .map(p -> p.getUser().getId())
+                            .toList();
+
+                    roundTimerService.startRoundTimer(conferenceId, 1, participantIds);
                 }
             }
 
@@ -161,6 +176,9 @@ public class ConferenceLifecycleServiceImpl implements ConferenceLifecycleServic
 
                     roundRepository.findFirstByConference_IdAndStatus(conferenceId, ConferenceRoundStatus.ACTIVE)
                             .ifPresent(round -> round.complete(now));
+
+                    // 타이머 및 투표 상태 정리
+                    roundTimerService.cleanup(conferenceId);
                 }
             }
 

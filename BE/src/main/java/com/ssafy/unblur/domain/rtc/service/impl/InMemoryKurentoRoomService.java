@@ -1,11 +1,11 @@
 package com.ssafy.unblur.domain.rtc.service.impl;
 
+import com.ssafy.unblur.common.exception.BaseException;
+import com.ssafy.unblur.common.exception.ErrorCode;
+import com.ssafy.unblur.domain.match.service.ConferenceLifecycleService;
 import com.ssafy.unblur.domain.rtc.config.KurentoClientProvider;
-import com.ssafy.unblur.domain.rtc.exception.ConferenceRoomNotFoundException;
-import com.ssafy.unblur.domain.rtc.exception.UserNotJoinedException;
 import com.ssafy.unblur.domain.rtc.model.UserSession;
 import com.ssafy.unblur.domain.rtc.service.KurentoRoomService;
-import com.ssafy.unblur.domain.match.service.ConferenceLifecycleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.kurento.client.IceCandidate;
@@ -23,6 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * ConcurrentHashMap 기반 Kurento 방 관리 구현체
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class InMemoryKurentoRoomService implements KurentoRoomService {
@@ -90,7 +91,8 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
     private Room getRoom(UUID conferenceId) {
         Room room = rooms.get(conferenceId);
         if (room == null) {
-            throw new ConferenceRoomNotFoundException(conferenceId);
+            log.warn("존재하지 않는 RTC 방 접근 시도. conferenceId={}", conferenceId);
+            throw new BaseException(ErrorCode.CONFERENCE_NOT_FOUND);
         }
 
         return room;
@@ -156,14 +158,14 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
          */
         String processOffer(UUID userId, String sdpOffer) {
             UserSession userSession = getUserSession(userId);
-            String sdpAnswer = userSession.getWebRtcEndpoint().processOffer(sdpOffer);
-            userSession.getWebRtcEndpoint().gatherCandidates();
+            String sdpAnswer = userSession.webRtcEndpoint().processOffer(sdpOffer);
+            userSession.webRtcEndpoint().gatherCandidates();
 
             // 1:1 연결을 위해 상대방과 양방향으로 연결
             for (UserSession other : participants.values()) {
-                if (!other.getUserId().equals(userId)) {
-                    userSession.getWebRtcEndpoint().connect(other.getWebRtcEndpoint());
-                    other.getWebRtcEndpoint().connect(userSession.getWebRtcEndpoint());
+                if (!other.userId().equals(userId)) {
+                    userSession.webRtcEndpoint().connect(other.webRtcEndpoint());
+                    other.webRtcEndpoint().connect(userSession.webRtcEndpoint());
                 }
             }
             return sdpAnswer;
@@ -177,7 +179,7 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
          */
         void addIceCandidate(UUID userId, IceCandidate candidate) {
             UserSession userSession = getUserSession(userId);
-            userSession.getWebRtcEndpoint().addIceCandidate(candidate);
+            userSession.webRtcEndpoint().addIceCandidate(candidate);
         }
 
         /**
@@ -189,7 +191,7 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
             UserSession userSession = participants.remove(userId);
 
             if (userSession != null) {
-                userSession.getWebRtcEndpoint().release();
+                userSession.webRtcEndpoint().release();
                 log.info("RTC 사용자 퇴장. conferenceId={}, userId={}, size={}", conferenceId, userId, participants.size());
             }
         }
@@ -220,7 +222,7 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
         private UserSession getUserSession(UUID userId) {
             UserSession userSession = participants.get(userId);
             if (userSession == null) {
-                throw new UserNotJoinedException(userId);
+                throw new BaseException(ErrorCode.USER_NOT_JOINED);
             }
 
             return userSession;

@@ -4,6 +4,7 @@ import com.ssafy.unblur.common.exception.BaseException;
 import com.ssafy.unblur.common.exception.ErrorCode;
 import com.ssafy.unblur.domain.auth.model.User;
 import com.ssafy.unblur.domain.auth.repository.UserRepository;
+import com.ssafy.unblur.domain.chat.repository.ChatMessageRepository;
 import com.ssafy.unblur.domain.match.dto.ConferenceHistoryItemDto;
 import com.ssafy.unblur.domain.match.dto.ConferenceHistoryResponseDto;
 import com.ssafy.unblur.domain.match.dto.ConferenceHistorySummaryDto;
@@ -19,7 +20,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,6 +32,7 @@ public class ConferenceHistoryService {
 
     private final UserRepository userRepository;
     private final ConferenceParticipantRepository conferenceParticipantRepository;
+    private final ChatMessageRepository chatMessageRepository;
 
     @Transactional(readOnly = true)
     public ConferenceHistoryResponseDto getMyConferenceHistory(String email, Pageable pageable) {
@@ -90,6 +95,7 @@ public class ConferenceHistoryService {
                 conference.getCurrentRound(),
                 createdDate,
                 durationMinutes,
+                computeUnreadCount(conference, participant, me),
                 partnerUser != null ? partnerUser.getNickname() : null,
                 partnerUser != null ? partnerUser.getProfileImageUrl() : null,
                 partnerUser != null ? partnerUser.getClarityScore() : null
@@ -116,5 +122,12 @@ public class ConferenceHistoryService {
         LocalDateTime effectiveEnd = endedAt != null ? endedAt : LocalDateTime.now();
         return Math.max(0L, Duration.between(startedAt, effectiveEnd).toMinutes());
     }
-}
 
+    private long computeUnreadCount(Conference conference, ConferenceParticipant participant, User me) {
+        return chatMessageRepository.countUnreadMessages(
+                conference.getId(),
+                me.getId(),
+                participant.getLastReadAt()
+        );
+    }
+}

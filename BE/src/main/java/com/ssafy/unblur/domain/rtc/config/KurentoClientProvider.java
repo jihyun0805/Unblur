@@ -1,11 +1,14 @@
 package com.ssafy.unblur.domain.rtc.config;
 
+import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.kurento.client.KurentoClient;
 
 /**
  * Kurento 클라이언트를 제공하는 클래스
  */
+@Slf4j
 @RequiredArgsConstructor
 public class KurentoClientProvider {
 
@@ -28,6 +31,7 @@ public class KurentoClientProvider {
 
         synchronized (lock) {
             if (client == null) {
+                log.info("KurentoClient가 존재하지 않음, 새로 생성 중...");
                 client = KurentoClient.create(kurentoWsUri);
             }
 
@@ -42,12 +46,38 @@ public class KurentoClientProvider {
      */
     public KurentoClient recreate() {
         synchronized (lock) {
-            if (client != null) {
-                client.destroy();
-            }
-
+            destroyInternal();
+            log.warn("KurentoClient 재생성: {}", kurentoWsUri);
             client = KurentoClient.create(kurentoWsUri);
             return client;
+        }
+    }
+
+    /**
+     * Spring Context 종료 시 KurentoClient를 종료하는 메서드
+     */
+    @PreDestroy
+    public void shutdown() {
+        synchronized (lock) {
+            log.info("Spring Context 종료 - KurentoClient 종료 중");
+            destroyInternal();
+        }
+    }
+
+    /**
+     * 내부적으로 KurentoClient를 종료하는 메서드
+     */
+    private void destroyInternal() {
+        if (client != null) {
+            try {
+                client.destroy();
+
+            } catch (Exception e) {
+                log.warn("KurentoClient 종료 실패", e);
+
+            } finally {
+                client = null;
+            }
         }
     }
 }
