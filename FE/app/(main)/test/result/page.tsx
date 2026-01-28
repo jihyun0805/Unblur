@@ -700,7 +700,7 @@ export default function MbtiResultPage() {
                         {user.nickname}
                       </button>
                       <p className="text-xs text-muted-foreground">
-                        {user.age}세 · {user.region}
+                        선명도 {Math.round(user.profile.temperature || 0)}%
                       </p>
                     </div>
                   </div>
