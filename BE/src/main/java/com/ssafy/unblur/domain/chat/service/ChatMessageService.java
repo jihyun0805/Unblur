@@ -73,12 +73,10 @@ public class ChatMessageService {
         conferenceParticipantRepository.findByConferenceIdAndUser(conferenceId, user)
                 .orElseThrow(() -> new BaseException(ErrorCode.ACCESS_DENIED));
 
-        ChatMessageType messageType = parseMessageType(request.type());
-
         ChatMessage message = ChatMessage.builder()
                 .conference(conference)
                 .user(user)
-                .messageType(messageType)
+                .messageType(ChatMessageType.USER)
                 .content(request.content())
                 .build();
 
@@ -88,7 +86,7 @@ public class ChatMessageService {
                 saved.getId(),
                 user.getId(),
                 user.getNickname(),
-                messageType.name(),
+                ChatMessageType.USER.name(),
                 saved.getContent(),
                 saved.getCreatedAt(),
                 false
@@ -118,14 +116,6 @@ public class ChatMessageService {
                 .orElseThrow(() -> new BaseException(ErrorCode.UNAUTHORIZED));
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
-    }
-
-    private ChatMessageType parseMessageType(String type) {
-        try {
-            return ChatMessageType.valueOf(type);
-        } catch (Exception e) {
-            throw new BaseException(ErrorCode.INVALID_INPUT_VALUE);
-        }
     }
 
     private LocalDateTime resolvePartnerLastReadAt(UUID conferenceId, UUID userId) {
