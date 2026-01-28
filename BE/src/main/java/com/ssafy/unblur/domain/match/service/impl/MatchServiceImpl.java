@@ -12,7 +12,7 @@ import com.ssafy.unblur.domain.match.model.event.SseMatchEventType;
 import com.ssafy.unblur.domain.match.repository.ConferenceParticipantRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRepository;
 import com.ssafy.unblur.domain.match.service.MatchEventPublisher;
-import com.ssafy.unblur.domain.match.service.MatchQueueStore;
+import com.ssafy.unblur.domain.match.service.MatchQueueService;
 import com.ssafy.unblur.domain.match.service.MatchService;
 import com.ssafy.unblur.domain.match.service.MatchSseService;
 import lombok.RequiredArgsConstructor;
@@ -36,7 +36,7 @@ public class MatchServiceImpl implements MatchService {
     /**
      * 매칭 대기열 저장소
      */
-    private final MatchQueueStore queueStore;
+    private final MatchQueueService matchQueueService;
 
     /**
      * 사용자 조회 레포지토리
@@ -89,7 +89,7 @@ public class MatchServiceImpl implements MatchService {
     @Transactional
     public MatchingQueueResponse startQuickMatch(UUID userId, FastMatchingRequest request) {
         // 동일 사용자가 이미 대기 중이면 중복 등록 방지
-        if (queueStore.existsWaiting(userId, MatchQueueType.QUICK)) {
+        if (matchQueueService.existsWaiting(userId, MatchQueueType.QUICK)) {
             throw new BaseException(ErrorCode.MATCH_ALREADY_QUEUED);
         }
 
@@ -106,7 +106,7 @@ public class MatchServiceImpl implements MatchService {
                 .filters(request.getFilters())
                 .build();
 
-        queueStore.save(item);
+        matchQueueService.save(item);
 
         // 즉시 매칭 1회 시도
         boolean matched = queueProcessor.tryImmediateMatch(item, user);
@@ -128,7 +128,7 @@ public class MatchServiceImpl implements MatchService {
      */
     private MatchingQueueResponse buildResponse(MatchQueueItem item) {
         // 현재 대기열 기준으로 순번/대기시간을 계산
-        List<MatchQueueItem> waiting = queueStore.findWaitingByType(MatchQueueType.QUICK);
+        List<MatchQueueItem> waiting = matchQueueService.findWaitingByType(MatchQueueType.QUICK);
         int waitingCount = waiting.size();
 
         Integer position = null;
@@ -178,7 +178,7 @@ public class MatchServiceImpl implements MatchService {
             throw new BaseException(ErrorCode.MATCH_REQUEST_NOT_FOUND);
         }
 
-        MatchQueueItem item = queueStore.findByRequestId(parsedRequestId)
+        MatchQueueItem item = matchQueueService.findByRequestId(parsedRequestId)
                 .orElseThrow(() -> new BaseException(ErrorCode.MATCH_REQUEST_NOT_FOUND));
 
         // 본인의 요청인지 확인
@@ -211,7 +211,7 @@ public class MatchServiceImpl implements MatchService {
      */
     @Override
     public MatchingQueueResponse getQueueStatus(UUID userId) {
-        return queueStore.findByUserId(userId, MatchQueueType.QUICK)
+        return matchQueueService.findByUserId(userId, MatchQueueType.QUICK)
                 .map(this::buildResponse)
                 .orElse(null);
     }
@@ -239,7 +239,7 @@ public class MatchServiceImpl implements MatchService {
         }
 
         // 동일 사용자가 이미 대기 중이면 중복 등록 방지
-        if (queueStore.existsWaiting(userId, MatchQueueType.ONE_ON_ONE)) {
+        if (matchQueueService.existsWaiting(userId, MatchQueueType.ONE_ON_ONE)) {
             throw new BaseException(ErrorCode.MATCH_ALREADY_QUEUED);
         }
 
@@ -260,7 +260,7 @@ public class MatchServiceImpl implements MatchService {
                 .filters(Map.of())
                 .build();
 
-        queueStore.save(item);
+        matchQueueService.save(item);
 
         // 대상 사용자에게 알림 전송
         OneOnOneMatchResponse response = buildOneOnOneResponse(item, "pending");
@@ -281,7 +281,7 @@ public class MatchServiceImpl implements MatchService {
     public OneOnOneMatchResponse acceptOneOnOneMatch(UUID userId, String requestId) {
         UUID parsedRequestId = parseRequestId(requestId);
 
-        MatchQueueItem item = queueStore.findByRequestId(parsedRequestId)
+        MatchQueueItem item = matchQueueService.findByRequestId(parsedRequestId)
                 .orElseThrow(() -> new BaseException(ErrorCode.MATCH_REQUEST_NOT_FOUND));
 
         // 수신자 본인인지 확인
@@ -329,7 +329,7 @@ public class MatchServiceImpl implements MatchService {
     public OneOnOneMatchResponse declineOneOnOneMatch(UUID userId, String requestId) {
         UUID parsedRequestId = parseRequestId(requestId);
 
-        MatchQueueItem item = queueStore.findByRequestId(parsedRequestId)
+        MatchQueueItem item = matchQueueService.findByRequestId(parsedRequestId)
                 .orElseThrow(() -> new BaseException(ErrorCode.MATCH_REQUEST_NOT_FOUND));
 
         // 수신자 본인인지 확인

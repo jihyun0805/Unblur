@@ -11,7 +11,7 @@ import java.util.UUID;
 /**
  * 매칭 대기열 저장소 인터페이스
  */
-public interface MatchQueueStore {
+public interface MatchQueueService {
 
     /**
      * 대기열 항목을 등록하는 메서드

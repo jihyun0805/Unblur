@@ -3,7 +3,7 @@ package com.ssafy.unblur.domain.match.service.impl;
 import com.ssafy.unblur.domain.match.model.MatchQueueItem;
 import com.ssafy.unblur.domain.match.model.MatchQueueStatus;
 import com.ssafy.unblur.domain.match.model.MatchQueueType;
-import com.ssafy.unblur.domain.match.service.MatchQueueStore;
+import com.ssafy.unblur.domain.match.service.MatchQueueService;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -17,7 +17,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * 단일 인스턴스 환경과 재시작 시 데이터 유실을 감안한 구현체이다.
  */
 @Component
-public class InMemoryMatchQueueStore implements MatchQueueStore {
+public class InMemoryMatchQueueService implements MatchQueueService {
 
     /**
      * 요청 ID 기준 대기열 저장소
