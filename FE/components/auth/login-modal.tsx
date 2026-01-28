@@ -157,7 +157,7 @@ export function LoginModal({ open, onOpenChange, onSwitchToRegister }: LoginModa
               </Button>
               
               <div className="text-center text-sm text-muted-foreground">
-                <p className="mb-2">테스트 계정: demo@unblur.com / demo1234!</p>
+                <p className="mb-2">테스트 계정: test@test.com / test1234!</p>
                 계정이 없으신가요?{" "}
                 <button type="button" onClick={onSwitchToRegister} className="text-foreground font-medium hover:underline">
                   회원가입
