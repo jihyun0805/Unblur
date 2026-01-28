@@ -42,9 +42,11 @@ public class InMemoryRtcSessionStore implements RtcSessionStore {
             return;
         }
 
+        // 이전에 연결된 세션이 있다면 제거하고 새로운 세션으로 바꿈
         String previousSessionId = userSessions.put(userId, sessionId);
         sessionUsers.put(sessionId, userId);
 
+        // 이전 세션이 있다면 해당 세션과의 연결을 끊음
         if (previousSessionId != null && !previousSessionId.equals(sessionId)) {
             sessionUsers.remove(previousSessionId);
         }
@@ -52,9 +54,11 @@ public class InMemoryRtcSessionStore implements RtcSessionStore {
 
     @Override
     public void remove(String sessionId) {
+        // 세션 제거
         sessions.remove(sessionId);
-        UUID userId = sessionUsers.remove(sessionId);
 
+        // 사용자 세션 매핑 제거
+        UUID userId = sessionUsers.remove(sessionId);
         if (userId != null) {
             userSessions.remove(userId, sessionId);
         }
