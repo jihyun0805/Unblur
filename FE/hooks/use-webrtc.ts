@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { createSignalingClient, type SignalingMessage, type WebRTCSignalingClient } from "@/lib/webrtc-signaling"
+import { registerStream, unregisterStream } from "@/lib/media-streams"
 
 export interface UseWebRTCOptions {
   sessionId: string
@@ -146,6 +147,7 @@ export function useWebRTC({
 
     localStreamRef.current = combinedStream
     setLocalStream(combinedStream)
+    registerStream(combinedStream)
 
     // 로컬 비디오 요소에 스트림 연결
     if (localVideoRef.current) {
@@ -351,6 +353,7 @@ export function useWebRTC({
       // 정리
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach((track) => track.stop())
+        unregisterStream(localStreamRef.current)
         localStreamRef.current = null
       }
 
