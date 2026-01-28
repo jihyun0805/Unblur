@@ -48,9 +48,9 @@ public class ConferenceRound {
     private Integer roundNumber;
 
     /**
-     * 진행 시간 (초).
+     * 라운드 실제 진행 시간(초).
      */
-    @Column(name = "duration_seconds", nullable = false)
+    @Column(name = "duration_seconds")
     private Integer durationSeconds;
 
     /**
@@ -72,4 +72,19 @@ public class ConferenceRound {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private ConferenceRoundStatus status;
+
+    /**
+     * 라운드를 종료 상태로 전환하는 메서드
+     *
+     * @param endedAt 종료 시각
+     */
+    public void complete(LocalDateTime endedAt) {
+        this.status = ConferenceRoundStatus.COMPLETED;
+        this.endedAt = endedAt;
+
+        if (startedAt != null && endedAt != null) {
+            long seconds = java.time.Duration.between(startedAt, endedAt).getSeconds();
+            this.durationSeconds = (int) Math.max(seconds, 0);
+        }
+    }
 }

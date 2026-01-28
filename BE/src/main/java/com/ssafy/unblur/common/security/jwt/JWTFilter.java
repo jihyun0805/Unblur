@@ -43,8 +43,15 @@ public class JWTFilter extends OncePerRequestFilter {
             }
 
             String email = jwtUtil.getUsername(token);
+            String userId = jwtUtil.getUserId(token);
 
-            CustomUserDetails customUserDetails = new CustomUserDetails(email);
+            if (userId == null) {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.getWriter().write("Invalid Token");
+                return;
+            }
+
+            CustomUserDetails customUserDetails = new CustomUserDetails(email, java.util.UUID.fromString(userId));
             Authentication authToken = new UsernamePasswordAuthenticationToken(customUserDetails, null, customUserDetails.getAuthorities());
 
             SecurityContextHolder.getContext().setAuthentication(authToken);

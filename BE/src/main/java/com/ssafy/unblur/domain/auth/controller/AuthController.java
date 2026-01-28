@@ -32,7 +32,9 @@ public class AuthController implements AuthApiDocs {
         String createdUserId = authService.signUp(signUpDto);
         SignupResponseDto responseDto = new SignupResponseDto(createdUserId);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new BaseResponse<>(201, "회원가입 완료", responseDto));
+                .body(
+                        BaseResponse.onCreate("회원가입이 완료되었습니다.", responseDto)
+                );
     }
 
     @Override
@@ -40,15 +42,17 @@ public class AuthController implements AuthApiDocs {
     public ResponseEntity<BaseResponse<Boolean>> checkEmail(@RequestParam String email) {
         boolean isDuplicate = authService.isEmailDuplicate(email);
         return ResponseEntity.ok(
-                new BaseResponse<>(200, "이메일 중복 확인 완료", isDuplicate)
+                BaseResponse.onSuccess("이메일 중복 확인에 성공했습니다.", isDuplicate)
         );
     }
 
     @Override
     @GetMapping("/check-nickname")
     public ResponseEntity<BaseResponse<Boolean>> checkNickname(@RequestParam String nickname) {
+        boolean nicknameDuplicate = authService.isNicknameDuplicate(nickname);
+
         return ResponseEntity.ok(
-                new BaseResponse<>(200, "닉네임 중복 확인 완료", authService.isNicknameDuplicate(nickname))
+                BaseResponse.onSuccess("닉네임 중복 확인에 성공했습니다.", nicknameDuplicate)
         );
     }
 
@@ -60,8 +64,8 @@ public class AuthController implements AuthApiDocs {
 
         User user = authService.login(loginRequest);
 
-        String accessToken = jwtUtil.createAccessToken(user.getEmail());
-        String refreshToken = jwtUtil.createRefreshToken(user.getEmail());
+        String accessToken = jwtUtil.createAccessToken(user.getId(), user.getEmail());
+        String refreshToken = jwtUtil.createRefreshToken(user.getId(), user.getEmail());
 
         refreshTokenService.saveRefreshToken(user, refreshToken, jwtUtil.getJti(refreshToken),
                 jwtUtil.getExpiration(refreshToken).toInstant());
@@ -72,7 +76,7 @@ public class AuthController implements AuthApiDocs {
         LoginResponseDto loginResponse = new LoginResponseDto(accessToken);
 
         return ResponseEntity.ok(
-                new BaseResponse<>(200, "로그인 성공", loginResponse)
+                BaseResponse.onSuccess("로그인에 성공했습니다.", loginResponse)
         );
     }
 
@@ -88,7 +92,7 @@ public class AuthController implements AuthApiDocs {
         response.addCookie(createRefreshTokenCookie(result.getRefreshToken()));
 
         return ResponseEntity.ok(
-                new BaseResponse<>(200, "토큰 재발행 성공", new LoginResponseDto(result.getAccessToken()))
+                BaseResponse.onSuccess("토큰 재발행에 성공했습니다.", new LoginResponseDto(result.getAccessToken()))
         );
     }
 
@@ -103,7 +107,7 @@ public class AuthController implements AuthApiDocs {
         response.addCookie(clearRefreshTokenCookie());
 
         return ResponseEntity.ok(
-                new BaseResponse<>(200, "로그아웃 성공", null)
+                BaseResponse.onSuccess("로그아웃에 성공하였습니다.", null)
         );
     }
 

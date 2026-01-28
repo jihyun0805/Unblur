@@ -7,9 +7,11 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.UUID;
 
 public class CustomUserDetails implements UserDetails {
 
+    private final UUID userId;
     private final String email;
     private final String password;
     private final boolean active;
@@ -18,16 +20,18 @@ public class CustomUserDetails implements UserDetails {
      * User 엔티티로 생성 (CustomUserDetailsService에서 로그인 시 사용)
      */
     public CustomUserDetails(User user) {
+        this.userId = user.getId();
         this.email = user.getEmail();
         this.password = user.getPassword();
         this.active = user.isActive();
     }
 
     /**
-     * email만으로 생성 (JWTFilter에서 토큰 검증 시 사용)
+     * email + userId로 생성 (JWTFilter에서 토큰 검증 시 사용)
      * 이미 토큰이 발급된 상태이므로 active는 true로 설정
      */
-    public CustomUserDetails(String email) {
+    public CustomUserDetails(String email, UUID userId) {
+        this.userId = userId;
         this.email = email;
         this.password = null;
         this.active = true;
@@ -45,6 +49,13 @@ public class CustomUserDetails implements UserDetails {
     @Override
     public String getPassword() {
         return password;
+    }
+
+    /**
+     * @return 사용자 ID
+     */
+    public UUID getUserId() {
+        return userId;
     }
 
     /**

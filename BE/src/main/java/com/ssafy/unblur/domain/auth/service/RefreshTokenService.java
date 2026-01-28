@@ -101,8 +101,8 @@ public class RefreshTokenService {
                 .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
 
         // 새로운 토큰 생성 (Token Rotation)
-        String newAccessToken = jwtUtil.createAccessToken(email);
-        String newRefreshToken = jwtUtil.createRefreshToken(email);
+        String newAccessToken = jwtUtil.createAccessToken(user.getId(), email);
+        String newRefreshToken = jwtUtil.createRefreshToken(user.getId(), email);
 
         // 새로운 Refresh Token 저장 (기존 토큰 대체)
         saveRefreshToken(user, newRefreshToken,

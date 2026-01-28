@@ -1,0 +1,38 @@
+spring:
+  profiles:
+    default: test
+
+  docker:
+    compose:
+      skip:
+        in-tests: false
+      file: compose.yaml
+
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:unblur}
+    username: ${POSTGRES_USER:unblur}
+    password: ${POSTGRES_PASSWORD:unblur}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: create
+
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:pgvector-init.sql
+
+kurento:
+  ws:
+    uri: ws://localhost:8888/kurento
+
+rtc:
+  websocket:
+    url: ws://localhost:8080/ws/rtc
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus

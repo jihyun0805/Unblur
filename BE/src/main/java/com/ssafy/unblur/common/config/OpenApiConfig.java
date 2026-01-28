@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @OpenAPIDefinition(
-        security = { @SecurityRequirement(name = "bearerAuth") }
+        security = {@SecurityRequirement(name = "bearerAuth")}
 )
 @SecurityScheme(
         name = "bearerAuth",
