@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { ArrowLeft, Share2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/contexts/auth-context"
+import { UserProfileData, UserProfileModal } from "@/components/common/user-profile-modal"
 
 const getResultLabel = (type: string) => {
   if (!type || type.length !== 4) return ""
@@ -19,12 +20,111 @@ const getImagePath = (code: string) => `/test/results/${code}.PNG`
 const formatSentences = (text: string) => text.replace(/(\.)\s*/g, "$1\n")
 const getMatchTags = (code: string) => RESULT_CONTENT[code]?.tags || ""
 
-const mockProfiles = [
-  { id: "u1", nickname: "민지", age: 26, region: "서울", code: "IFPA", isOnline: true, gender: "female" },
-  { id: "u2", nickname: "준혁", age: 29, region: "부산", code: "EFSD", isOnline: true, gender: "male" },
-  { id: "u3", nickname: "서연", age: 25, region: "인천", code: "ITSA", isOnline: true, gender: "female" },
-  { id: "u4", nickname: "동현", age: 30, region: "대전", code: "ETPA", isOnline: false, gender: "male" },
-  { id: "u5", nickname: "유진", age: 27, region: "광주", code: "ITPD", isOnline: true, gender: "female" },
+const mockProfiles: Array<{
+  id: string
+  nickname: string
+  age: number
+  region: string
+  code: string
+  isOnline: boolean
+  gender: "male" | "female"
+  profile: UserProfileData
+}> = [
+  {
+    id: "u1",
+    nickname: "민지",
+    age: 26,
+    region: "서울",
+    code: "IFPA",
+    isOnline: true,
+    gender: "female",
+    profile: {
+      nickname: "민지",
+      temperature: 82,
+      age: 26,
+      gender: "female",
+      region: "서울",
+      mbti: "IFPA",
+      bio: "전시회랑 카페 투어 좋아해요.",
+      interests: ["travel", "music", "cafe"],
+    },
+  },
+  {
+    id: "u2",
+    nickname: "준혁",
+    age: 29,
+    region: "부산",
+    code: "EFSD",
+    isOnline: true,
+    gender: "male",
+    profile: {
+      nickname: "준혁",
+      temperature: 76,
+      age: 29,
+      gender: "male",
+      region: "부산",
+      mbti: "EFSD",
+      bio: "바다 산책과 맛집 탐방이 취미예요.",
+      interests: ["travel", "movie", "music"],
+    },
+  },
+  {
+    id: "u3",
+    nickname: "서연",
+    age: 25,
+    region: "인천",
+    code: "ITSA",
+    isOnline: true,
+    gender: "female",
+    profile: {
+      nickname: "서연",
+      temperature: 91,
+      age: 25,
+      gender: "female",
+      region: "인천",
+      mbti: "ITSA",
+      bio: "조용한 대화를 좋아해요.",
+      interests: ["book", "cafe"],
+    },
+  },
+  {
+    id: "u4",
+    nickname: "동현",
+    age: 30,
+    region: "대전",
+    code: "ETPA",
+    isOnline: false,
+    gender: "male",
+    profile: {
+      nickname: "동현",
+      temperature: 64,
+      age: 30,
+      gender: "male",
+      region: "대전",
+      mbti: "ETPA",
+      bio: "러닝이랑 코딩 좋아합니다.",
+      interests: ["exercise", "game"],
+    },
+  },
+  {
+    id: "u5",
+    nickname: "유진",
+    age: 27,
+    region: "광주",
+    code: "ITPD",
+    isOnline: true,
+    gender: "female",
+    profile: {
+      nickname: "유진",
+      temperature: 88,
+      age: 27,
+      gender: "female",
+      region: "광주",
+      mbti: "ITPD",
+      bio: "운동도 하고 드라이브도 좋아요.",
+      interests: ["exercise", "travel"],
+    },
+  },
 ]
 
 const pickOnlineByCode = (code: string, gender?: "male" | "female") =>
@@ -366,6 +466,7 @@ export default function MbtiResultPage() {
   const [listType, setListType] = useState<"best" | "worst" | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
   const [detailType, setDetailType] = useState<"best" | "worst" | null>(null)
+  const [selectedProfile, setSelectedProfile] = useState<UserProfileData | null>(null)
   const { toast } = useToast()
   const { user } = useAuth()
 
@@ -440,7 +541,7 @@ export default function MbtiResultPage() {
   }
 
   return (
-    <div className="h-screen relative flex justify-center items-start overflow-y-auto w-full">
+    <div className="min-h-screen relative flex justify-center items-start w-full">
       <div className="fixed inset-0 bg-background/50 backdrop-blur-sm z-0" />
 
       <div className="relative z-10 container max-w-2xl mx-auto px-4 py-8">
@@ -569,7 +670,7 @@ export default function MbtiResultPage() {
               온라인인 사람들 중 가치관이 {listType === "best" ? "맞는" : "다른"} 프로필입니다.
             </p>
           </DialogHeader>
-          <div className="mt-4 space-y-3 max-h-96 overflow-y-auto">
+          <div className="mt-4 space-y-3">
             {modalProfiles.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-muted-foreground mb-2">현재 온라인인 사람이 없습니다</p>
@@ -591,7 +692,13 @@ export default function MbtiResultPage() {
                       <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-background" />
                     </div>
                     <div>
-                      <p className="font-semibold">{user.nickname}</p>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedProfile(user.profile)}
+                        className="font-semibold hover:text-primary cursor-pointer text-left"
+                      >
+                        {user.nickname}
+                      </button>
                       <p className="text-xs text-muted-foreground">
                         {user.age}세 · {user.region}
                       </p>
@@ -659,6 +766,12 @@ export default function MbtiResultPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <UserProfileModal
+        open={!!selectedProfile}
+        onOpenChange={(open) => !open && setSelectedProfile(null)}
+        profile={selectedProfile || {}}
+      />
     </div>
   )
 }
