@@ -4,8 +4,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.unblur.common.exception.BaseException;
 import com.ssafy.unblur.common.exception.ErrorCode;
+import com.ssafy.unblur.domain.rtc.dto.SignalingMessages;
 import com.ssafy.unblur.domain.rtc.model.UserSession;
+import com.ssafy.unblur.domain.rtc.model.VoteChoice;
 import com.ssafy.unblur.domain.rtc.service.KurentoRoomService;
+import com.ssafy.unblur.domain.rtc.service.RoundVoteService;
 import com.ssafy.unblur.domain.rtc.service.RtcSessionStore;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,7 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Kurento WebRTC 시그널링 핸들러
- * </p>
+ * <p>
  * WebSocket 메시지를 수신해 등록, 룸 입장, SDP/ICE 교환을 처리한다.
  */
 @Component
@@ -38,6 +41,11 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
     private final KurentoRoomService kurentoRoomService;
 
     /**
+     * 라운드 투표 처리 서비스
+     */
+    private final RoundVoteService roundVoteService;
+
+    /**
      * WebSocket 세션 저장소
      */
     private final RtcSessionStore sessionStore;
@@ -45,7 +53,7 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
     /**
      * 시그널링 메시지 파싱/직렬화를 위한 JSON 매퍼
      */
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
 
     /**
      * 세션별 참가 정보(방/사용자) 보관 맵
@@ -75,13 +83,24 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
                 case "join" -> handleJoin(session, payload);
                 case "offer" -> handleOffer(session, payload);
                 case "candidate" -> handleCandidate(session, payload);
+                case "vote" -> handleVote(session, payload);
                 case "leave" -> handleLeave(session, payload);
-                default -> sendError(session, "Unknown message type: " + type);
+                default -> {
+                    SignalingMessages.Error errorMessage = SignalingMessages.Error.builder()
+                            .message("Unknown message type: " + type)
+                            .build();
+
+                    send(session, errorMessage);
+                }
             }
 
         } catch (RuntimeException e) {
             log.error("WebSocket 처리 중 오류가 발생했습니다. sessionId={}", session.getId(), e);
-            sendError(session, "시그널링 처리 중 오류가 발생했습니다.");
+            SignalingMessages.Error errorMessage = SignalingMessages.Error.builder()
+                    .message("시그널링 처리 중 오류가 발생했습니다: " + e.getMessage())
+                    .build();
+
+            send(session, errorMessage);
         }
     }
 
@@ -108,10 +127,9 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
 
         SessionInfo info = sessionInfos.remove(session.getId());
         sessionLocks.remove(session.getId());
-        if (info != null) {
-            if (info.conferenceId != null) {
-                kurentoRoomService.leave(info.conferenceId, info.userId);
-            }
+
+        if (info != null && info.conferenceId != null) {
+            kurentoRoomService.leave(info.conferenceId, info.userId);
         }
 
         sessionStore.remove(session.getId());
@@ -134,12 +152,15 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
         if (userId == null) {
             return;
         }
+
         sessionInfos.put(session.getId(), new SessionInfo(null, userId));
         sessionStore.bindUser(session.getId(), userId);
-        sendMessage(session, Map.of(
-                "type", "registered",
-                "userId", userId.toString()
-        ));
+
+        SignalingMessages.Registered registeredMessage = SignalingMessages.Registered.builder()
+                .userId(userId.toString())
+                .build();
+
+        send(session, registeredMessage);
     }
 
     /**
@@ -160,16 +181,16 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
         sessionInfos.put(session.getId(), new SessionInfo(conferenceId, userId));
         sessionStore.bindUser(session.getId(), userId);
 
-        userSession.webRtcEndpoint().addIceCandidateFoundListener(event -> {
-            IceCandidate candidate = event.getCandidate();
-            sendCandidate(session, candidate);
-        });
+        userSession.webRtcEndpoint().addIceCandidateFoundListener(event ->
+                sendCandidate(session, event.getCandidate())
+        );
 
-        sendMessage(session, Map.of(
-                "type", "joined",
-                "conferenceId", conferenceId.toString(),
-                "userId", userId.toString()
-        ));
+        SignalingMessages.Joined joinedMessage = SignalingMessages.Joined.builder()
+                .conferenceId(conferenceId.toString())
+                .userId(userId.toString())
+                .build();
+
+        send(session, joinedMessage);
     }
 
     /**
@@ -187,12 +208,13 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
         }
 
         String sdpOffer = payload.get("sdpOffer").asText();
-
         String sdpAnswer = kurentoRoomService.processOffer(conferenceId, userId, sdpOffer);
-        sendMessage(session, Map.of(
-                "type", "answer",
-                "sdpAnswer", sdpAnswer
-        ));
+
+        SignalingMessages.Answer answerMessage = SignalingMessages.Answer.builder()
+                .sdpAnswer(sdpAnswer)
+                .build();
+
+        send(session, answerMessage);
     }
 
     /**
@@ -211,18 +233,67 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
 
         JsonNode candidateNode = payload.get("candidate");
         if (candidateNode == null) {
-            sendError(session, "Missing candidate");
+            SignalingMessages.Error errorMessage = SignalingMessages.Error.builder()
+                    .message("ICE candidate 정보가 필요합니다.")
+                    .build();
+
+            send(session, errorMessage);
             return;
         }
 
         String candidate = candidateNode.get("candidate").asText();
         String sdpMid = candidateNode.get("sdpMid").asText();
         int sdpMLineIndex = candidateNode.get("sdpMLineIndex").asInt();
+
         kurentoRoomService.addIceCandidate(conferenceId, userId, new IceCandidate(candidate, sdpMid, sdpMLineIndex));
     }
 
     /**
-     * 통화 종료 요청을 처리하는 메서드
+     * 라운드 투표
+     */
+    private void handleVote(WebSocketSession session, JsonNode payload) throws IOException {
+        UUID conferenceId = parseUuid(session, payload, "conferenceId");
+        UUID userId = parseUuid(session, payload, "userId");
+        if (conferenceId == null || userId == null) {
+            return;
+        }
+
+        JsonNode voteNode = payload.get("vote");
+        if (voteNode == null || voteNode.isNull()) {
+            SignalingMessages.Error errorMessage = SignalingMessages.Error.builder()
+                    .message("투표가 필요합니다.")
+                    .build();
+
+            send(session, errorMessage);
+            return;
+        }
+
+        String voteValue = voteNode.asText().toUpperCase();
+        VoteChoice vote;
+        try {
+            vote = VoteChoice.valueOf(voteValue);
+
+        } catch (IllegalArgumentException e) {
+            SignalingMessages.Error errorMessage = SignalingMessages.Error.builder()
+                    .message("올바르지 않은 투표 값입니다: " + voteValue)
+                    .build();
+
+            send(session, errorMessage);
+            return;
+        }
+
+        roundVoteService.processVote(conferenceId, userId, vote);
+
+        SignalingMessages.VoteReceived voteReceivedMessage = SignalingMessages.VoteReceived.builder()
+                .conferenceId(conferenceId.toString())
+                .userId(userId.toString())
+                .build();
+
+        send(session, voteReceivedMessage);
+    }
+
+    /**
+     * 세션 종료 요청을 처리하는 메서드
      *
      * @param session WebSocket 세션
      * @param payload 요청 페이로드
@@ -236,10 +307,29 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
         }
 
         kurentoRoomService.leave(conferenceId, userId);
-        sendMessage(session, Map.of(
-                "type", "left",
-                "userId", userId.toString()
-        ));
+
+        SignalingMessages.Left leftMessage = SignalingMessages.Left.builder()
+                .userId(userId.toString())
+                .build();
+
+        send(session, leftMessage);
+    }
+
+    /**
+     * ICE Candidate를 클라이언트로 전송하는 메서드
+     *
+     * @param session   WebSocket 세션
+     * @param candidate ICE Candidate
+     */
+    private void sendCandidate(WebSocketSession session, IceCandidate candidate) {
+        try {
+            SignalingMessages.Candidate candidateMessage = SignalingMessages.Candidate.from(candidate);
+            send(session, candidateMessage);
+
+        } catch (IOException e) {
+            log.error("ICE candidate 전송 실패. sessionId={}", session.getId(), e);
+            throw new BaseException(ErrorCode.ICE_CANDIDATE_SEND_FAILED);
+        }
     }
 
     /**
@@ -257,7 +347,11 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
     private UUID parseUuid(WebSocketSession session, JsonNode payload, String field) throws IOException {
         JsonNode node = payload.get(field);
         if (node == null || node.isNull()) {
-            sendError(session, field + "가 필요합니다.");
+            SignalingMessages.Error errorMessage = SignalingMessages.Error.builder()
+                    .message(field + "가 필요합니다.")
+                    .build();
+
+            send(session, errorMessage);
             return null;
         }
 
@@ -271,60 +365,24 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
     }
 
     /**
-     * ICE Candidate를 클라이언트로 전송하는 메서드
-     *
-     * @param session   WebSocket 세션
-     * @param candidate ICE Candidate
-     */
-    private void sendCandidate(WebSocketSession session, IceCandidate candidate) {
-        try {
-            sendMessage(session, Map.of(
-                    "type", "candidate",
-                    "candidate", Map.of(
-                            "candidate", candidate.getCandidate(),
-                            "sdpMid", candidate.getSdpMid(),
-                            "sdpMLineIndex", candidate.getSdpMLineIndex()
-                    )
-            ));
-
-        } catch (IOException e) {
-            log.error("ICE candidate 전송 실패. sessionId={}", session.getId(), e);
-            throw new BaseException(ErrorCode.ICE_CANDIDATE_SEND_FAILED);
-        }
-    }
-
-    /**
-     * 오류 메시지를 전송하는 메서드
-     *
-     * @param session WebSocket 세션
-     * @param message 오류 메시지
-     * @throws IOException 전송 중 오류
-     */
-    private void sendError(WebSocketSession session, String message) throws IOException {
-        sendMessage(session, Map.of("type", "error", "message", message));
-    }
-
-    /**
      * 공통 메시지 전송을 처리하는 메서드
      * </p>
      * 세션별 lock을 통해 동시 전송 충돌을 방지한다.
      *
      * @param session WebSocket 세션
-     * @param payload 메시지 페이로드
+     * @param message 메시지
      * @throws IOException 전송 중 오류
      */
-    private void sendMessage(WebSocketSession session, Map<String, Object> payload) throws IOException {
+    private void send(WebSocketSession session, Object message) throws IOException {
         if (!session.isOpen()) {
             return;
         }
 
         Object lock = sessionLocks.computeIfAbsent(session.getId(), id -> new Object());
         synchronized (lock) {
-            if (!session.isOpen()) {
-                return;
+            if (session.isOpen()) {
+                session.sendMessage(new TextMessage(objectMapper.writeValueAsString(message)));
             }
-
-            session.sendMessage(new TextMessage(objectMapper.writeValueAsString(payload)));
         }
     }
 
