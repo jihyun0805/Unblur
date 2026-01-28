@@ -352,8 +352,8 @@ export default function MbtiResultPage() {
   }
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center">
-      <div className="absolute inset-0 bg-background/50 backdrop-blur-sm z-0" />
+    <div className="h-screen relative flex justify-center items-start overflow-y-auto w-full">
+      <div className="fixed inset-0 bg-background/50 backdrop-blur-sm z-0" />
 
       <div className="relative z-10 container max-w-2xl mx-auto px-4 py-8">
         <div className="flex items-center gap-3 mb-4">
@@ -433,7 +433,7 @@ export default function MbtiResultPage() {
           </div>
 
           <div className="flex flex-col gap-3">
-            <Button onClick={() => router.push("/mbti")} variant="secondary">
+            <Button onClick={() => router.push("/mbti?start=1")} variant="secondary">
               다시 테스트하기
             </Button>
             <Button onClick={handleShare} variant="outline" disabled={!result}>
