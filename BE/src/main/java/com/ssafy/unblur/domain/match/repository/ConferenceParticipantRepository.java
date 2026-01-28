@@ -1,10 +1,5 @@
 package com.ssafy.unblur.domain.match.repository;
 
-import com.ssafy.unblur.domain.match.model.ConferenceParticipant;
-import org.springframework.data.jpa.repository.JpaRepository;
-import java.util.UUID;
-import java.util.List;
-import java.util.Optional;
 import com.ssafy.unblur.domain.auth.model.User;
 import com.ssafy.unblur.domain.match.model.Conference;
 import com.ssafy.unblur.domain.match.model.ConferenceParticipant;
@@ -18,6 +13,8 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 /**
  * 세션 참여자 레포지토리
