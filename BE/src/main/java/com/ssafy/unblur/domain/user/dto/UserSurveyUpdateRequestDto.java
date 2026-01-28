@@ -14,5 +14,5 @@ import java.util.Map;
 @AllArgsConstructor
 public class UserSurveyUpdateRequestDto {
     @Schema(description = "설문 상세 데이터 (JSON 형식)", example = "[{\"QuestionId\": \"1\", \"Answer\": \"B\"}, {\"QuestionId\": \"2\", \"Answer\": \"A\"}]")
-    private List<Map<String, Object>> surveyData; // User 엔티티의 detailedInfo와 매핑
+    private List<Map<String, Object>> detailedInfo;
 }
