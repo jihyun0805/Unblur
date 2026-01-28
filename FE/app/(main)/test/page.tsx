@@ -14,11 +14,19 @@ export default function MbtiRoutePage() {
     <MBTITestPage
       onBack={() => router.push("/home")}
       existingMbti={user?.mbti}
-      onViewResult={(mbti) => router.push(`/mbti/result?type=${encodeURIComponent(mbti)}`)}
+      onViewResult={(mbti) => {
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("mbtiResult", mbti)
+        }
+        router.push("/test/result")
+      }}
       autoStart={autoStart}
       onComplete={(mbti) => {
         updateUser({ mbti })
-        router.push(`/mbti/result?type=${encodeURIComponent(mbti)}`)
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("mbtiResult", mbti)
+        }
+        router.push("/test/result")
       }}
     />
   )

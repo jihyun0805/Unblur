@@ -24,7 +24,7 @@ export default function MainRouteLayout({ children }: { children: React.ReactNod
     }
   }, [user, isLoading, router])
 
-  const isSessionOrMbti = pathname?.startsWith("/session") || pathname?.startsWith("/mbti")
+  const isSessionOrMbti = pathname?.startsWith("/session") || pathname?.startsWith("/test")
   const handleLogout = () => {
     logout()
     setShowLogoutConfirm(false)
@@ -46,7 +46,7 @@ export default function MainRouteLayout({ children }: { children: React.ReactNod
   return (
     <>
       {isSessionOrMbti ? (
-        pathname === "/mbti" ? (
+        pathname === "/test" ? (
           <BackgroundLayout>{children}</BackgroundLayout>
         ) : (
           children

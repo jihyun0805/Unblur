@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress"
-import { ArrowLeft, Check } from "lucide-react"
+import { ArrowLeft, Check, X } from "lucide-react"
 
 interface MBTITestPageProps {
   onBack: () => void
@@ -14,7 +15,7 @@ interface MBTITestPageProps {
   autoStart?: boolean
 }
 
-const mbtiSections = [
+const testSections = [
   {
     dimension: ["E", "I"],
     questions: [
@@ -126,10 +127,12 @@ export function MBTITestPage({ onBack, onComplete, existingMbti, onViewResult, a
   const [currentCategoryIndex, setCurrentCategoryIndex] = useState(0)
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<string, string>>({})
+  const [autoStarted, setAutoStarted] = useState(false)
+  const [showExitConfirm, setShowExitConfirm] = useState(false)
 
-  const currentCategory = mbtiSections[currentCategoryIndex]
+  const currentCategory = testSections[currentCategoryIndex]
   const currentQuestion = currentCategory.questions[currentQuestionIndex]
-  const totalQuestions = mbtiSections.reduce((sum, cat) => sum + cat.questions.length, 0)
+  const totalQuestions = testSections.reduce((sum, cat) => sum + cat.questions.length, 0)
   const answeredQuestions = Object.keys(answers).length
   const progress = (answeredQuestions / totalQuestions) * 100
 
@@ -138,6 +141,9 @@ export function MBTITestPage({ onBack, onComplete, existingMbti, onViewResult, a
 
   const handleAnswer = (answer: string) => {
     setAnswers({ ...answers, [questionKey]: answer })
+    setTimeout(() => {
+      handleNext()
+    }, 150)
   }
 
   const handleStart = () => {
@@ -148,13 +154,14 @@ export function MBTITestPage({ onBack, onComplete, existingMbti, onViewResult, a
   }
 
   useEffect(() => {
-    if (autoStart && !hasStarted) {
+    if (autoStart && !hasStarted && !autoStarted) {
       handleStart()
+      setAutoStarted(true)
     }
-  }, [autoStart, hasStarted])
+  }, [autoStart, hasStarted, autoStarted])
 
   const calculateResult = () => {
-    return mbtiSections
+    return testSections
       .map((section, sectionIndex) => {
         const [left, right] = section.dimension
         let leftCount = 0
@@ -174,7 +181,7 @@ export function MBTITestPage({ onBack, onComplete, existingMbti, onViewResult, a
   const handleNext = () => {
     if (currentQuestionIndex < currentCategory.questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1)
-    } else if (currentCategoryIndex < mbtiSections.length - 1) {
+    } else if (currentCategoryIndex < testSections.length - 1) {
       setCurrentCategoryIndex(currentCategoryIndex + 1)
       setCurrentQuestionIndex(0)
     } else {
@@ -195,15 +202,13 @@ export function MBTITestPage({ onBack, onComplete, existingMbti, onViewResult, a
     }
     if (currentCategoryIndex > 0) {
       const prevCategoryIndex = currentCategoryIndex - 1
-      const prevCategory = mbtiSections[prevCategoryIndex]
+      const prevCategory = testSections[prevCategoryIndex]
       setCurrentCategoryIndex(prevCategoryIndex)
       setCurrentQuestionIndex(prevCategory.questions.length - 1)
       return
     }
     setHasStarted(false)
   }
-
-  const canGoNext = currentAnswer !== undefined
 
   return (
     <div className="min-h-screen relative flex items-center justify-center">
@@ -217,7 +222,7 @@ export function MBTITestPage({ onBack, onComplete, existingMbti, onViewResult, a
                 <Button variant="ghost" size="icon" onClick={onBack} className="bg-card/50 backdrop-blur">
                   <ArrowLeft className="w-5 h-5" />
                 </Button>
-                <CardTitle className="text-2xl">MBTI 연애 테스트</CardTitle>
+                <CardTitle className="text-2xl">연애 가치관 테스트</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -240,7 +245,7 @@ export function MBTITestPage({ onBack, onComplete, existingMbti, onViewResult, a
               ) : (
                 <div className="space-y-3">
                   <Button onClick={handleStart} className="w-full h-12 text-base">
-                    테스트 하기
+                    테스트 시작하기
                   </Button>
                   <Button variant="secondary" className="w-full h-12 text-base" onClick={onBack}>
                     홈으로 가기
@@ -257,7 +262,7 @@ export function MBTITestPage({ onBack, onComplete, existingMbti, onViewResult, a
                 <ArrowLeft className="w-5 h-5" />
               </Button>
               <div className="flex-1">
-                <h1 className="text-2xl font-bold text-foreground mb-2">MBTI 연애 테스트</h1>
+                <h1 className="text-2xl font-bold text-foreground mb-2">연애 가치관 테스트</h1>
                 <Progress value={progress} className="h-2" />
                 <p className="text-sm text-muted-foreground mt-2">
                   {answeredQuestions} / {totalQuestions} 질문 완료
@@ -268,7 +273,17 @@ export function MBTITestPage({ onBack, onComplete, existingMbti, onViewResult, a
             {/* Question Card */}
             <Card className="bg-card/90 backdrop-blur shadow-lg">
               <CardHeader>
-                <CardTitle className="text-xl">{currentQuestion.question}</CardTitle>
+                <div className="flex items-center justify-between gap-3">
+                  <CardTitle className="text-xl">{currentQuestion.question}</CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowExitConfirm(true)}
+                    className="bg-card/50 backdrop-blur"
+                  >
+                    <X className="w-5 h-5" />
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="space-y-3">
                 {currentQuestion.options.map((option, index) => {
@@ -291,23 +306,30 @@ export function MBTITestPage({ onBack, onComplete, existingMbti, onViewResult, a
                   )
                 })}
 
-                <div className="pt-4">
-                  <Button
-                    onClick={handleNext}
-                    disabled={!canGoNext}
-                  className="w-full h-12 text-base font-semibold bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                >
-                    {currentCategoryIndex === mbtiSections.length - 1 &&
-                    currentQuestionIndex === currentCategory.questions.length - 1
-                      ? "완료"
-                      : "다음"}
-                  </Button>
-                </div>
               </CardContent>
             </Card>
           </>
         )}
       </div>
+
+      <Dialog open={showExitConfirm} onOpenChange={setShowExitConfirm}>
+        <DialogContent className="sm:max-w-sm bg-background">
+          <DialogHeader>
+            <DialogTitle className="text-center">테스트 종료</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 text-center">
+            <p className="mb-6 text-sm text-muted-foreground">해당 내용은 저장되지 않습니다. 정말 종료하시겠습니까?</p>
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => setShowExitConfirm(false)} className="flex-1">
+                취소
+              </Button>
+              <Button onClick={onBack} className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90">
+                종료하기
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
