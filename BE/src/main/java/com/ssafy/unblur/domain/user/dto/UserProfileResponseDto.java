@@ -39,10 +39,10 @@ public class UserProfileResponseDto {
     private String mbti;
 
     @Schema(description = "한 줄 소개 (자기소개)", example = "반갑습니다!", nullable = true)
-    private String bio; // User 엔티티의 intro와 매핑
+    private String intro;
 
     @Schema(description = "설문 상세 데이터 (JSON 형식)", example = "[{\"QuestionId\": \"1\", \"Answer\": \"B\"}, {\"QuestionId\": \"2\", \"Answer\": \"A\"}]")
-    private List<Map<String, Object>> surveyData; // User 엔티티의 detailedInfo와 매핑
+    private List<Map<String, Object>> detailedInfo;
 
     @Schema(description = "관심사 태그 목록", example = "[\"코딩\", \"등산\", \"영화\"]")
     private String[] interestTags;
@@ -60,8 +60,8 @@ public class UserProfileResponseDto {
                 .gender(user.getGender().name())
                 .region(user.getRegion() != null ? user.getRegion().name() : null)
                 .mbti(user.getMbti() != null ? user.getMbti().name() : null)
-                .bio(user.getIntro())
-                .surveyData(user.getDetailedInfo())
+                .intro(user.getIntro())
+                .detailedInfo(user.getDetailedInfo())
                 .interestTags(user.getInterestTags())
                 .clarityScore(user.getClarityScore())
                 .build();
