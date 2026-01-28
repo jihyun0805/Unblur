@@ -42,14 +42,6 @@ public interface ConferenceParticipantRepository extends JpaRepository<Conferenc
     long countByConference_IdAndLeftAtIsNull(UUID conferenceId);
 
     /**
-     * 세션의 모든 참여자를 조회하는 메서드
-     *
-     * @param conferenceId 세션 ID
-     * @return 참여자 목록
-     */
-    List<ConferenceParticipant> findByConference_Id(UUID conferenceId);
-
-    /**
      * 세션 내 현재 입장 중인 참여자 목록을 조회하는 메서드
      *
      * @param conferenceId 세션 ID
