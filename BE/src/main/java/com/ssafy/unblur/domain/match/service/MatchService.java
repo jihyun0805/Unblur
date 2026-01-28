@@ -19,7 +19,7 @@ public interface MatchService {
     MatchingQueueResponse startQuickMatch(UUID userId, FastMatchingRequest request);
 
     /**
-     * 빠른 매칭 취소 요청 처리하는 메서드
+     * 빠른 매칭 취소 요청을 처리하는 메서드
      *
      * @param userId    사용자 ID
      * @param requestId 매칭 요청 ID
@@ -27,7 +27,7 @@ public interface MatchService {
     void cancelQuickMatch(UUID userId, String requestId);
 
     /**
-     * 매칭 대기 상태 조회하는 메서드
+     * 매칭 대기 상태를 조회하는 메서드
      *
      * @param userId 사용자 ID
      * @return 대기열 상태 (대기 중인 요청이 없으면 null)
