@@ -1,14 +1,16 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { MatchingModal } from "@/components/matching/matching-modal"
 import { OneOnOneModal } from "@/components/matching/one-on-one-modal"
 import { CameraTestModal } from "@/components/matching/camera-test-modal"
 import { Zap, UserPlus } from "lucide-react"
+import { stopAllStreams } from "@/lib/media-streams"
 
 export function HomePage() {
   const { user } = useAuth()
@@ -18,6 +20,10 @@ export function HomePage() {
   const [showOneOnOne, setShowOneOnOne] = useState(false)
   const [showCameraTest, setShowCameraTest] = useState(false)
   const [pendingSessionId, setPendingSessionId] = useState<string | null>(null)
+
+  useEffect(() => {
+    stopAllStreams()
+  }, [])
 
   const handleMatchFound = (sessionId: string) => {
     setShowMatching(false)
@@ -63,12 +69,30 @@ export function HomePage() {
         <div className="text-center mb-8 sm:mb-10">
           <h1 className="text-2xl sm:text-3xl font-bold mb-2">안녕하세요, {user?.nickname}님!</h1>
           <p className="text-muted-foreground text-sm sm:text-base">오늘도 특별한 만남이 기다리고 있어요.</p>
-          <div className="inline-flex items-center gap-2 mt-3 px-4 py-2 rounded-full bg-card">
-            <span className={`font-semibold ${getTemperatureColor(user?.temperature || 36.5)}`}>
-              {getClarityPercent(user?.temperature ?? 36.5)}%
-            </span>
-            <span className="text-xs text-muted-foreground">선명도</span>
-          </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="inline-flex items-center gap-2 mt-3 px-4 py-2 rounded-full bg-card cursor-default">
+                <span className={`font-semibold ${getTemperatureColor(user?.temperature || 36.5)}`}>
+                  {getClarityPercent(user?.temperature ?? 36.5)}%
+                </span>
+                <span className="text-xs text-muted-foreground">선명도</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent
+              side="right"
+              sideOffset={12}
+              align="start"
+              alignOffset={-6}
+              className="max-w-[260px] text-[11px] leading-relaxed bg-slate-900 text-slate-100 border border-white/10 shadow-[0_10px_30px_rgba(15,23,42,0.35)] rounded-lg px-3.5 py-2.5 [&_[data-slot=tooltip-arrow]]:bg-slate-900 [&_[data-slot=tooltip-arrow]]:fill-slate-900"
+            >
+              <p>매칭 평가가 반영되는 지표예요.</p>
+              <p className="mt-1 text-slate-300">
+                50%가 시작점이에요.
+                <br />
+                높을수록 좋은 인상을 준 것으로 볼 수 있어요.
+              </p>
+            </TooltipContent>
+          </Tooltip>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6">

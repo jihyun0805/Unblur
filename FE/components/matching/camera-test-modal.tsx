@@ -7,6 +7,7 @@ import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Video, VideoOff, Check, AlertCircle, Sparkles, Mic, MicOff } from "lucide-react"
+import { registerStream, unregisterStream } from "@/lib/media-streams"
 
 interface CameraTestModalProps {
   open: boolean
@@ -223,6 +224,7 @@ export function CameraTestModal({ open, onOpenChange, onReady }: CameraTestModal
       }
       
       setStream(combinedStream)
+      registerStream(combinedStream)
       
       if (videoRef.current && videoStream) {
         videoRef.current.srcObject = combinedStream
@@ -255,6 +257,7 @@ export function CameraTestModal({ open, onOpenChange, onReady }: CameraTestModal
         track.stop()
         stream.removeTrack(track)
       })
+      unregisterStream(stream)
       setStream(null)
     }
     
