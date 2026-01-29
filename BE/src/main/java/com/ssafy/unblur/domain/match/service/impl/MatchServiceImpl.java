@@ -2,19 +2,19 @@ package com.ssafy.unblur.domain.match.service.impl;
 
 import com.ssafy.unblur.common.exception.BaseException;
 import com.ssafy.unblur.common.exception.ErrorCode;
+import com.ssafy.unblur.common.service.SseService;
+import com.ssafy.unblur.common.service.event.SseEventType;
 import com.ssafy.unblur.domain.auth.model.Gender;
 import com.ssafy.unblur.domain.auth.model.User;
 import com.ssafy.unblur.domain.auth.repository.UserRepository;
 import com.ssafy.unblur.domain.match.config.MatchConfig.MatchPolicy;
 import com.ssafy.unblur.domain.match.dto.*;
 import com.ssafy.unblur.domain.match.model.*;
-import com.ssafy.unblur.common.service.event.SseEventType;
 import com.ssafy.unblur.domain.match.repository.ConferenceParticipantRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRepository;
 import com.ssafy.unblur.domain.match.service.MatchEventPublisher;
 import com.ssafy.unblur.domain.match.service.MatchQueueService;
 import com.ssafy.unblur.domain.match.service.MatchService;
-import com.ssafy.unblur.common.service.SseService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -206,7 +206,7 @@ public class MatchServiceImpl implements MatchService {
 
     @Override
     @Transactional
-    public OneOnOneMatchResponse acceptOneOnOneMatch(UUID userId, String requestId) {
+    public OneOnOneMatchedResponse acceptOneOnOneMatch(UUID userId, String requestId) {
         // 요청 ID 파싱
         UUID parsedRequestId;
         try {
@@ -242,9 +242,9 @@ public class MatchServiceImpl implements MatchService {
         // 컨퍼런스 생성
         Conference conference = createConference(requester, recipient);
 
-        // 양쪽에 매칭 완료 이벤트 전송
-        OneOnOneMatchResponse requesterResponse = buildOneOnOneMatchedResponse(item, conference, "accepted");
-        OneOnOneMatchResponse recipientResponse = buildOneOnOneMatchedResponse(item, conference, "accepted");
+        // 양쪽에 매칭 완료 이벤트 전송 (각자에게 상대방 ID 전달)
+        OneOnOneMatchedResponse requesterResponse = buildOneOnOneMatchedResponse(item, conference, userId);
+        OneOnOneMatchedResponse recipientResponse = buildOneOnOneMatchedResponse(item, conference, item.getRequesterUserId());
 
         eventPublisher.publish(item.getRequesterUserId(), SseEventType.ONE_ON_ONE_ACCEPTED, requesterResponse);
         eventPublisher.publish(userId, SseEventType.ONE_ON_ONE_ACCEPTED, recipientResponse);
@@ -393,18 +393,15 @@ public class MatchServiceImpl implements MatchService {
      *
      * @param item         대기열 항목
      * @param conference   생성된 컨퍼런스
-     * @param targetStatus 대상 상태
-     * @return 1:1 매칭 응답
+     * @param targetUserId 상대방 사용자 ID
+     * @return 1:1 매칭 완료 응답
      */
-    private OneOnOneMatchResponse buildOneOnOneMatchedResponse(MatchQueueItem item, Conference conference, String targetStatus) {
-        return OneOnOneMatchResponse.builder()
+    private OneOnOneMatchedResponse buildOneOnOneMatchedResponse(MatchQueueItem item, Conference conference, UUID targetUserId) {
+        return OneOnOneMatchedResponse.builder()
                 .requestId(item.getRequestId().toString())
-                .status(item.getStatus().name().toLowerCase())
-                .queueType(item.getMatchType().name().toLowerCase())
-                .targetUserId(item.getRecipientUserId().toString())
-                .targetStatus(targetStatus)
-                .estimatedWaitSeconds(null)
-                .queuedAt(item.getCreatedAt())
+                .conferenceId(conference.getId().toString())
+                .targetUserId(targetUserId.toString())
+                .matchedAt(item.getMatchedAt())
                 .build();
     }
 

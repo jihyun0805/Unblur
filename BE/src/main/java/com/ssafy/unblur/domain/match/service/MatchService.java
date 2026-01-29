@@ -48,9 +48,9 @@ public interface MatchService {
      *
      * @param userId    수신자 사용자 ID
      * @param requestId 매칭 요청 ID
-     * @return 1:1 매칭 응답
+     * @return 1:1 매칭 완료 응답
      */
-    OneOnOneMatchResponse acceptOneOnOneMatch(UUID userId, String requestId);
+    OneOnOneMatchedResponse acceptOneOnOneMatch(UUID userId, String requestId);
 
     /**
      * 1:1 매칭 요청을 거절하는 메서드

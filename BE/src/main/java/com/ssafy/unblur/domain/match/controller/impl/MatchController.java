@@ -69,11 +69,11 @@ public class MatchController implements MatchApiDocs {
 
     @Override
     @PostMapping("/one-on-one/{request_id}/accept")
-    public ResponseEntity<BaseResponse<OneOnOneMatchResponse>> acceptOneOnOne(
+    public ResponseEntity<BaseResponse<OneOnOneMatchedResponse>> acceptOneOnOne(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable("request_id") String requestId
     ) {
-        OneOnOneMatchResponse response = matchService.acceptOneOnOneMatch(
+        OneOnOneMatchedResponse response = matchService.acceptOneOnOneMatch(
                 userDetails.getUserId(), requestId
         );
         return ResponseEntity.ok(

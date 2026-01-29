@@ -374,12 +374,9 @@ public interface MatchApiDocs {
                               "message": "OK",
                               "data": {
                                 "requestId": "queue-id",
-                                "status": "matched",
-                                "queueType": "one-on-one",
+                                "conferenceId": "550e8400-e29b-41d4-a716-446655440000",
                                 "targetUserId": "0f4d8f6a-8df6-4fa9-9b9d-2b3bcd0b7b8f",
-                                "targetStatus": "accepted",
-                                "estimatedWaitSeconds": null,
-                                "queuedAt": "2024-01-14T14:30:00"
+                                "matchedAt": "2024-01-14T14:30:00"
                               }
                             }"""))
     )
@@ -453,7 +450,7 @@ public interface MatchApiDocs {
                             }""")
             )
     )
-    ResponseEntity<BaseResponse<OneOnOneMatchResponse>> acceptOneOnOne(
+    ResponseEntity<BaseResponse<OneOnOneMatchedResponse>> acceptOneOnOne(
             @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
             @Parameter(description = "매칭 요청 ID", example = "0f4d8f6a-8df6-4fa9-9b9d-2b3bcd0b7b8f")
             @PathVariable("request_id") String requestId
