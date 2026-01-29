@@ -21,6 +21,8 @@ public class InMemoryMatchQueueService implements MatchQueueService {
 
     /**
      * 요청 ID 기준 대기열 저장소
+     * <p>
+     * Key: 요청 ID, Value: 대기열 항목
      */
     private final Map<UUID, MatchQueueItem> items = new ConcurrentHashMap<>();
 
