@@ -10,7 +10,7 @@ import java.util.UUID;
 public interface MatchService {
 
     /**
-     * 빠른 매칭 요청 처리하는 메서드
+     * 빠른 매칭 요청을 대기열에 등록하고 즉시 매칭을 시도하는 메서드
      *
      * @param userId  사용자 ID
      * @param request 요청 DTO
@@ -19,7 +19,7 @@ public interface MatchService {
     MatchingQueueResponse startQuickMatch(UUID userId, FastMatchingRequest request);
 
     /**
-     * 빠른 매칭 취소 요청을 처리하는 메서드
+     * 빠른 매칭을 취소하는 메서드
      *
      * @param userId    사용자 ID
      * @param requestId 매칭 요청 ID

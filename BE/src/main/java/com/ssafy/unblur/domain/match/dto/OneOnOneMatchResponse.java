@@ -1,12 +1,14 @@
 package com.ssafy.unblur.domain.match.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.Builder;
 
 import java.time.LocalDateTime;
 
 /**
  * 1:1 매칭 응답 DTO
  */
+@Builder
 @Schema(description = "1:1 매칭 응답")
 public record OneOnOneMatchResponse(
         @Schema(description = "대기열 요청 ID", example = "queue-id")
