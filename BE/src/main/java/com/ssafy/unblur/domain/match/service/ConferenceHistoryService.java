@@ -2,12 +2,14 @@ package com.ssafy.unblur.domain.match.service;
 
 import com.ssafy.unblur.common.exception.BaseException;
 import com.ssafy.unblur.common.exception.ErrorCode;
+import com.ssafy.unblur.common.util.SecurityUtil;
 import com.ssafy.unblur.domain.auth.model.User;
 import com.ssafy.unblur.domain.auth.repository.UserRepository;
 import com.ssafy.unblur.domain.chat.repository.ChatMessageRepository;
 import com.ssafy.unblur.domain.match.dto.ConferenceHistoryItemDto;
 import com.ssafy.unblur.domain.match.dto.ConferenceHistoryResponseDto;
 import com.ssafy.unblur.domain.match.dto.ConferenceHistorySummaryDto;
+import com.ssafy.unblur.domain.match.dto.PartnerProfileResponseDto;
 import com.ssafy.unblur.domain.match.model.Conference;
 import com.ssafy.unblur.domain.match.model.ConferenceParticipant;
 import com.ssafy.unblur.domain.match.repository.ConferenceParticipantRepository;
@@ -129,5 +131,32 @@ public class ConferenceHistoryService {
                 me.getId(),
                 participant.getLastReadAt()
         );
+    }
+
+    @Transactional(readOnly = true)
+    public PartnerProfileResponseDto getPartnerProfile(UUID conferenceId) {
+        String email = SecurityUtil.getCurrentUserEmail()
+                .orElseThrow(() -> new BaseException(ErrorCode.UNAUTHORIZED));
+
+        User me = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
+
+        List<ConferenceParticipant> participants = conferenceParticipantRepository
+                .findByConferenceId(conferenceId);
+
+        // 내가 참가자인지 검증
+        participants.stream()
+                .filter(p -> p.getUser().getId().equals(me.getId()))
+                .findFirst()
+                .orElseThrow(() -> new BaseException(ErrorCode.CONFERENCE_NOT_PARTICIPANT));
+
+        // 상대방 찾기
+        User partner = participants.stream()
+                .map(ConferenceParticipant::getUser)
+                .filter(u -> !u.getId().equals(me.getId()))
+                .findFirst()
+                .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
+
+        return PartnerProfileResponseDto.from(partner);
     }
 }

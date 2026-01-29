@@ -41,7 +41,7 @@ public class OnlineUserDto {
     private String intro;
 
     @Schema(description = "관심 태그", example = "[\"여행\", \"음악\", \"독서\"]")
-    private String[] interestTags;
+    private List<String> interestTags;
 
     @Schema(description = "선명도 점수", example = "50")
     private Integer clarityScore;

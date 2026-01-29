@@ -24,12 +24,21 @@ export default function MainRouteLayout({ children }: { children: React.ReactNod
     }
   }, [user, isLoading, router])
 
-  const isSessionOrMbti = pathname?.startsWith("/session") || pathname === "/mbti"
-  const handleLogout = () => {
-    logout()
-    setShowLogoutConfirm(false)
-    toast({ title: "로그아웃 완료", description: "다음에 또 만나요!" })
-    router.replace("/")
+  const isSessionOrMbti = pathname?.startsWith("/session") || pathname?.startsWith("/test")
+  const handleLogout = async () => {
+    try {
+      await logout()
+      setShowLogoutConfirm(false)
+      toast({ title: "로그아웃 완료", description: "다음에 또 만나요!" })
+      router.replace("/")
+    } catch (error) {
+      console.error("로그아웃 실패:", error)
+      toast({ 
+        title: "로그아웃 실패", 
+        description: "로그아웃 중 오류가 발생했습니다.",
+        variant: "destructive",
+      })
+    }
   }
 
   if (isLoading || !user) {
@@ -46,11 +55,7 @@ export default function MainRouteLayout({ children }: { children: React.ReactNod
   return (
     <>
       {isSessionOrMbti ? (
-        pathname === "/mbti" ? (
-          <BackgroundLayout>{children}</BackgroundLayout>
-        ) : (
-          children
-        )
+        pathname?.startsWith("/test") ? <BackgroundLayout>{children}</BackgroundLayout> : children
       ) : (
         <MainLayout onLogout={() => setShowLogoutConfirm(true)}>{children}</MainLayout>
       )}

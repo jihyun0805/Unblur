@@ -20,7 +20,7 @@ interface LoginModalProps {
 }
 
 export function LoginModal({ open, onOpenChange, onSwitchToRegister }: LoginModalProps) {
-  const [username, setUsername] = useState("")
+  const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
@@ -28,20 +28,34 @@ export function LoginModal({ open, onOpenChange, onSwitchToRegister }: LoginModa
   const { login } = useAuth()
   const { toast } = useToast()
 
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!username || !password) {
+    if (!email || !password) {
       toast({
         title: "입력 오류",
-        description: "아이디와 비밀번호를 모두 입력해주세요.",
+        description: "이메일과 비밀번호를 모두 입력해주세요.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!validateEmail(email)) {
+      toast({
+        title: "이메일 형식 오류",
+        description: "올바른 이메일 형식을 입력해주세요.",
         variant: "destructive",
       })
       return
     }
 
     setIsLoading(true)
-    const success = await login(username, password, rememberMe)
+    const success = await login(email, password, rememberMe)
     setIsLoading(false)
 
     if (success) {
@@ -53,7 +67,7 @@ export function LoginModal({ open, onOpenChange, onSwitchToRegister }: LoginModa
     } else {
       toast({
         title: "로그인 실패",
-        description: "아이디 또는 비밀번호가 올바르지 않습니다.",
+        description: "이메일 또는 비밀번호가 올바르지 않습니다.",
         variant: "destructive",
       })
     }
@@ -85,12 +99,13 @@ export function LoginModal({ open, onOpenChange, onSwitchToRegister }: LoginModa
           <TabsContent value="email">
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="username">아이디</Label>
+                <Label htmlFor="email">이메일</Label>
                 <Input
-                  id="username"
-                  placeholder="아이디를 입력하세요"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  id="email"
+                  type="email"
+                  placeholder="이메일을 입력하세요"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="bg-input"
                 />
               </div>
@@ -142,7 +157,7 @@ export function LoginModal({ open, onOpenChange, onSwitchToRegister }: LoginModa
               </Button>
               
               <div className="text-center text-sm text-muted-foreground">
-                <p className="mb-2">테스트 계정: demo / demo1234!</p>
+                <p className="mb-2">테스트 계정: test@test.com / test1234!</p>
                 계정이 없으신가요?{" "}
                 <button type="button" onClick={onSwitchToRegister} className="text-foreground font-medium hover:underline">
                   회원가입

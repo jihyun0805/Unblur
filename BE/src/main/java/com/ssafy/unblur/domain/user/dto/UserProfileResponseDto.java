@@ -45,7 +45,7 @@ public class UserProfileResponseDto {
     private List<Map<String, Object>> detailedInfo;
 
     @Schema(description = "관심사 태그 목록", example = "[\"코딩\", \"등산\", \"영화\"]")
-    private String[] interestTags;
+    private List<String> interestTags;
 
     @Schema(description = "선명도 점수 (0~100)", example = "50")
     private Integer clarityScore;
