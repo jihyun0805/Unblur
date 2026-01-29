@@ -1,11 +1,12 @@
 # Local pipeline test: upload -> STT -> summarize (no DB write)
 param(
-  [string]$InputFile = ".\.tmp\ai-pipeline\test.mp3",
+  [string]$InputFile = ".\.tmp\ai-pipeline\550e8400-e29b-41d4-a716-446655440000_1.mp3",
   [string]$Bucket = "recordings",
   [string]$Prefix = "audio",
   [string]$MinioEndpoint = "minio:9000",
   [string]$MinioAccessKey = "minio",
-  [string]$MinioSecretKey = "minio123"
+  [string]$MinioSecretKey = "minio123",
+  [bool]$CleanupIntermediate = $true
 )
 
 Set-StrictMode -Version Latest
@@ -17,6 +18,17 @@ if (-not (Test-Path $InputFile)) {
 
 if (-not $env:GMS_KEY) {
   throw "GMS_KEY is not set. Set `$env:GMS_KEY before running."
+}
+
+$fileBase = [IO.Path]::GetFileNameWithoutExtension($InputFile)
+$parts = $fileBase -split "_"
+if ($parts.Length -lt 2) {
+  throw "Filename must be {conferenceId}_{round}.mp3 (got: $fileBase)"
+}
+$round = $parts[-1]
+$conferenceId = ($parts[0..($parts.Length - 2)] -join "_")
+if (-not ($round -match '^\d+$')) {
+  throw "Round must be numeric in filename (got: $round)"
 }
 
 $mcImage = "minio/mc:latest"
@@ -48,6 +60,16 @@ $inputRel = $inputRel -replace "[\\\\]","/"
 $tmpDir = ".\.tmp\ai-pipeline"
 New-Item -ItemType Directory -Force -Path $tmpDir | Out-Null
 $downloadPath = Join-Path $tmpDir $objectName
+
+$runDir = Join-Path $tmpDir "${conferenceId}_${round}"
+New-Item -ItemType Directory -Force -Path $runDir | Out-Null
+
+$meta = @{
+  conferenceId = $conferenceId
+  round = [int]$round
+  objectKey = $objectKey
+} | ConvertTo-Json -Depth 4
+$meta | Out-File -Encoding utf8 (Join-Path $runDir "meta.json")
 
 Write-Host "Downloading from MinIO..."
 $downloadRel = ($downloadPath -replace "^[.][/\\\\]","")
@@ -100,6 +122,22 @@ $summaryResp = & curl.exe -s --max-time 60 `
   -d $summaryReq
 
 $summaryResp | Out-File -Encoding utf8 "$tmpDir\_summary_result.json"
+
+if ($CleanupIntermediate) {
+  $intermediate = @(
+    $downloadPath,
+    "$tmpDir\_stt_result.json",
+    "$tmpDir\_stt_text.txt",
+    "$tmpDir\_summary_req.json",
+    "$tmpDir\_summary_result.json",
+    (Join-Path $runDir "meta.json")
+  )
+  foreach ($path in $intermediate) {
+    if (Test-Path $path) {
+      Remove-Item -Force $path
+    }
+  }
+}
 
 Write-Host "Done."
 Write-Host "STT: $tmpDir\\_stt_result.json"
