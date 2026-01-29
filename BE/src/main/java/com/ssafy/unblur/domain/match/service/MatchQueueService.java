@@ -1,7 +1,7 @@
 package com.ssafy.unblur.domain.match.service;
 
 import com.ssafy.unblur.domain.match.model.MatchQueueItem;
-import com.ssafy.unblur.domain.match.model.MatchQueueType;
+import com.ssafy.unblur.domain.match.model.MatchType;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -27,7 +27,7 @@ public interface MatchQueueService {
      * @param requestId 요청 ID
      * @return 대기열 항목
      */
-    Optional<MatchQueueItem> findByRequestId(UUID requestId);
+    Optional<MatchQueueItem> findRequestById(UUID requestId);
 
     /**
      * 사용자 ID로 대기열 항목을 조회하는 메서드
@@ -36,15 +36,15 @@ public interface MatchQueueService {
      * @param queueType 대기열 유형
      * @return 대기열 항목
      */
-    Optional<MatchQueueItem> findByUserId(UUID userId, MatchQueueType queueType);
+    Optional<MatchQueueItem> findUserRequestByMatchType(UUID userId, MatchType queueType);
 
     /**
-     * 대기 중인 항목 목록을 조회하는 메서드
+     * 대기 중인 대기열 항목들을 매칭 유형 기준으로 조회하는 메서드
      *
-     * @param queueType 대기열 유형
+     * @param queueType 매칭 유형
      * @return 대기열 목록
      */
-    List<MatchQueueItem> findWaitingByType(MatchQueueType queueType);
+    List<MatchQueueItem> findAllWaitingByMatchType(MatchType queueType);
 
     /**
      * 사용자 대기 여부를 확인하는 메서드
@@ -53,7 +53,7 @@ public interface MatchQueueService {
      * @param queueType 대기열 유형
      * @return 대기 중이면 true
      */
-    boolean existsWaiting(UUID userId, MatchQueueType queueType);
+    boolean existsWaiting(UUID userId, MatchType queueType);
 
     /**
      * 완료/취소/타임아웃 등 종료 상태의 항목을 정리하는 메서드

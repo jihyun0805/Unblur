@@ -2,7 +2,7 @@ package com.ssafy.unblur.domain.match.service.impl;
 
 import com.ssafy.unblur.domain.match.model.MatchQueueItem;
 import com.ssafy.unblur.domain.match.model.MatchQueueStatus;
-import com.ssafy.unblur.domain.match.model.MatchQueueType;
+import com.ssafy.unblur.domain.match.model.MatchType;
 import com.ssafy.unblur.domain.match.service.MatchQueueService;
 import org.springframework.stereotype.Component;
 
@@ -40,10 +40,10 @@ public class InMemoryMatchQueueService implements MatchQueueService {
 
     @Override
     public MatchQueueItem save(MatchQueueItem item) {
-        lock.lock(); // 인덱스와 실제 저장소를 함께 갱신해야 하므로 하나의 락으로 보호
+        lock.lock();
 
         try {
-            UUID previousId = userIndexes.put(key(item.getRequesterUserId(), item.getQueueType()), item.getRequestId());
+            UUID previousId = userIndexes.put(key(item.getRequesterUserId(), item.getMatchType()), item.getRequestId());
 
             // 동일 사용자의 이전 요청이 남아있는지 확인
             if (previousId != null && !previousId.equals(item.getRequestId())) {
@@ -59,12 +59,12 @@ public class InMemoryMatchQueueService implements MatchQueueService {
     }
 
     @Override
-    public Optional<MatchQueueItem> findByRequestId(UUID requestId) {
+    public Optional<MatchQueueItem> findRequestById(UUID requestId) {
         return Optional.ofNullable(items.get(requestId));
     }
 
     @Override
-    public Optional<MatchQueueItem> findByUserId(UUID userId, MatchQueueType queueType) {
+    public Optional<MatchQueueItem> findUserRequestByMatchType(UUID userId, MatchType queueType) {
         UUID requestId = userIndexes.get(key(userId, queueType));
 
         if (requestId == null) {
@@ -74,21 +74,16 @@ public class InMemoryMatchQueueService implements MatchQueueService {
         return Optional.ofNullable(items.get(requestId));
     }
 
-    /**
-     * 특정 매칭 유형의 대기 중인 항목만 조회하는 메서드
-     *
-     * @param queueType 매칭 유형
-     * @return 대기열 목록
-     */
+
     @Override
-    public List<MatchQueueItem> findWaitingByType(MatchQueueType queueType) {
-        lock.lock(); // 대기 상태 판단과 정렬까지 일관되게 가져오기 위해 락으로 보호
+    public List<MatchQueueItem> findAllWaitingByMatchType(MatchType queueType) {
+        lock.lock();
 
         try {
             List<MatchQueueItem> result = new ArrayList<>();
 
             for (MatchQueueItem item : items.values()) {
-                if (item.getQueueType() == queueType && item.getStatus() == MatchQueueStatus.WAITING) {
+                if (item.getMatchType() == queueType && item.getStatus() == MatchQueueStatus.WAITING) {
                     result.add(item);
                 }
             }
@@ -102,15 +97,15 @@ public class InMemoryMatchQueueService implements MatchQueueService {
     }
 
     @Override
-    public boolean existsWaiting(UUID userId, MatchQueueType queueType) {
-        return findByUserId(userId, queueType)
+    public boolean existsWaiting(UUID userId, MatchType queueType) {
+        return findUserRequestByMatchType(userId, queueType)
                 .filter(MatchQueueItem::isWaiting)
                 .isPresent();
     }
 
     @Override
     public void purgeFinished(LocalDateTime cutoff) {
-        lock.lock(); // 상태 변경 이후 오래된 항목을 정리하고, 인덱스도 함께 정리
+        lock.lock();
 
         try {
             items.values().removeIf(item -> shouldRemove(item, cutoff));
@@ -128,7 +123,7 @@ public class InMemoryMatchQueueService implements MatchQueueService {
      * @param queueType 매칭 유형
      * @return 인덱스 키
      */
-    private String key(UUID userId, MatchQueueType queueType) {
+    private String key(UUID userId, MatchType queueType) {
         return userId + ":" + queueType.name();
     }
 
