@@ -13,7 +13,6 @@ public class GeminiConfig {
         return RestClient.builder()
                 .baseUrl("https://gms.ssafy.io/gmsapi/generativelanguage.googleapis.com")
                 .defaultHeader("x-goog-api-key", apiKey)
-                .defaultHeader("Content-Type", "application/json")
                 .build();
     }
 }

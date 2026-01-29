@@ -1,17 +1,17 @@
-﻿package com.ssafy.unblur.domain.match.service;
+package com.ssafy.unblur.domain.match.service;
 
 import com.ssafy.unblur.common.exception.BaseException;
 import com.ssafy.unblur.common.exception.ErrorCode;
 import com.ssafy.unblur.domain.match.model.ConferenceRound;
 import com.ssafy.unblur.domain.match.repository.ConferenceRoundRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
+import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.web.client.RestClient;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
@@ -28,6 +28,7 @@ import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AiSummaryPipelineService {
 
     private static final Pattern FILENAME_PATTERN = Pattern.compile("^(.+)_([0-9]+)\\.[^./]+$");
@@ -47,6 +48,7 @@ public class AiSummaryPipelineService {
         FileMeta meta = parseFilename(filename);
         Path tempFile = null;
         try {
+            log.info("AI pipeline start: bucket={}, key={}", bucket, decodedKey);
             tempFile = Files.createTempFile("ai-summary-", "-" + filename);
             downloadFromMinio(bucket, decodedKey, tempFile);
             String transcript = transcribe(tempFile);
@@ -55,8 +57,13 @@ public class AiSummaryPipelineService {
                     .findByConference_IdAndRoundNumber(meta.conferenceId(), meta.roundNumber())
                     .orElseThrow(() -> new BaseException(ErrorCode.CONFERENCE_NOT_FOUND));
             round.updateSummary(summary);
+            log.info("AI pipeline done: conferenceId={}, round={}", meta.conferenceId(), meta.roundNumber());
         } catch (IOException e) {
+            log.error("AI pipeline IO error", e);
             throw new BaseException(ErrorCode.INTERNAL_SERVER_ERROR);
+        } catch (Exception e) {
+            log.error("AI pipeline failed", e);
+            throw e;
         } finally {
             if (tempFile != null) {
                 try {
@@ -78,14 +85,22 @@ public class AiSummaryPipelineService {
     }
 
     private String transcribe(Path file) {
-        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-        body.add("file", new FileSystemResource(file));
-        body.add("model", "whisper-1");
+        MultipartBodyBuilder builder = new MultipartBodyBuilder();
+        builder.part("file", new FileSystemResource(file))
+                .contentType(MediaType.parseMediaType("audio/mpeg"))
+                .filename(file.getFileName().toString());
+        builder.part("model", "whisper-1");
+
+        try {
+            log.info("STT request file size: {} bytes", Files.size(file));
+        } catch (IOException e) {
+            log.warn("STT file size check failed", e);
+        }
 
         var response = openAiRestClient.post()
                 .uri("/v1/audio/transcriptions")
                 .contentType(MediaType.MULTIPART_FORM_DATA)
-                .body(body)
+                .body(builder.build())
                 .retrieve()
                 .body(OpenAiTranscriptionResponse.class);
 
