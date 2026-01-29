@@ -31,7 +31,7 @@ public class MatchQueueItem {
     /**
      * 매칭 유형
      */
-    private final MatchQueueType queueType;
+    private final MatchType matchType;
 
     /**
      * 요청 생성 시각

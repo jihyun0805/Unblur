@@ -47,4 +47,28 @@ public interface RtcSessionStore {
      * @return 세션 ID
      */
     Optional<String> findSessionIdByUser(UUID userId);
+
+    /**
+     * 세션과 회의 ID를 연결하는 메서드
+     *
+     * @param sessionId    세션 ID
+     * @param conferenceId 회의 ID
+     */
+    void bindConference(String sessionId, UUID conferenceId);
+
+    /**
+     * 세션 ID로 회의 ID를 조회하는 메서드
+     *
+     * @param sessionId 세션 ID
+     * @return 회의 ID
+     */
+    Optional<UUID> getConferenceId(String sessionId);
+
+    /**
+     * 세션 ID로 사용자 ID를 조회하는 메서드
+     *
+     * @param sessionId 세션 ID
+     * @return 사용자 ID
+     */
+    Optional<UUID> getUserId(String sessionId);
 }

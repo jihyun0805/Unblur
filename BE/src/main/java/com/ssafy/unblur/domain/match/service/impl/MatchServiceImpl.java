@@ -8,13 +8,13 @@ import com.ssafy.unblur.domain.auth.repository.UserRepository;
 import com.ssafy.unblur.domain.match.config.MatchConfig.MatchPolicy;
 import com.ssafy.unblur.domain.match.dto.*;
 import com.ssafy.unblur.domain.match.model.*;
-import com.ssafy.unblur.domain.match.model.event.SseMatchEventType;
+import com.ssafy.unblur.common.service.event.SseEventType;
 import com.ssafy.unblur.domain.match.repository.ConferenceParticipantRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRepository;
 import com.ssafy.unblur.domain.match.service.MatchEventPublisher;
 import com.ssafy.unblur.domain.match.service.MatchQueueService;
 import com.ssafy.unblur.domain.match.service.MatchService;
-import com.ssafy.unblur.domain.match.service.MatchSseService;
+import com.ssafy.unblur.common.service.SseService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,7 +56,7 @@ public class MatchServiceImpl implements MatchService {
     /**
      * SSE 서비스 (연결 상태 조회용)
      */
-    private final MatchSseService sseService;
+    private final SseService sseService;
 
     /**
      * 매칭 정책 설정값
@@ -89,7 +89,7 @@ public class MatchServiceImpl implements MatchService {
     @Transactional
     public MatchingQueueResponse startQuickMatch(UUID userId, FastMatchingRequest request) {
         // 동일 사용자가 이미 대기 중이면 중복 등록 방지
-        if (matchQueueService.existsWaiting(userId, MatchQueueType.QUICK)) {
+        if (matchQueueService.existsWaiting(userId, MatchType.QUICK)) {
             throw new BaseException(ErrorCode.MATCH_ALREADY_QUEUED);
         }
 
@@ -101,7 +101,7 @@ public class MatchServiceImpl implements MatchService {
         MatchQueueItem item = MatchQueueItem.builder()
                 .requestId(UUID.randomUUID())
                 .requesterUserId(userId)
-                .queueType(MatchQueueType.QUICK)
+                .matchType(MatchType.QUICK)
                 .createdAt(LocalDateTime.now(clock))
                 .filters(request.getFilters())
                 .build();
@@ -114,7 +114,7 @@ public class MatchServiceImpl implements MatchService {
         MatchingQueueResponse response = buildResponse(item);
 
         if (!matched) {
-            eventPublisher.publish(userId, SseMatchEventType.QUICK_WAITING, response);
+            eventPublisher.publish(userId, SseEventType.QUICK_WAITING, response);
         }
 
         return response;
@@ -128,7 +128,7 @@ public class MatchServiceImpl implements MatchService {
      */
     private MatchingQueueResponse buildResponse(MatchQueueItem item) {
         // 현재 대기열 기준으로 순번/대기시간을 계산
-        List<MatchQueueItem> waiting = matchQueueService.findWaitingByType(MatchQueueType.QUICK);
+        List<MatchQueueItem> waiting = matchQueueService.findAllWaitingByMatchType(MatchType.QUICK);
         int waitingCount = waiting.size();
 
         Integer position = null;
@@ -157,7 +157,7 @@ public class MatchServiceImpl implements MatchService {
                 .isQueued(isQueued)
                 .position(position)
                 .estimatedWaitSeconds(estimatedWaitSeconds)
-                .queueType(item.getQueueType().name().toLowerCase())
+                .queueType(item.getMatchType().name().toLowerCase())
                 .waitingCount(waitingCount)
                 .queuedAt(item.getCreatedAt())
                 .build();
@@ -178,7 +178,7 @@ public class MatchServiceImpl implements MatchService {
             throw new BaseException(ErrorCode.MATCH_REQUEST_NOT_FOUND);
         }
 
-        MatchQueueItem item = matchQueueService.findByRequestId(parsedRequestId)
+        MatchQueueItem item = matchQueueService.findRequestById(parsedRequestId)
                 .orElseThrow(() -> new BaseException(ErrorCode.MATCH_REQUEST_NOT_FOUND));
 
         // 본인의 요청인지 확인
@@ -200,7 +200,7 @@ public class MatchServiceImpl implements MatchService {
                 .occurredAt(LocalDateTime.now(clock))
                 .build();
 
-        eventPublisher.publish(userId, SseMatchEventType.QUICK_CANCELED, event);
+        eventPublisher.publish(userId, SseEventType.QUICK_CANCELED, event);
     }
 
     /**
@@ -211,7 +211,7 @@ public class MatchServiceImpl implements MatchService {
      */
     @Override
     public MatchingQueueResponse getQueueStatus(UUID userId) {
-        return matchQueueService.findByUserId(userId, MatchQueueType.QUICK)
+        return matchQueueService.findUserRequestByMatchType(userId, MatchType.QUICK)
                 .map(this::buildResponse)
                 .orElse(null);
     }
@@ -239,7 +239,7 @@ public class MatchServiceImpl implements MatchService {
         }
 
         // 동일 사용자가 이미 대기 중이면 중복 등록 방지
-        if (matchQueueService.existsWaiting(userId, MatchQueueType.ONE_ON_ONE)) {
+        if (matchQueueService.existsWaiting(userId, MatchType.ONE_ON_ONE)) {
             throw new BaseException(ErrorCode.MATCH_ALREADY_QUEUED);
         }
 
@@ -255,7 +255,7 @@ public class MatchServiceImpl implements MatchService {
                 .requestId(UUID.randomUUID())
                 .requesterUserId(userId)
                 .recipientUserId(targetUserId)
-                .queueType(MatchQueueType.ONE_ON_ONE)
+                .matchType(MatchType.ONE_ON_ONE)
                 .createdAt(now)
                 .filters(Map.of())
                 .build();
@@ -264,7 +264,7 @@ public class MatchServiceImpl implements MatchService {
 
         // 대상 사용자에게 알림 전송
         OneOnOneMatchResponse response = buildOneOnOneResponse(item, "pending");
-        eventPublisher.publish(targetUserId, SseMatchEventType.ONE_ON_ONE_REQUESTED, response);
+        eventPublisher.publish(targetUserId, SseEventType.ONE_ON_ONE_REQUESTED, response);
 
         return response;
     }
@@ -281,7 +281,7 @@ public class MatchServiceImpl implements MatchService {
     public OneOnOneMatchResponse acceptOneOnOneMatch(UUID userId, String requestId) {
         UUID parsedRequestId = parseRequestId(requestId);
 
-        MatchQueueItem item = matchQueueService.findByRequestId(parsedRequestId)
+        MatchQueueItem item = matchQueueService.findRequestById(parsedRequestId)
                 .orElseThrow(() -> new BaseException(ErrorCode.MATCH_REQUEST_NOT_FOUND));
 
         // 수신자 본인인지 확인
@@ -311,8 +311,8 @@ public class MatchServiceImpl implements MatchService {
         OneOnOneMatchResponse requesterResponse = buildOneOnOneMatchedResponse(item, conference, "accepted");
         OneOnOneMatchResponse recipientResponse = buildOneOnOneMatchedResponse(item, conference, "accepted");
 
-        eventPublisher.publish(item.getRequesterUserId(), SseMatchEventType.ONE_ON_ONE_ACCEPTED, requesterResponse);
-        eventPublisher.publish(userId, SseMatchEventType.ONE_ON_ONE_ACCEPTED, recipientResponse);
+        eventPublisher.publish(item.getRequesterUserId(), SseEventType.ONE_ON_ONE_ACCEPTED, requesterResponse);
+        eventPublisher.publish(userId, SseEventType.ONE_ON_ONE_ACCEPTED, recipientResponse);
 
         return recipientResponse;
     }
@@ -329,7 +329,7 @@ public class MatchServiceImpl implements MatchService {
     public OneOnOneMatchResponse declineOneOnOneMatch(UUID userId, String requestId) {
         UUID parsedRequestId = parseRequestId(requestId);
 
-        MatchQueueItem item = matchQueueService.findByRequestId(parsedRequestId)
+        MatchQueueItem item = matchQueueService.findRequestById(parsedRequestId)
                 .orElseThrow(() -> new BaseException(ErrorCode.MATCH_REQUEST_NOT_FOUND));
 
         // 수신자 본인인지 확인
@@ -347,7 +347,7 @@ public class MatchServiceImpl implements MatchService {
 
         // 요청자에게 거절 이벤트 전송
         OneOnOneMatchResponse requesterResponse = buildOneOnOneResponse(item, "declined");
-        eventPublisher.publish(item.getRequesterUserId(), SseMatchEventType.ONE_ON_ONE_DECLINED, requesterResponse);
+        eventPublisher.publish(item.getRequesterUserId(), SseEventType.ONE_ON_ONE_DECLINED, requesterResponse);
 
         return buildOneOnOneResponse(item, "declined");
     }
@@ -377,7 +377,7 @@ public class MatchServiceImpl implements MatchService {
         return new OneOnOneMatchResponse(
                 item.getRequestId().toString(),
                 item.getStatus().name().toLowerCase(),
-                item.getQueueType().name().toLowerCase(),
+                item.getMatchType().name().toLowerCase(),
                 item.getRecipientUserId().toString(),
                 targetStatus,
                 policy.averageWaitSeconds(),
@@ -397,7 +397,7 @@ public class MatchServiceImpl implements MatchService {
         return new OneOnOneMatchResponse(
                 item.getRequestId().toString(),
                 item.getStatus().name().toLowerCase(),
-                item.getQueueType().name().toLowerCase(),
+                item.getMatchType().name().toLowerCase(),
                 item.getRecipientUserId().toString(),
                 targetStatus,
                 null,

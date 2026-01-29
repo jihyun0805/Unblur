@@ -2,10 +2,10 @@ package com.ssafy.unblur.domain.rtc.service.impl;
 
 import com.ssafy.unblur.common.exception.BaseException;
 import com.ssafy.unblur.common.exception.ErrorCode;
-import com.ssafy.unblur.domain.match.service.ConferenceLifecycleService;
 import com.ssafy.unblur.domain.rtc.config.KurentoClientProvider;
 import com.ssafy.unblur.domain.rtc.model.UserSession;
 import com.ssafy.unblur.domain.rtc.service.KurentoRoomService;
+import com.ssafy.unblur.domain.rtc.service.RtcParticipantStore;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.kurento.client.IceCandidate;
@@ -14,14 +14,13 @@ import org.kurento.client.MediaPipeline;
 import org.kurento.client.WebRtcEndpoint;
 import org.kurento.jsonrpc.JsonRpcClientClosedException;
 import org.springframework.stereotype.Service;
-import org.springframework.web.socket.WebSocketSession;
 
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * ConcurrentHashMap 기반 Kurento 방 관리 구현체
+ * 인메모리 기반 Kurento 방 관리 구현체
  */
 @Slf4j
 @Service
@@ -34,9 +33,9 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
     private final KurentoClientProvider kurentoClientProvider;
 
     /**
-     * 회의 생명주기 서비스
+     * 참가자 저장소
      */
-    private final ConferenceLifecycleService conferenceLifecycleService;
+    private final RtcParticipantStore participantStore;
 
     /**
      * 방 정보 저장소
@@ -44,25 +43,15 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
     private final Map<UUID, Room> rooms = new ConcurrentHashMap<>();
 
     @Override
-    public UserSession join(UUID conferenceId, UUID userId, WebSocketSession session) {
+    public UserSession join(UUID conferenceId, UUID userId) {
         // 방이 없으면 새로 생성하고, 있으면 기존 방을 사용
         Room room = rooms.computeIfAbsent(conferenceId, this::createRoom);
-        UserSession userSession = room.join(userId, session);
+        UserSession userSession = room.join(userId);
 
-        try {
-            conferenceLifecycleService.onJoin(conferenceId, userId);
-            return userSession;
+        // 참가자 저장소에 등록
+        participantStore.add(conferenceId, userId);
 
-        } catch (RuntimeException e) {
-            room.leave(userId);
-
-            if (room.isEmpty()) {
-                rooms.remove(conferenceId);
-                room.release();
-            }
-
-            throw e;
-        }
+        return userSession;
     }
 
     @Override
@@ -79,7 +68,8 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
 
     @Override
     public void leave(UUID conferenceId, UUID userId) {
-        conferenceLifecycleService.onLeave(conferenceId, userId);
+        // 참가자 저장소에서 제거
+        participantStore.remove(conferenceId, userId);
 
         Room room = rooms.get(conferenceId);
         if (room == null) {
@@ -148,15 +138,16 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
         /**
          * 사용자 입장을 처리하는 메서드
          *
-         * @param userId  사용자 ID
-         * @param session WebSocket 세션
+         * @param userId 사용자 ID
          * @return 사용자 세션
          */
-        UserSession join(UUID userId, WebSocketSession session) {
+        UserSession join(UUID userId) {
             WebRtcEndpoint endpoint = new WebRtcEndpoint.Builder(pipeline).build();
-            UserSession userSession = new UserSession(userId, session, endpoint);
+            UserSession userSession = new UserSession(userId, endpoint);
             participants.put(userId, userSession);
+
             log.info("RTC 사용자 입장. conferenceId={}, userId={}, size={}", conferenceId, userId, participants.size());
+
             return userSession;
         }
 
@@ -179,6 +170,7 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
                     other.webRtcEndpoint().connect(userSession.webRtcEndpoint());
                 }
             }
+
             return sdpAnswer;
         }
 

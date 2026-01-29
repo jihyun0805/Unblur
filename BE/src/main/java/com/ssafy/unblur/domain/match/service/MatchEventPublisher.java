@@ -1,6 +1,6 @@
 package com.ssafy.unblur.domain.match.service;
 
-import com.ssafy.unblur.domain.match.model.event.MatchEventType;
+import com.ssafy.unblur.common.service.event.EventType;
 
 import java.util.UUID;
 
@@ -18,5 +18,5 @@ public interface MatchEventPublisher {
      * @param type   이벤트 타입
      * @param data   전송 데이터
      */
-    void publish(UUID userId, MatchEventType type, Object data);
+    void publish(UUID userId, EventType type, Object data);
 }

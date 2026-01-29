@@ -1,12 +1,12 @@
-package com.ssafy.unblur.domain.rtc.service.impl;
+package com.ssafy.unblur.domain.match.service.impl;
 
-import com.ssafy.unblur.domain.rtc.model.VoteChoice;
-import com.ssafy.unblur.domain.rtc.model.VoteState;
-import com.ssafy.unblur.domain.rtc.service.RoundVoteStore;
+import com.ssafy.unblur.domain.match.model.VoteChoice;
+import com.ssafy.unblur.domain.match.model.VoteState;
+import com.ssafy.unblur.domain.match.service.RoundVoteStore;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
-import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -18,85 +18,72 @@ public class InMemoryRoundVoteStore implements RoundVoteStore {
 
     /**
      * 세션별 투표 저장소
+     * <p>
+     * Key: 컨퍼런스 ID, Value: 세션별 투표 데이터
      */
     private final Map<UUID, ConferenceVoteData> conferenceVotes = new ConcurrentHashMap<>();
 
     @Override
     public void vote(UUID conferenceId, UUID userId, VoteChoice vote) {
         ConferenceVoteData data = conferenceVotes.computeIfAbsent(conferenceId, k -> new ConferenceVoteData());
-        data.votes.put(userId, vote);
+
+        if (vote == VoteChoice.PROCEED) {
+            data.proceedVoterIds.add(userId);
+        } else {
+            data.endVoterIds.add(userId);
+        }
     }
 
     @Override
-    public Optional<VoteChoice> getVote(UUID conferenceId, UUID userId) {
+    public int getProceedVoterCount(UUID conferenceId) {
         ConferenceVoteData data = conferenceVotes.get(conferenceId);
-        if (data == null) {
-            return Optional.empty();
-        }
-
-        return Optional.ofNullable(data.votes.get(userId));
+        return data == null ? 0 : data.proceedVoterIds.size();
     }
 
     @Override
-    public Map<UUID, VoteChoice> getAllVotes(UUID conferenceId) {
+    public int getEndVoterCount(UUID conferenceId) {
         ConferenceVoteData data = conferenceVotes.get(conferenceId);
-        if (data == null) {
-            return Map.of();
-        }
-
-        return Map.copyOf(data.votes);
+        return data == null ? 0 : data.endVoterIds.size();
     }
 
     @Override
-    public int getVoteCount(UUID conferenceId) {
+    public Set<UUID> getProceedVoterIds(UUID conferenceId) {
         ConferenceVoteData data = conferenceVotes.get(conferenceId);
-        if (data == null) {
-            return 0;
-        }
+        return data == null ? Set.of() : Set.copyOf(data.proceedVoterIds);
+    }
 
-        return data.votes.size();
+    @Override
+    public Set<UUID> getEndVoterIds(UUID conferenceId) {
+        ConferenceVoteData data = conferenceVotes.get(conferenceId);
+        return data == null ? Set.of() : Set.copyOf(data.endVoterIds);
+    }
+
+    @Override
+    public int getTotalVoteCount(UUID conferenceId) {
+        ConferenceVoteData data = conferenceVotes.get(conferenceId);
+        return data == null ? 0 : data.proceedVoterIds.size() + data.endVoterIds.size();
     }
 
     @Override
     public void resetVotes(UUID conferenceId) {
         ConferenceVoteData data = conferenceVotes.get(conferenceId);
         if (data != null) {
-            data.votes.clear();
+            data.proceedVoterIds.clear();
+            data.endVoterIds.clear();
             data.state = VoteState.WAITING;
-            data.confirmingUserId = null;
         }
     }
 
     @Override
     public VoteState getVoteState(UUID conferenceId) {
         ConferenceVoteData data = conferenceVotes.get(conferenceId);
-        if (data == null) {
-            return VoteState.WAITING;
-        }
-
-        return data.state;
+        return data == null ? VoteState.WAITING : data.state;
     }
 
     @Override
     public void setVoteState(UUID conferenceId, VoteState state) {
         ConferenceVoteData data = conferenceVotes.computeIfAbsent(conferenceId, k -> new ConferenceVoteData());
         data.state = state;
-    }
-
-    @Override
-    public void setConfirmingUser(UUID conferenceId, UUID userId) {
-        ConferenceVoteData data = conferenceVotes.computeIfAbsent(conferenceId, k -> new ConferenceVoteData());
-        data.confirmingUserId = userId;
-    }
-
-    @Override
-    public Optional<UUID> getConfirmingUser(UUID conferenceId) {
-        ConferenceVoteData data = conferenceVotes.get(conferenceId);
-        if (data == null) {
-            return Optional.empty();
-        }
-
-        return Optional.ofNullable(data.confirmingUserId);
     }
 
     @Override
@@ -108,8 +95,20 @@ public class InMemoryRoundVoteStore implements RoundVoteStore {
      * 세션별 투표 데이터
      */
     private static class ConferenceVoteData {
-        final Map<UUID, VoteChoice> votes = new ConcurrentHashMap<>();
+
+        /**
+         * PROCEED 투표자 ID 목록
+         */
+        final Set<UUID> proceedVoterIds = ConcurrentHashMap.newKeySet();
+
+        /**
+         * END 투표자 ID 목록
+         */
+        final Set<UUID> endVoterIds = ConcurrentHashMap.newKeySet();
+
+        /**
+         * 투표 상태
+         */
         volatile VoteState state = VoteState.WAITING;
-        volatile UUID confirmingUserId;
     }
 }

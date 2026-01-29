@@ -1,14 +1,14 @@
-package com.ssafy.unblur.domain.rtc.service;
+package com.ssafy.unblur.domain.match.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ssafy.unblur.common.service.event.WsEventType;
 import com.ssafy.unblur.domain.match.config.MatchConfig.RoundDurationPolicy;
+import com.ssafy.unblur.domain.match.model.VoteState;
 import com.ssafy.unblur.domain.rtc.dto.RoundMessages;
-import com.ssafy.unblur.domain.rtc.model.VoteState;
+import com.ssafy.unblur.domain.rtc.service.RtcParticipantStore;
 import jakarta.annotation.PreDestroy;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.web.socket.TextMessage;
-import org.springframework.web.socket.WebSocketSession;
 
 import java.time.Duration;
 import java.util.List;
@@ -21,37 +21,50 @@ import java.util.concurrent.*;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class RoundTimerService {
 
+    /**
+     * 스케줄러 서비스
+     */
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(4);
+
+    /**
+     * 활성화된 타이머 저장 맵
+     * <p>
+     * Key: 세션 ID, Value: 타이머 Future 객체
+     */
     private final Map<UUID, ScheduledFuture<?>> activeTimers = new ConcurrentHashMap<>();
-    private final Map<UUID, List<UUID>> conferenceParticipants = new ConcurrentHashMap<>();
 
+    /**
+     * 라운드 지속 시간 정책
+     */
     private final RoundDurationPolicy durationPolicy;
-    private final RtcSessionStore sessionStore;
-    private final RoundVoteStore voteStore;
-    private final ObjectMapper objectMapper;
 
-    public RoundTimerService(
-            RoundDurationPolicy durationPolicy,
-            RtcSessionStore sessionStore,
-            RoundVoteStore voteStore,
-            ObjectMapper objectMapper
-    ) {
-        this.durationPolicy = durationPolicy;
-        this.sessionStore = sessionStore;
-        this.voteStore = voteStore;
-        this.objectMapper = objectMapper;
-    }
+    /**
+     * RTC 참가자 저장소
+     */
+    private final RtcParticipantStore participantStore;
+
+    /**
+     * 라운드 투표 저장소
+     */
+    private final RoundVoteStore voteStore;
+
+    /**
+     * 매치 이벤트 퍼블리셔
+     */
+    private final MatchEventPublisher matchEventPublisher;
 
     /**
      * 라운드 시작 시 타이머를 등록하는 메서드
+     *
+     * @param conferenceId   세션 ID
+     * @param roundNumber    라운드 번호
+     * @param participantIds 참가자 ID 목록
      */
     public void startRoundTimer(UUID conferenceId, int roundNumber, List<UUID> participantIds) {
         Duration duration = durationPolicy.getDuration(roundNumber);
-
-        // 참가자 목록 저장
-        conferenceParticipants.put(conferenceId, participantIds);
 
         // 무제한이면 타이머 설정 안함
         if (durationPolicy.isUnlimited(roundNumber)) {
@@ -78,9 +91,13 @@ public class RoundTimerService {
     }
 
     /**
-     * 라운드 시간 종료 시 호출
+     * 라운드 시간 종료 시 호출되는 메서드
+     *
+     * @param conferenceId 세션 ID
+     * @param roundNumber  라운드 번호
      */
     private void onRoundTimeUp(UUID conferenceId, int roundNumber) {
+        // 타이머 제거
         activeTimers.remove(conferenceId);
 
         log.info("라운드 {} 시간 종료. conferenceId={}", roundNumber, conferenceId);
@@ -88,15 +105,13 @@ public class RoundTimerService {
         // 투표 상태를 대기로 설정
         voteStore.setVoteState(conferenceId, VoteState.WAITING);
 
-        // 양쪽에게 알림
-        RoundMessages.RoundTimeUp message = RoundMessages.RoundTimeUp.of(
-                conferenceId.toString(), roundNumber);
+        // 시간 종료 메시지 생성
+        RoundMessages.RoundTimeUp message = RoundMessages.RoundTimeUp.of(conferenceId.toString(), roundNumber);
 
-        List<UUID> participants = conferenceParticipants.get(conferenceId);
-        if (participants != null) {
-            for (UUID userId : participants) {
-                sendToUser(userId, message);
-            }
+        // 참가자들에게 메시지 전송
+        List<UUID> participants = participantStore.getParticipantIds(conferenceId);
+        for (UUID userId : participants) {
+            matchEventPublisher.publish(userId, WsEventType.ROUND_ENDED, message);
         }
     }
 
@@ -112,11 +127,11 @@ public class RoundTimerService {
     }
 
     /**
-     * 세션 종료 시 정리하는 메서드
+     * 세션 종료 시 타이머 및 상태를 정리하는 메서드
      */
     public void cleanup(UUID conferenceId) {
         cancelTimer(conferenceId);
-        conferenceParticipants.remove(conferenceId);
+        participantStore.clear(conferenceId);
         voteStore.clear(conferenceId);
     }
 
@@ -124,38 +139,12 @@ public class RoundTimerService {
      * 참가자 목록을 조회하는 메서드
      */
     public List<UUID> getParticipants(UUID conferenceId) {
-        return conferenceParticipants.getOrDefault(conferenceId, List.of());
+        return participantStore.getParticipantIds(conferenceId);
     }
 
     /**
-     * 특정 사용자에게 WebSocket 메시지를 전송하는 메서드
+     * 서비스 종료 시 스케줄러를 정상 종료하는 메서드
      */
-    public void sendToUser(UUID userId, Object message) {
-        sessionStore.findSessionIdByUser(userId)
-                .flatMap(sessionStore::find)
-                .ifPresent(session -> sendMessage(session, message));
-    }
-
-    /**
-     * WebSocket 메시지를 전송하는 메서드
-     */
-    private void sendMessage(WebSocketSession session, Object message) {
-        if (!session.isOpen()) {
-            return;
-        }
-
-        try {
-            synchronized (session) {
-                if (session.isOpen()) {
-                    session.sendMessage(new TextMessage(objectMapper.writeValueAsString(message)));
-                }
-            }
-
-        } catch (Exception e) {
-            log.warn("WebSocket 메시지 전송 실패. sessionId={}", session.getId(), e);
-        }
-    }
-
     @PreDestroy
     public void shutdown() {
         scheduler.shutdown();

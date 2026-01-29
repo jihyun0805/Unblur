@@ -1,6 +1,6 @@
-package com.ssafy.unblur.domain.match.service;
+package com.ssafy.unblur.common.service;
 
-import com.ssafy.unblur.domain.match.model.event.SseMatchEventType;
+import com.ssafy.unblur.common.service.event.SseEventType;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.Set;
@@ -9,7 +9,7 @@ import java.util.UUID;
 /**
  * 매칭 SSE 서비스 인터페이스
  */
-public interface MatchSseService {
+public interface SseService {
 
     /**
      * SSE 연결을 생성하는 메서드
@@ -26,7 +26,7 @@ public interface MatchSseService {
      * @param type   이벤트 유형
      * @param data   전송 데이터
      */
-    void publish(UUID userId, SseMatchEventType type, Object data);
+    void publish(UUID userId, SseEventType type, Object data);
 
     /**
      * 현재 SSE 연결된 사용자 ID 목록을 반환하는 메서드

@@ -31,6 +31,11 @@ public class InMemoryRtcSessionStore implements RtcSessionStore {
      */
     private final ConcurrentMap<String, UUID> sessionUsers = new ConcurrentHashMap<>();
 
+    /**
+     * 세션 ID를 키로 회의 ID를 저장하는 맵
+     */
+    private final ConcurrentMap<String, UUID> sessionConferences = new ConcurrentHashMap<>();
+
     @Override
     public void register(WebSocketSession session) {
         sessions.put(session.getId(), session);
@@ -62,6 +67,9 @@ public class InMemoryRtcSessionStore implements RtcSessionStore {
         if (userId != null) {
             userSessions.remove(userId, sessionId);
         }
+
+        // 회의 세션 매핑 제거
+        sessionConferences.remove(sessionId);
     }
 
     @Override
@@ -72,6 +80,25 @@ public class InMemoryRtcSessionStore implements RtcSessionStore {
     @Override
     public Optional<String> findSessionIdByUser(UUID userId) {
         return Optional.ofNullable(userSessions.get(userId));
+    }
+
+    @Override
+    public void bindConference(String sessionId, UUID conferenceId) {
+        if (sessionId == null || conferenceId == null) {
+            return;
+        }
+
+        sessionConferences.put(sessionId, conferenceId);
+    }
+
+    @Override
+    public Optional<UUID> getConferenceId(String sessionId) {
+        return Optional.ofNullable(sessionConferences.get(sessionId));
+    }
+
+    @Override
+    public Optional<UUID> getUserId(String sessionId) {
+        return Optional.ofNullable(sessionUsers.get(sessionId));
     }
 
 }

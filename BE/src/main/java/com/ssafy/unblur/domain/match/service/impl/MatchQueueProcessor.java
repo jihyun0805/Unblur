@@ -9,7 +9,7 @@ import com.ssafy.unblur.domain.match.config.MatchConfig.MatchPolicy;
 import com.ssafy.unblur.domain.match.dto.QuickMatchResultEvent;
 import com.ssafy.unblur.domain.match.dto.QuickMatchStageEvent;
 import com.ssafy.unblur.domain.match.model.*;
-import com.ssafy.unblur.domain.match.model.event.SseMatchEventType;
+import com.ssafy.unblur.common.service.event.SseEventType;
 import com.ssafy.unblur.domain.match.repository.ConferenceParticipantRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRepository;
 import com.ssafy.unblur.domain.match.repository.MatchCandidateRepository;
@@ -140,7 +140,7 @@ public class MatchQueueProcessor {
     private void processTimeouts() {
         LocalDateTime now = LocalDateTime.now(clock);
 
-        for (MatchQueueItem item : matchQueueService.findWaitingByType(MatchQueueType.QUICK)) {
+        for (MatchQueueItem item : matchQueueService.findAllWaitingByMatchType(MatchType.QUICK)) {
             if (isOlderThan(item, now, policy.timeout())) {
                 User user = findUser(item.getRequesterUserId());
 
@@ -174,7 +174,7 @@ public class MatchQueueProcessor {
                 .occurredAt(LocalDateTime.now(clock))
                 .build();
 
-        eventPublisher.publish(item.getRequesterUserId(), SseMatchEventType.QUICK_TIMEOUT, event);
+        eventPublisher.publish(item.getRequesterUserId(), SseEventType.QUICK_TIMEOUT, event);
     }
 
     /**
@@ -184,7 +184,7 @@ public class MatchQueueProcessor {
      */
     private void processRelaxedMatches() {
         LocalDateTime now = LocalDateTime.now(clock);
-        for (MatchQueueItem item : matchQueueService.findWaitingByType(MatchQueueType.QUICK)) {
+        for (MatchQueueItem item : matchQueueService.findAllWaitingByMatchType(MatchType.QUICK)) {
             if (isOlderThan(item, now, policy.relaxDelay())) {
                 if (item.getRelaxedAt() == null) {
                     item.markRelaxed(now);
@@ -211,7 +211,7 @@ public class MatchQueueProcessor {
         LocalDateTime now = LocalDateTime.now(clock);
         List<MatchQueueItem> candidates = new ArrayList<>();
 
-        for (MatchQueueItem item : matchQueueService.findWaitingByType(MatchQueueType.QUICK)) {
+        for (MatchQueueItem item : matchQueueService.findAllWaitingByMatchType(MatchType.QUICK)) {
             if (isOlderThan(item, now, policy.batchDelay())) {
                 candidates.add(item);
             }
@@ -250,7 +250,7 @@ public class MatchQueueProcessor {
         }
 
         // 현재 대기열에서 자기 자신을 제외한 후보 목록 추출
-        List<UUID> candidateIds = matchQueueService.findWaitingByType(MatchQueueType.QUICK)
+        List<UUID> candidateIds = matchQueueService.findAllWaitingByMatchType(MatchType.QUICK)
                 .stream()
                 .map(MatchQueueItem::getRequesterUserId)
                 .filter(id -> !id.equals(user.getId()))
@@ -279,7 +279,7 @@ public class MatchQueueProcessor {
         );
 
         for (MatchCandidate candidate : candidates) {
-            Optional<MatchQueueItem> candidateItem = matchQueueService.findByUserId(candidate.id(), MatchQueueType.QUICK);
+            Optional<MatchQueueItem> candidateItem = matchQueueService.findUserRequestByMatchType(candidate.id(), MatchType.QUICK);
             if (candidateItem.isEmpty()) {
                 continue;
             }
@@ -525,7 +525,7 @@ public class MatchQueueProcessor {
                 .occurredAt(now)
                 .build();
 
-        eventPublisher.publish(item.getRequesterUserId(), SseMatchEventType.QUICK_RELAXED, event);
+        eventPublisher.publish(item.getRequesterUserId(), SseEventType.QUICK_RELAXED, event);
     }
 
     /**
@@ -541,7 +541,7 @@ public class MatchQueueProcessor {
         QuickMatchResultEvent leftEvent = QuickMatchResultEvent.builder()
                 .requestId(left.getRequestId().toString())
                 .status("matched")
-                .queueType(left.getQueueType().name().toLowerCase())
+                .queueType(left.getMatchType().name().toLowerCase())
                 .matchedUserId(right.getRequesterUserId().toString())
                 .conferenceId(conferenceId)
                 .matchedAt(matchedAt)
@@ -550,14 +550,14 @@ public class MatchQueueProcessor {
         QuickMatchResultEvent rightEvent = QuickMatchResultEvent.builder()
                 .requestId(right.getRequestId().toString())
                 .status("matched")
-                .queueType(right.getQueueType().name().toLowerCase())
+                .queueType(right.getMatchType().name().toLowerCase())
                 .matchedUserId(left.getRequesterUserId().toString())
                 .conferenceId(conferenceId)
                 .matchedAt(matchedAt)
                 .build();
 
-        eventPublisher.publish(left.getRequesterUserId(), SseMatchEventType.QUICK_MATCHED, leftEvent);
-        eventPublisher.publish(right.getRequesterUserId(), SseMatchEventType.QUICK_MATCHED, rightEvent);
+        eventPublisher.publish(left.getRequesterUserId(), SseEventType.QUICK_MATCHED, leftEvent);
+        eventPublisher.publish(right.getRequesterUserId(), SseEventType.QUICK_MATCHED, rightEvent);
     }
 
     /**
