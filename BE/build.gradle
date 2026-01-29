@@ -74,6 +74,9 @@ dependencies {
 
 	// Kurento
 	implementation 'org.kurento:kurento-client:7.3.0'
+
+	// MinIO (S3 compatible)
+	implementation 'software.amazon.awssdk:s3:2.31.63'
 }
 
 tasks.withType(JavaCompile) {
