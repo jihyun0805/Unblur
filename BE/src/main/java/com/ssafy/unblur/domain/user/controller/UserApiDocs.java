@@ -44,13 +44,13 @@ public interface UserApiDocs {
             )
     )
     @ApiResponse(
-            responseCode = "404",
+            responseCode = "400",
             description = "사용자를 찾을 수 없음",
             content = @Content(schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
-                              "statusCode": 404,
+                              "statusCode": 400,
                               "message": "사용자를 찾을 수 없습니다.",
                               "errorCode": "USER-001"
                             }
@@ -97,13 +97,13 @@ public interface UserApiDocs {
             )
     )
     @ApiResponse(
-            responseCode = "404",
+            responseCode = "400",
             description = "사용자를 찾을 수 없음",
             content = @Content(schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
-                              "statusCode": 404,
+                              "statusCode": 400,
                               "message": "사용자를 찾을 수 없습니다.",
                               "errorCode": "USER-001"
                             }
@@ -145,13 +145,13 @@ public interface UserApiDocs {
             )
     )
     @ApiResponse(
-            responseCode = "404",
+            responseCode = "400",
             description = "사용자를 찾을 수 없음",
             content = @Content(schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
-                              "statusCode": 404,
+                              "statusCode": 400,
                               "message": "사용자를 찾을 수 없습니다.",
                               "errorCode": "USER-001"
                             }
@@ -193,13 +193,13 @@ public interface UserApiDocs {
             )
     )
     @ApiResponse(
-            responseCode = "404",
+            responseCode = "400",
             description = "사용자를 찾을 수 없음",
             content = @Content(schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
-                              "statusCode": 404,
+                              "statusCode": 400,
                               "message": "사용자를 찾을 수 없습니다.",
                               "errorCode": "USER-001"
                             }
@@ -241,13 +241,13 @@ public interface UserApiDocs {
             )
     )
     @ApiResponse(
-            responseCode = "404",
+            responseCode = "400",
             description = "사용자를 찾을 수 없음",
             content = @Content(schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
-                              "statusCode": 404,
+                              "statusCode": 400,
                               "message": "사용자를 찾을 수 없습니다.",
                               "errorCode": "USER-001"
                             }
@@ -307,13 +307,13 @@ public interface UserApiDocs {
             )
     )
     @ApiResponse(
-            responseCode = "404",
+            responseCode = "400",
             description = "사용자를 찾을 수 없음",
             content = @Content(schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
-                              "statusCode": 404,
+                              "statusCode": 400,
                               "message": "사용자를 찾을 수 없습니다.",
                               "errorCode": "USER-001"
                             }
@@ -373,7 +373,7 @@ public interface UserApiDocs {
             )
     )
     @ApiResponse(
-            responseCode = "404",
+            responseCode = "400",
             description = "사용자 또는 차단 정보를 찾을 수 없음",
             content = @Content(
                     schema = @Schema(implementation = BaseResponse.class),
@@ -381,7 +381,7 @@ public interface UserApiDocs {
                             @ExampleObject(name = "사용자를 찾을 수 없음", value = """
                                     {
                                       "isSuccess": false,
-                                      "statusCode": 404,
+                                      "statusCode": 400,
                                       "message": "사용자를 찾을 수 없습니다.",
                                       "errorCode": "USER-001"
                                     }
@@ -389,7 +389,7 @@ public interface UserApiDocs {
                             @ExampleObject(name = "차단 목록에 없는 사용자", value = """
                                     {
                                       "isSuccess": false,
-                                      "statusCode": 404,
+                                      "statusCode": 400,
                                       "message": "차단 목록에 존재하지 않는 사용자입니다.",
                                       "errorCode": "USER-008"
                                     }
