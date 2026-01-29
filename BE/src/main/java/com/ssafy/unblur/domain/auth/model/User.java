@@ -227,7 +227,7 @@ public class User {
      */
     public void updateProfile(UserProfileUpdateRequestDto dto) {
 
-        if(dto.getNickname() != null && !dto.getNickname().isBlank()) {
+        if (dto.getNickname() != null && !dto.getNickname().isBlank()) {
             this.nickname = dto.getNickname();
         }
 
@@ -260,8 +260,12 @@ public class User {
      * 사용자의 관심사/가치관 설문조사 정보를 업데이트 합니다.
      */
     public void updateSurvey(UserSurveyUpdateRequestDto dto) {
-        if(dto.getDetailedInfo() != null) {
+        if (dto.getDetailedInfo() != null) {
             this.detailedInfo = dto.getDetailedInfo();
         }
+    }
+
+    public void updateInterestsVector(float[] vector) {
+        this.interestsVector = vector;
     }
 }
