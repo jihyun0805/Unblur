@@ -1,15 +1,14 @@
 package com.ssafy.unblur.domain.rtc.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ssafy.unblur.common.service.event.WsEventType;
 import com.ssafy.unblur.domain.match.config.MatchConfig.RoundDurationPolicy;
+import com.ssafy.unblur.domain.match.service.MatchEventPublisher;
 import com.ssafy.unblur.domain.rtc.dto.RoundMessages;
 import com.ssafy.unblur.domain.rtc.model.VoteState;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.web.socket.TextMessage;
-import org.springframework.web.socket.WebSocketSession;
 
 import java.time.Duration;
 import java.util.List;
@@ -43,11 +42,6 @@ public class RoundTimerService {
     private final RoundDurationPolicy durationPolicy;
 
     /**
-     * RTC 세션 저장소
-     */
-    private final RtcSessionStore sessionStore;
-
-    /**
      * RTC 참가자 저장소
      */
     private final RtcParticipantStore participantStore;
@@ -58,9 +52,9 @@ public class RoundTimerService {
     private final RoundVoteStore voteStore;
 
     /**
-     * JSON 객체 매퍼
+     * 매치 이벤트 퍼블리셔
      */
-    private final ObjectMapper objectMapper;
+    private final MatchEventPublisher matchEventPublisher;
 
     /**
      * 라운드 시작 시 타이머를 등록하는 메서드
@@ -117,7 +111,7 @@ public class RoundTimerService {
         // 참가자들에게 메시지 전송
         List<UUID> participants = participantStore.getParticipantIds(conferenceId);
         for (UUID userId : participants) {
-            sendToUser(userId, message);
+            matchEventPublisher.publish(userId, WsEventType.ROUND_ENDED, message);
         }
     }
 
@@ -146,35 +140,6 @@ public class RoundTimerService {
      */
     public List<UUID> getParticipants(UUID conferenceId) {
         return participantStore.getParticipantIds(conferenceId);
-    }
-
-    /**
-     * 특정 사용자에게 WebSocket 메시지를 전송하는 메서드
-     */
-    public void sendToUser(UUID userId, Object message) {
-        sessionStore.findSessionIdByUser(userId)
-                .flatMap(sessionStore::find)
-                .ifPresent(session -> sendMessage(session, message));
-    }
-
-    /**
-     * WebSocket 메시지를 전송하는 메서드
-     */
-    private void sendMessage(WebSocketSession session, Object message) {
-        if (!session.isOpen()) {
-            return;
-        }
-
-        try {
-            synchronized (session) {
-                if (session.isOpen()) {
-                    session.sendMessage(new TextMessage(objectMapper.writeValueAsString(message)));
-                }
-            }
-
-        } catch (Exception e) {
-            log.warn("WebSocket 메시지 전송 실패. sessionId={}", session.getId(), e);
-        }
     }
 
     /**

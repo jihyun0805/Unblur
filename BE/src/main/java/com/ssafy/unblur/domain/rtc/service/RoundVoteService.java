@@ -1,5 +1,6 @@
 package com.ssafy.unblur.domain.rtc.service;
 
+import com.ssafy.unblur.common.service.event.WsEventType;
 import com.ssafy.unblur.domain.auth.model.User;
 import com.ssafy.unblur.domain.auth.repository.UserRepository;
 import com.ssafy.unblur.domain.match.model.Conference;
@@ -9,6 +10,7 @@ import com.ssafy.unblur.domain.match.model.RoundVote;
 import com.ssafy.unblur.domain.match.repository.ConferenceRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRoundRepository;
 import com.ssafy.unblur.domain.match.repository.RoundVoteRepository;
+import com.ssafy.unblur.domain.match.service.MatchEventPublisher;
 import com.ssafy.unblur.domain.rtc.dto.RoundMessages;
 import com.ssafy.unblur.domain.rtc.model.VoteChoice;
 import com.ssafy.unblur.domain.rtc.model.VoteState;
@@ -37,6 +39,9 @@ public class RoundVoteService {
 
     private final RoundVoteStore voteStore;
     private final RoundTimerService timerService;
+
+    private final MatchEventPublisher eventPublisher;
+
     private final ConferenceRepository conferenceRepository;
     private final ConferenceRoundRepository roundRepository;
     private final RoundVoteRepository roundVoteRepository;
@@ -206,12 +211,12 @@ public class RoundVoteService {
         voteStore.setConfirmingUser(conferenceId, endVoter);
 
         // 종료 선택자에게 재확인 요청
-        timerService.sendToUser(endVoter,
-                RoundMessages.VoteConfirmRequest.of(conferenceId.toString()));
+        RoundMessages.VoteConfirmRequest endVoterMessage = RoundMessages.VoteConfirmRequest.of(conferenceId.toString());
+        eventPublisher.publish(endVoter, WsEventType.VOTE_CONFIRM_REQUEST, endVoterMessage);
 
         // 진행 선택자에게 대기 알림
-        timerService.sendToUser(proceedVoter,
-                RoundMessages.VoteWaitingConfirm.of(conferenceId.toString()));
+        RoundMessages.VoteWaitingConfirm proceedVoterMessage = RoundMessages.VoteWaitingConfirm.of(conferenceId.toString());
+        eventPublisher.publish(proceedVoter, WsEventType.VOTE_WAITING_CONFIRM, proceedVoterMessage);
     }
 
     /**
@@ -267,7 +272,7 @@ public class RoundVoteService {
                 .build();
 
         for (UUID userId : participants) {
-            timerService.sendToUser(userId, message);
+            eventPublisher.publish(userId, WsEventType.ROUND_STARTED, message);
         }
 
         // 새 라운드 타이머 시작
@@ -303,7 +308,7 @@ public class RoundVoteService {
         RoundMessages.ConferenceEnded message = RoundMessages.ConferenceEnded.of(conferenceId.toString());
 
         for (UUID userId : participants) {
-            timerService.sendToUser(userId, message);
+            eventPublisher.publish(userId, WsEventType.CONFERENCE_ENDED, message);
         }
 
         // 타이머 정리
@@ -318,7 +323,7 @@ public class RoundVoteService {
 
         for (UUID userId : participants) {
             if (!userId.equals(voterId)) {
-                timerService.sendToUser(userId, message);
+                eventPublisher.publish(userId, WsEventType.PARTNER_VOTED, message);
             }
         }
     }

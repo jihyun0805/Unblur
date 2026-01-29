@@ -11,6 +11,7 @@ public enum WsEventType implements EventType {
     VOTE_CONFIRM_REQUEST("vote-confirm-request"),
     VOTE_WAITING_CONFIRM("vote-waiting-confirm"),
     ROUND_STARTED("round-started"),
+    ROUND_ENDED("round-ended"),
     CONFERENCE_ENDED("conference-ended"),
 
     // 시그널링 관련
