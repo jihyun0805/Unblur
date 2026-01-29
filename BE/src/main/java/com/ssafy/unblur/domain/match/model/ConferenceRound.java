@@ -90,4 +90,8 @@ public class ConferenceRound {
             this.durationSeconds = (int) Math.max(seconds, 0);
         }
     }
+
+    public void updateSummary(String summaryText) {
+        this.summaryText = summaryText;
+    }
 }

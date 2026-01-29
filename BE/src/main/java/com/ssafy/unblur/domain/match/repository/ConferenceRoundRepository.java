@@ -23,4 +23,6 @@ public interface ConferenceRoundRepository extends JpaRepository<ConferenceRound
     Optional<ConferenceRound> findFirstByConference_IdAndStatus(UUID conferenceId, ConferenceRoundStatus status);
 
     List<ConferenceRound> findByConference_IdOrderByRoundNumberAsc(UUID conferenceId);
+
+    Optional<ConferenceRound> findByConference_IdAndRoundNumber(UUID conferenceId, Integer roundNumber);
 }
