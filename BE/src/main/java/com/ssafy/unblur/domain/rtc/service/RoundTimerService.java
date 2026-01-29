@@ -38,13 +38,6 @@ public class RoundTimerService {
     private final Map<UUID, ScheduledFuture<?>> activeTimers = new ConcurrentHashMap<>();
 
     /**
-     * 세션별 참가자 목록 저장 맵
-     * <p>
-     * Key: 세션 ID, Value: 참가자 ID 목록
-     */
-    private final Map<UUID, List<UUID>> conferenceParticipants = new ConcurrentHashMap<>();
-
-    /**
      * 라운드 지속 시간 정책
      */
     private final RoundDurationPolicy durationPolicy;
@@ -53,6 +46,11 @@ public class RoundTimerService {
      * RTC 세션 저장소
      */
     private final RtcSessionStore sessionStore;
+
+    /**
+     * RTC 참가자 저장소
+     */
+    private final RtcParticipantStore participantStore;
 
     /**
      * 라운드 투표 저장소
@@ -73,9 +71,6 @@ public class RoundTimerService {
      */
     public void startRoundTimer(UUID conferenceId, int roundNumber, List<UUID> participantIds) {
         Duration duration = durationPolicy.getDuration(roundNumber);
-
-        // 참가자 목록 저장
-        conferenceParticipants.put(conferenceId, participantIds);
 
         // 무제한이면 타이머 설정 안함
         if (durationPolicy.isUnlimited(roundNumber)) {
@@ -120,11 +115,9 @@ public class RoundTimerService {
         RoundMessages.RoundTimeUp message = RoundMessages.RoundTimeUp.of(conferenceId.toString(), roundNumber);
 
         // 참가자들에게 메시지 전송
-        List<UUID> participants = conferenceParticipants.get(conferenceId);
-        if (participants != null) {
-            for (UUID userId : participants) {
-                sendToUser(userId, message);
-            }
+        List<UUID> participants = participantStore.getParticipantIds(conferenceId);
+        for (UUID userId : participants) {
+            sendToUser(userId, message);
         }
     }
 
@@ -144,7 +137,7 @@ public class RoundTimerService {
      */
     public void cleanup(UUID conferenceId) {
         cancelTimer(conferenceId);
-        conferenceParticipants.remove(conferenceId);
+        participantStore.clear(conferenceId);
         voteStore.clear(conferenceId);
     }
 
@@ -152,7 +145,7 @@ public class RoundTimerService {
      * 참가자 목록을 조회하는 메서드
      */
     public List<UUID> getParticipants(UUID conferenceId) {
-        return conferenceParticipants.getOrDefault(conferenceId, List.of());
+        return participantStore.getParticipantIds(conferenceId);
     }
 
     /**

@@ -6,6 +6,7 @@ import com.ssafy.unblur.domain.match.service.ConferenceLifecycleService;
 import com.ssafy.unblur.domain.rtc.config.KurentoClientProvider;
 import com.ssafy.unblur.domain.rtc.model.UserSession;
 import com.ssafy.unblur.domain.rtc.service.KurentoRoomService;
+import com.ssafy.unblur.domain.rtc.service.RtcParticipantStore;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.kurento.client.IceCandidate;
@@ -39,6 +40,11 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
     private final ConferenceLifecycleService conferenceLifecycleService;
 
     /**
+     * 참가자 저장소
+     */
+    private final RtcParticipantStore participantStore;
+
+    /**
      * 방 정보 저장소
      */
     private final Map<UUID, Room> rooms = new ConcurrentHashMap<>();
@@ -49,12 +55,16 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
         Room room = rooms.computeIfAbsent(conferenceId, this::createRoom);
         UserSession userSession = room.join(userId, session);
 
+        // 참가자 저장소에 등록
+        participantStore.add(conferenceId, userId);
+
         try {
             conferenceLifecycleService.onJoin(conferenceId, userId);
             return userSession;
 
         } catch (RuntimeException e) {
             room.leave(userId);
+            participantStore.remove(conferenceId, userId);
 
             if (room.isEmpty()) {
                 rooms.remove(conferenceId);
@@ -80,6 +90,9 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
     @Override
     public void leave(UUID conferenceId, UUID userId) {
         conferenceLifecycleService.onLeave(conferenceId, userId);
+
+        // 참가자 저장소에서 제거
+        participantStore.remove(conferenceId, userId);
 
         Room room = rooms.get(conferenceId);
         if (room == null) {
