@@ -1,7 +1,9 @@
-package com.ssafy.unblur.domain.match.service;
+﻿package com.ssafy.unblur.domain.match.service;
 
 import com.ssafy.unblur.common.exception.BaseException;
 import com.ssafy.unblur.common.exception.ErrorCode;
+import com.ssafy.unblur.domain.match.model.ConferenceRound;
+import com.ssafy.unblur.domain.match.repository.ConferenceRoundRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.io.FileSystemResource;
@@ -35,7 +37,7 @@ public class AiSummaryPipelineService {
     private final RestClient openAiRestClient;
     @Qualifier("geminiRestClient")
     private final RestClient geminiRestClient;
-    private final ConferenceRoundSummaryService conferenceRoundSummaryService;
+    private final ConferenceRoundRepository conferenceRoundRepository;
 
     @Transactional
     public void handleObjectCreated(String bucket, String objectKey) {
@@ -49,7 +51,10 @@ public class AiSummaryPipelineService {
             downloadFromMinio(bucket, decodedKey, tempFile);
             String transcript = transcribe(tempFile);
             String summary = summarize(transcript);
-        conferenceRoundSummaryService.saveSummary(meta.conferenceId(), meta.roundNumber(), summary);
+            ConferenceRound round = conferenceRoundRepository
+                    .findByConference_IdAndRoundNumber(meta.conferenceId(), meta.roundNumber())
+                    .orElseThrow(() -> new BaseException(ErrorCode.CONFERENCE_NOT_FOUND));
+            round.updateSummary(summary);
         } catch (IOException e) {
             throw new BaseException(ErrorCode.INTERNAL_SERVER_ERROR);
         } finally {
@@ -168,3 +173,4 @@ public class AiSummaryPipelineService {
         }
     }
 }
+
