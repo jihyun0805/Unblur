@@ -1,7 +1,7 @@
-package com.ssafy.unblur.domain.match.service.impl;
+package com.ssafy.unblur.common.service.impl;
 
-import com.ssafy.unblur.domain.match.model.event.SseMatchEventType;
-import com.ssafy.unblur.domain.match.service.MatchSseService;
+import com.ssafy.unblur.common.service.event.SseEventType;
+import com.ssafy.unblur.common.service.SseService;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 단일 인스턴스 환경을 가정한 인메모리 저장 방식이다
  */
 @Service
-public class InMemoryMatchSseServiceImpl implements MatchSseService {
+public class InMemorySseServiceImpl implements SseService {
 
     /**
      * 사용자별 SSE 연결 저장소
@@ -43,7 +43,7 @@ public class InMemoryMatchSseServiceImpl implements MatchSseService {
     }
 
     @Override
-    public void publish(UUID userId, SseMatchEventType type, Object data) {
+    public void publish(UUID userId, SseEventType type, Object data) {
         send(userId, type.eventName(), data);
     }
 

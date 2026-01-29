@@ -1,9 +1,9 @@
-package com.ssafy.unblur.domain.match.model.event;
+package com.ssafy.unblur.common.service.event;
 
 /**
  * SSE 매칭 이벤트 유형
  */
-public enum SseMatchEventType implements MatchEventType {
+public enum SseEventType implements EventType {
 
     /**
      * 빠른 매칭 대기 등록
@@ -57,7 +57,7 @@ public enum SseMatchEventType implements MatchEventType {
 
     private final String eventName;
 
-    SseMatchEventType(String eventName) {
+    SseEventType(String eventName) {
         this.eventName = eventName;
     }
 

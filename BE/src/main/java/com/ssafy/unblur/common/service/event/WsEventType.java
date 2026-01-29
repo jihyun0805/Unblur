@@ -1,9 +1,9 @@
-package com.ssafy.unblur.domain.match.model.event;
+package com.ssafy.unblur.common.service.event;
 
 /**
  * WebSocket 이벤트 유형
  */
-public enum WsEventType implements MatchEventType {
+public enum WsEventType implements EventType {
 
     // 라운드 관련
     ROUND_TIME_UP("round-time-up"),
