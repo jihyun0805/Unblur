@@ -5,6 +5,7 @@ import com.ssafy.unblur.domain.match.config.MatchConfig.RoundDurationPolicy;
 import com.ssafy.unblur.domain.rtc.dto.RoundMessages;
 import com.ssafy.unblur.domain.rtc.model.VoteState;
 import jakarta.annotation.PreDestroy;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.socket.TextMessage;
@@ -21,31 +22,54 @@ import java.util.concurrent.*;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class RoundTimerService {
 
+    /**
+     * 스케줄러 서비스
+     */
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(4);
+
+    /**
+     * 활성화된 타이머 저장 맵
+     * <p>
+     * Key: 세션 ID, Value: 타이머 Future 객체
+     */
     private final Map<UUID, ScheduledFuture<?>> activeTimers = new ConcurrentHashMap<>();
+
+    /**
+     * 세션별 참가자 목록 저장 맵
+     * <p>
+     * Key: 세션 ID, Value: 참가자 ID 목록
+     */
     private final Map<UUID, List<UUID>> conferenceParticipants = new ConcurrentHashMap<>();
 
+    /**
+     * 라운드 지속 시간 정책
+     */
     private final RoundDurationPolicy durationPolicy;
-    private final RtcSessionStore sessionStore;
-    private final RoundVoteStore voteStore;
-    private final ObjectMapper objectMapper;
 
-    public RoundTimerService(
-            RoundDurationPolicy durationPolicy,
-            RtcSessionStore sessionStore,
-            RoundVoteStore voteStore,
-            ObjectMapper objectMapper
-    ) {
-        this.durationPolicy = durationPolicy;
-        this.sessionStore = sessionStore;
-        this.voteStore = voteStore;
-        this.objectMapper = objectMapper;
-    }
+    /**
+     * RTC 세션 저장소
+     */
+    private final RtcSessionStore sessionStore;
+
+    /**
+     * 라운드 투표 저장소
+     */
+    private final RoundVoteStore voteStore;
+
+    /**
+     * JSON 객체 매퍼
+     */
+    private final ObjectMapper objectMapper;
 
     /**
      * 라운드 시작 시 타이머를 등록하는 메서드
+     *
+     * @param conferenceId   세션 ID
+     * @param roundNumber    라운드 번호
+     * @param participantIds 참가자 ID 목록
      */
     public void startRoundTimer(UUID conferenceId, int roundNumber, List<UUID> participantIds) {
         Duration duration = durationPolicy.getDuration(roundNumber);
@@ -78,9 +102,13 @@ public class RoundTimerService {
     }
 
     /**
-     * 라운드 시간 종료 시 호출
+     * 라운드 시간 종료 시 호출되는 메서드
+     *
+     * @param conferenceId 세션 ID
+     * @param roundNumber  라운드 번호
      */
     private void onRoundTimeUp(UUID conferenceId, int roundNumber) {
+        // 타이머 제거
         activeTimers.remove(conferenceId);
 
         log.info("라운드 {} 시간 종료. conferenceId={}", roundNumber, conferenceId);
@@ -88,10 +116,10 @@ public class RoundTimerService {
         // 투표 상태를 대기로 설정
         voteStore.setVoteState(conferenceId, VoteState.WAITING);
 
-        // 양쪽에게 알림
-        RoundMessages.RoundTimeUp message = RoundMessages.RoundTimeUp.of(
-                conferenceId.toString(), roundNumber);
+        // 시간 종료 메시지 생성
+        RoundMessages.RoundTimeUp message = RoundMessages.RoundTimeUp.of(conferenceId.toString(), roundNumber);
 
+        // 참가자들에게 메시지 전송
         List<UUID> participants = conferenceParticipants.get(conferenceId);
         if (participants != null) {
             for (UUID userId : participants) {
@@ -112,7 +140,7 @@ public class RoundTimerService {
     }
 
     /**
-     * 세션 종료 시 정리하는 메서드
+     * 세션 종료 시 타이머 및 상태를 정리하는 메서드
      */
     public void cleanup(UUID conferenceId) {
         cancelTimer(conferenceId);
@@ -156,6 +184,9 @@ public class RoundTimerService {
         }
     }
 
+    /**
+     * 서비스 종료 시 스케줄러를 정상 종료하는 메서드
+     */
     @PreDestroy
     public void shutdown() {
         scheduler.shutdown();
