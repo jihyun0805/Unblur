@@ -32,6 +32,10 @@ management:
 jwt:
   secret: ${JWT_SECRET}
 
+internal:
+  api:
+    token: ${INTERNAL_API_TOKEN}
+
 openai:
   api-key: ${GMS_KEY}
   embedding:
