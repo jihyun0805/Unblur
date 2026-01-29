@@ -3,7 +3,6 @@ package com.ssafy.unblur.domain.auth.dto;
 import com.ssafy.unblur.domain.auth.model.Gender;
 import com.ssafy.unblur.domain.auth.model.Mbti;
 import com.ssafy.unblur.domain.auth.model.Region;
-import io.netty.channel.ChannelHandler;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
@@ -51,7 +50,21 @@ public class SignupDto {
     @Schema(description = "지역 정보", example = "SEOUL")
     private Region region;
 
-    @Schema(description = "설문 상세 데이터 (JSON 형식)", example = "[{\"QuestionId\": \"1\", \"Answer\": \"B\"}, {\"QuestionId\": \"2\", \"Answer\": \"A\"}]")
+    @Schema(description = "설문 상세 데이터 (JSON 형식)", example = "[{\"Answer\": \"active\", \"QuestionId\": \"dateStyle\"}, \n" +
+            "{\"Answer\": \"voice\", \"QuestionId\": \"contactStyle\"}, \n" +
+            "{\"Answer\": \"thoughtful\", \"QuestionId\": \"conflictStyle\"}, \n" +
+            "{\"Answer\": \"saver\", \"QuestionId\": \"spending\"}, \n" +
+            "{\"Answer\": \"career\", \"QuestionId\": \"priority\"}, \n" +
+            "{\"Answer\": [\"any\"], \"QuestionId\": \"agePreference\"}, \n" +
+            "{\"Answer\": \"any\", \"QuestionId\": \"distancePreference\"}, \n" +
+            "{\"Answer\": \"smoker\", \"QuestionId\": \"smokingSelf\"}, \n" +
+            "{\"Answer\": \"nonsmoker\", \"QuestionId\": \"smokingPartner\"}, \n" +
+            "{\"Answer\": \"heavy\", \"QuestionId\": \"drinkingSelf\"}, \n" +
+            "{\"Answer\": \"light\", \"QuestionId\": \"drinkingPartner\"}, \n" +
+            "{\"Answer\": \"buddhist\", \"QuestionId\": \"religionSelf\"}, \n" +
+            "{\"Answer\": \"no-pressure\", \"QuestionId\": \"religionPartner\"}, \n" +
+            "{\"Answer\": \"allergy\", \"QuestionId\": \"petSelf\"}, \n" +
+            "{\"Answer\": \"prefer-none\", \"QuestionId\": \"petPartner\"}]")
     private List<Map<String, Object>> detailedInfo;
 
     @NotEmpty(message = "관심사를 최소 하나 이상 선택해주세요.")
