@@ -1,4 +1,4 @@
-package com.ssafy.unblur.domain.rtc.service;
+package com.ssafy.unblur.domain.match.service;
 
 import com.ssafy.unblur.common.service.event.WsEventType;
 import com.ssafy.unblur.domain.auth.model.User;
@@ -7,13 +7,12 @@ import com.ssafy.unblur.domain.match.model.Conference;
 import com.ssafy.unblur.domain.match.model.ConferenceRound;
 import com.ssafy.unblur.domain.match.model.ConferenceRoundStatus;
 import com.ssafy.unblur.domain.match.model.RoundVote;
+import com.ssafy.unblur.domain.match.model.VoteChoice;
+import com.ssafy.unblur.domain.match.model.VoteState;
 import com.ssafy.unblur.domain.match.repository.ConferenceRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRoundRepository;
 import com.ssafy.unblur.domain.match.repository.RoundVoteRepository;
-import com.ssafy.unblur.domain.match.service.MatchEventPublisher;
 import com.ssafy.unblur.domain.rtc.dto.RoundMessages;
-import com.ssafy.unblur.domain.rtc.model.VoteChoice;
-import com.ssafy.unblur.domain.rtc.model.VoteState;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

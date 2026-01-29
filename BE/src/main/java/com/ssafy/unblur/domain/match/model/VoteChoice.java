@@ -1,4 +1,4 @@
-package com.ssafy.unblur.domain.rtc.model;
+package com.ssafy.unblur.domain.match.model;
 
 /**
  * 라운드 진행 투표 선택

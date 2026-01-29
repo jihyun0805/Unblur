@@ -1,7 +1,7 @@
-package com.ssafy.unblur.domain.rtc.service;
+package com.ssafy.unblur.domain.match.service;
 
-import com.ssafy.unblur.domain.rtc.model.VoteChoice;
-import com.ssafy.unblur.domain.rtc.model.VoteState;
+import com.ssafy.unblur.domain.match.model.VoteChoice;
+import com.ssafy.unblur.domain.match.model.VoteState;
 
 import java.util.Map;
 import java.util.Optional;

@@ -9,7 +9,7 @@ import com.ssafy.unblur.domain.match.repository.ConferenceParticipantRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRoundRepository;
 import com.ssafy.unblur.domain.match.service.ConferenceLifecycleService;
-import com.ssafy.unblur.domain.rtc.service.RoundTimerService;
+import com.ssafy.unblur.domain.match.service.RoundTimerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

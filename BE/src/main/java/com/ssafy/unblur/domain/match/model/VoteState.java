@@ -1,4 +1,4 @@
-package com.ssafy.unblur.domain.rtc.model;
+package com.ssafy.unblur.domain.match.model;
 
 /**
  * 투표 진행 상태

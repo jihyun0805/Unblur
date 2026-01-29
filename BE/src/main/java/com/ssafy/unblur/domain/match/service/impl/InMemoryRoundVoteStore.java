@@ -1,8 +1,8 @@
-package com.ssafy.unblur.domain.rtc.service.impl;
+package com.ssafy.unblur.domain.match.service.impl;
 
-import com.ssafy.unblur.domain.rtc.model.VoteChoice;
-import com.ssafy.unblur.domain.rtc.model.VoteState;
-import com.ssafy.unblur.domain.rtc.service.RoundVoteStore;
+import com.ssafy.unblur.domain.match.model.VoteChoice;
+import com.ssafy.unblur.domain.match.model.VoteState;
+import com.ssafy.unblur.domain.match.service.RoundVoteStore;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
