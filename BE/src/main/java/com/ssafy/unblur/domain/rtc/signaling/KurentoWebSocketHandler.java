@@ -185,7 +185,7 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
         }
 
         // Kurento 룸 서비스에 입장 요청
-        UserSession userSession = kurentoRoomService.join(conferenceId, userId, session);
+        UserSession userSession = kurentoRoomService.join(conferenceId, userId);
         sessionInfos.put(session.getId(), new SessionInfo(conferenceId, userId));
         sessionStore.bindUser(session.getId(), userId);
 

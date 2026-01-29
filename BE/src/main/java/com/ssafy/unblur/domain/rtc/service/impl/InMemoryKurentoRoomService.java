@@ -15,7 +15,6 @@ import org.kurento.client.MediaPipeline;
 import org.kurento.client.WebRtcEndpoint;
 import org.kurento.jsonrpc.JsonRpcClientClosedException;
 import org.springframework.stereotype.Service;
-import org.springframework.web.socket.WebSocketSession;
 
 import java.util.Map;
 import java.util.UUID;
@@ -50,10 +49,10 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
     private final Map<UUID, Room> rooms = new ConcurrentHashMap<>();
 
     @Override
-    public UserSession join(UUID conferenceId, UUID userId, WebSocketSession session) {
+    public UserSession join(UUID conferenceId, UUID userId) {
         // 방이 없으면 새로 생성하고, 있으면 기존 방을 사용
         Room room = rooms.computeIfAbsent(conferenceId, this::createRoom);
-        UserSession userSession = room.join(userId, session);
+        UserSession userSession = room.join(userId);
 
         // 참가자 저장소에 등록
         participantStore.add(conferenceId, userId);
@@ -161,13 +160,12 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
         /**
          * 사용자 입장을 처리하는 메서드
          *
-         * @param userId  사용자 ID
-         * @param session WebSocket 세션
+         * @param userId 사용자 ID
          * @return 사용자 세션
          */
-        UserSession join(UUID userId, WebSocketSession session) {
+        UserSession join(UUID userId) {
             WebRtcEndpoint endpoint = new WebRtcEndpoint.Builder(pipeline).build();
-            UserSession userSession = new UserSession(userId, session, endpoint);
+            UserSession userSession = new UserSession(userId, endpoint);
             participants.put(userId, userSession);
             log.info("RTC 사용자 입장. conferenceId={}, userId={}, size={}", conferenceId, userId, participants.size());
             return userSession;
