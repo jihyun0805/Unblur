@@ -106,6 +106,7 @@ public class ConferenceLifecycleServiceImpl implements ConferenceLifecycleServic
         participantRepository.save(participant);
 
         lifecycleLock.lock();
+
         try {
             // 두 명이 모두 입장한 경우 세션을 활성화하고 1라운드 생성
             if (conference.getStatus() == ConferenceStatus.WAITING) {
@@ -163,6 +164,7 @@ public class ConferenceLifecycleServiceImpl implements ConferenceLifecycleServic
         }
 
         lifecycleLock.lock();
+
         try {
             // 남아 있는 참여자가 없으면 세션/라운드 종료
             long activeCount = participantRepository.countByConference_IdAndLeftAtIsNull(conferenceId);
@@ -171,6 +173,7 @@ public class ConferenceLifecycleServiceImpl implements ConferenceLifecycleServic
                 Conference conference = conferenceRepository.findById(conferenceId)
                         .orElse(null);
 
+                // 세션이 아직 종료되지 않은 경우에만 종료 처리
                 if (conference != null && conference.getStatus() != ConferenceStatus.COMPLETED) {
                     LocalDateTime now = LocalDateTime.now(clock);
                     conference.complete(now);
