@@ -3,12 +3,7 @@ package com.ssafy.unblur.domain.match.service;
 import com.ssafy.unblur.common.service.event.WsEventType;
 import com.ssafy.unblur.domain.auth.model.User;
 import com.ssafy.unblur.domain.auth.repository.UserRepository;
-import com.ssafy.unblur.domain.match.model.Conference;
-import com.ssafy.unblur.domain.match.model.ConferenceRound;
-import com.ssafy.unblur.domain.match.model.ConferenceRoundStatus;
-import com.ssafy.unblur.domain.match.model.RoundVote;
-import com.ssafy.unblur.domain.match.model.VoteChoice;
-import com.ssafy.unblur.domain.match.model.VoteState;
+import com.ssafy.unblur.domain.match.model.*;
 import com.ssafy.unblur.domain.match.repository.ConferenceRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRoundRepository;
 import com.ssafy.unblur.domain.match.repository.RoundVoteRepository;
@@ -22,9 +17,8 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * 라운드 투표 처리 서비스
@@ -34,29 +28,64 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class RoundVoteService {
 
+    /**
+     * 최대 라운드 수
+     */
     private static final int MAX_ROUND = 4;
 
+    /**
+     * 투표 상태 저장소
+     */
     private final RoundVoteStore voteStore;
+
+    /**
+     * 라운드 타이머 서비스
+     */
     private final RoundTimerService timerService;
 
+    /**
+     * 매칭 이벤트 퍼블리셔
+     */
     private final MatchEventPublisher eventPublisher;
 
+    /**
+     * 세션 저장소 레포지토리
+     */
     private final ConferenceRepository conferenceRepository;
+
+    /**
+     * 라운드 저장소 레포지토리
+     */
     private final ConferenceRoundRepository roundRepository;
+
+    /**
+     * 라운드 투표 저장소 레포지토리
+     */
     private final RoundVoteRepository roundVoteRepository;
+
+    /**
+     * 사용자 저장소 레포지토리
+     */
     private final UserRepository userRepository;
+
+    /**
+     * 기준 시각 제공용 Clock
+     */
     private final Clock clock;
 
     /**
      * 투표를 처리하는 메서드
+     *
+     * @param conferenceId 세션 ID
+     * @param userId       사용자 ID
+     * @param vote         투표 선택지
      */
     @Transactional
     public void processVote(UUID conferenceId, UUID userId, VoteChoice vote) {
         VoteState currentState = voteStore.getVoteState(conferenceId);
         List<UUID> participants = timerService.getParticipants(conferenceId);
 
-        log.info("투표 처리. conferenceId={}, userId={}, vote={}, state={}",
-                conferenceId, userId, vote, currentState);
+        log.info("투표 처리. conferenceId={}, userId={}, vote={}, state={}", conferenceId, userId, vote, currentState);
 
         // 재확인 상태인 경우
         if (currentState == VoteState.CONFIRMING) {
@@ -66,37 +95,41 @@ public class RoundVoteService {
 
         // 일반 투표 처리
         voteStore.vote(conferenceId, userId, vote);
-        int voteCount = voteStore.getVoteCount(conferenceId);
+        int voteCount = voteStore.getTotalVoteCount(conferenceId);
 
         if (voteCount == 1) {
-            // 첫 번째 투표: 상대방에게 알림
             voteStore.setVoteState(conferenceId, VoteState.PENDING);
-            notifyPartnerVoted(conferenceId, userId, participants);
 
         } else if (voteCount >= 2) {
-            // 두 번째 투표: 결과 판정
             voteStore.setVoteState(conferenceId, VoteState.COMPLETED);
             processVoteResult(conferenceId, participants);
         }
     }
 
     /**
-     * 재확인 투표 처리
+     * 재확인 투표 처리하는 메서드
+     *
+     * @param conferenceId 세션 ID
+     * @param userId       사용자 ID
+     * @param vote         투표 선택지
+     * @param participants 참가자 ID 리스트
      */
     private void handleConfirmingVote(UUID conferenceId, UUID userId, VoteChoice vote, List<UUID> participants) {
-        Optional<UUID> confirmingUser = voteStore.getConfirmingUser(conferenceId);
-
-        // 재확인 대상자만 투표 가능
-        if (confirmingUser.isEmpty() || !confirmingUser.get().equals(userId)) {
+        // 재확인 대상자(END 투표자) 조회
+        Set<UUID> endVoterIds = voteStore.getEndVoterIds(conferenceId);
+        if (endVoterIds.isEmpty() || !endVoterIds.contains(userId)) {
             log.warn("재확인 대상자가 아닌 사용자가 투표 시도. conferenceId={}, userId={}", conferenceId, userId);
             return;
         }
 
-        // 상대방(PROCEED 선택자) 찾기
-        UUID proceedVoter = participants.stream()
-                .filter(id -> !id.equals(userId))
-                .findFirst()
-                .orElse(null);
+        // 진행 투표자 조회
+        Set<UUID> proceedVoterIds = voteStore.getProceedVoterIds(conferenceId);
+        if (proceedVoterIds.isEmpty()) {
+            log.error("진행 투표자를 찾을 수 없습니다. conferenceId={}", conferenceId);
+            return;
+        }
+
+        UUID proceedVoter = proceedVoterIds.iterator().next();
 
         if (vote == VoteChoice.PROCEED) {
             // 재확인 후 진행 동의 → 다음 라운드 (둘 다 true로 저장)
@@ -111,40 +144,50 @@ public class RoundVoteService {
     }
 
     /**
-     * 투표 결과 처리
+     * 투표 결과 처리하는 메서드
+     *
+     * @param conferenceId 세션 ID
+     * @param participants 참가자 ID 리스트
      */
     private void processVoteResult(UUID conferenceId, List<UUID> participants) {
-        Map<UUID, VoteChoice> votes = voteStore.getAllVotes(conferenceId);
+        int proceedCount = voteStore.getProceedVoterCount(conferenceId);
+        int endCount = voteStore.getEndVoterCount(conferenceId);
 
-        long proceedCount = votes.values().stream().filter(v -> v == VoteChoice.PROCEED).count();
-        long endCount = votes.values().stream().filter(v -> v == VoteChoice.END).count();
+        Set<UUID> proceedVoterIds = voteStore.getProceedVoterIds(conferenceId);
+        Set<UUID> endVoterIds = voteStore.getEndVoterIds(conferenceId);
 
         log.info("투표 결과. conferenceId={}, proceed={}, end={}", conferenceId, proceedCount, endCount);
 
         if (proceedCount == 2) {
-            // 둘 다 진행 동의 → 다음 라운드 (둘 다 true로 저장)
-            saveVotesToDatabase(conferenceId, votes.entrySet().stream()
-                    .collect(Collectors.toMap(Map.Entry::getKey, e -> true)));
+            // 둘 다 진행 동의 → 다음 라운드 (둘 다 true로 DB에 저장)
+            saveVotesToDatabase(conferenceId, Map.of(
+                    proceedVoterIds.stream().findFirst().orElseThrow(), true,
+                    proceedVoterIds.stream().skip(1).findFirst().orElseThrow(), true
+            ));
             advanceToNextRound(conferenceId, participants);
 
         } else if (endCount == 2) {
-            // 둘 다 종료 동의 → 세션 종료 (둘 다 false로 저장)
-            saveVotesToDatabase(conferenceId, votes.entrySet().stream()
-                    .collect(Collectors.toMap(Map.Entry::getKey, e -> false)));
+            // 둘 다 종료 동의 → 세션 종료 (둘 다 false로 DB에 저장)
+            saveVotesToDatabase(conferenceId, Map.of(
+                    endVoterIds.stream().findFirst().orElseThrow(), false,
+                    endVoterIds.stream().skip(1).findFirst().orElseThrow(), false
+            ));
             endConference(conferenceId, participants);
 
         } else {
-            // 의견 불일치 → 거절자에게 재확인 요청 (아직 저장 안 함)
-            handleConflict(conferenceId, votes, participants);
+            // 의견 불일치 → 거절자에게 재확인 요청 (DB에 아직 저장 안 함)
+            handleConflict(conferenceId, proceedVoterIds, endVoterIds);
         }
     }
 
     /**
-     * 최종 투표 결과를 DB에 저장
+     * 최종 투표 결과를 DB에 저장하는 메서드
+     *
+     * @param conferenceId 세션 ID
+     * @param finalVotes   사용자 ID와 투표 결과 매핑
      */
     private void saveVotesToDatabase(UUID conferenceId, Map<UUID, Boolean> finalVotes) {
-        ConferenceRound activeRound = roundRepository
-                .findFirstByConference_IdAndStatus(conferenceId, ConferenceRoundStatus.ACTIVE)
+        ConferenceRound activeRound = roundRepository.findFirstByConference_IdAndStatus(conferenceId, ConferenceRoundStatus.ACTIVE)
                 .orElse(null);
 
         if (activeRound == null) {
@@ -156,70 +199,50 @@ public class RoundVoteService {
             UUID odlUserId = entry.getKey();
             boolean wantsContinue = entry.getValue();
 
-            // 기존 투표가 있으면 업데이트, 없으면 생성
-            RoundVote roundVote = roundVoteRepository
-                    .findByRound_IdAndUser_Id(activeRound.getId(), odlUserId)
-                    .orElseGet(() -> {
-                        User user = userRepository.findById(odlUserId).orElse(null);
-                        if (user == null) {
-                            log.warn("사용자를 찾을 수 없습니다. odlUserId={}", odlUserId);
-                            return null;
-                        }
-                        return RoundVote.builder()
-                                .round(activeRound)
-                                .user(user)
-                                .wantsContinue(wantsContinue)
-                                .build();
-                    });
-
-            if (roundVote != null) {
-                roundVote.updateVote(wantsContinue);
-                roundVoteRepository.save(roundVote);
-                log.info("투표 저장. roundId={}, odlUserId={}, wantsContinue={}",
-                        activeRound.getId(), odlUserId, wantsContinue);
+            User user = userRepository.findById(odlUserId).orElse(null);
+            if (user == null) {
+                log.warn("사용자를 찾을 수 없습니다. odlUserId={}", odlUserId);
+                continue;
             }
+
+            RoundVote roundVote = RoundVote.builder()
+                    .round(activeRound)
+                    .user(user)
+                    .wantsContinue(wantsContinue)
+                    .build();
+
+            roundVoteRepository.save(roundVote);
+
+            log.info("투표 저장. roundId={}, odlUserId={}, wantsContinue={}", activeRound.getId(), odlUserId, wantsContinue);
         }
     }
 
     /**
-     * 의견 불일치 시 거절자에게 재확인 요청
+     * 의견 불일치 시 거절자에게 재확인 요청하는 메서드
+     *
+     * @param conferenceId    세션 ID
+     * @param proceedVoterIds PROCEED 투표자 ID 목록
+     * @param endVoterIds     END 투표자 ID 목록
      */
-    private void handleConflict(UUID conferenceId, Map<UUID, VoteChoice> votes, List<UUID> participants) {
-        UUID endVoter = votes.entrySet().stream()
-                .filter(e -> e.getValue() == VoteChoice.END)
-                .map(Map.Entry::getKey)
-                .findFirst()
-                .orElse(null);
-
-        UUID proceedVoter = votes.entrySet().stream()
-                .filter(e -> e.getValue() == VoteChoice.PROCEED)
-                .map(Map.Entry::getKey)
-                .findFirst()
-                .orElse(null);
-
-        if (endVoter == null || proceedVoter == null) {
-            log.error("투표 결과 파싱 오류. conferenceId={}", conferenceId);
-            return;
-        }
+    private void handleConflict(UUID conferenceId, Set<UUID> proceedVoterIds, Set<UUID> endVoterIds) {
+        UUID endVoter = endVoterIds.iterator().next();
+        UUID proceedVoter = proceedVoterIds.iterator().next();
 
         log.info("의견 불일치. conferenceId={}, proceedVoter={}, endVoter={}", conferenceId, proceedVoter, endVoter);
 
-        // 투표 리셋 및 재확인 상태로 전환
-        voteStore.resetVotes(conferenceId);
+        // 재확인 상태로 전환 (투표 데이터는 유지 - 나중에 조회용)
         voteStore.setVoteState(conferenceId, VoteState.CONFIRMING);
-        voteStore.setConfirmingUser(conferenceId, endVoter);
 
         // 종료 선택자에게 재확인 요청
         RoundMessages.VoteConfirmRequest endVoterMessage = RoundMessages.VoteConfirmRequest.of(conferenceId.toString());
         eventPublisher.publish(endVoter, WsEventType.VOTE_CONFIRM_REQUEST, endVoterMessage);
-
-        // 진행 선택자에게 대기 알림
-        RoundMessages.VoteWaitingConfirm proceedVoterMessage = RoundMessages.VoteWaitingConfirm.of(conferenceId.toString());
-        eventPublisher.publish(proceedVoter, WsEventType.VOTE_WAITING_CONFIRM, proceedVoterMessage);
     }
 
     /**
-     * 다음 라운드로 진행
+     * 다음 라운드로 진행하는 메서드
+     *
+     * @param conferenceId 세션 ID
+     * @param participants 참가자 ID 리스트
      */
     private void advanceToNextRound(UUID conferenceId, List<UUID> participants) {
         LocalDateTime now = LocalDateTime.now(clock);
@@ -255,6 +278,7 @@ public class RoundVoteService {
                 .startedAt(now)
                 .status(ConferenceRoundStatus.ACTIVE)
                 .build();
+
         roundRepository.save(newRound);
         conferenceRepository.save(conference);
 
@@ -279,7 +303,10 @@ public class RoundVoteService {
     }
 
     /**
-     * 세션 종료
+     * 세션을 종료하는 메서드
+     *
+     * @param conferenceId 세션 ID
+     * @param participants 참가자 ID 리스트
      */
     private void endConference(UUID conferenceId, List<UUID> participants) {
         LocalDateTime now = LocalDateTime.now(clock);
@@ -314,16 +341,4 @@ public class RoundVoteService {
         timerService.cleanup(conferenceId);
     }
 
-    /**
-     * 상대방에게 투표 알림
-     */
-    private void notifyPartnerVoted(UUID conferenceId, UUID voterId, List<UUID> participants) {
-        RoundMessages.PartnerVoted message = RoundMessages.PartnerVoted.of(conferenceId.toString());
-
-        for (UUID userId : participants) {
-            if (!userId.equals(voterId)) {
-                eventPublisher.publish(userId, WsEventType.PARTNER_VOTED, message);
-            }
-        }
-    }
 }

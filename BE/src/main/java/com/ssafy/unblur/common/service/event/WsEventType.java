@@ -7,7 +7,6 @@ public enum WsEventType implements EventType {
 
     // 라운드 관련
     ROUND_TIME_UP("round-time-up"),
-    PARTNER_VOTED("partner-voted"),
     VOTE_CONFIRM_REQUEST("vote-confirm-request"),
     VOTE_WAITING_CONFIRM("vote-waiting-confirm"),
     ROUND_STARTED("round-started"),
