@@ -66,6 +66,9 @@ public class ConferenceRound {
     @Column(name = "ended_at")
     private LocalDateTime endedAt;
 
+    @Column(name = "summary_text", columnDefinition = "text")
+    private String summaryText;
+
     /**
      * 진행 상태
      */
