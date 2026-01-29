@@ -358,12 +358,8 @@ export function ProfilePage() {
     setShowDeleteConfirm(false)
   }
 
-  const getTemperatureColor = (temp: number) => {
-    if (temp >= 40) return "text-red-500"
-    if (temp >= 38) return "text-orange-500"
-    if (temp >= 36) return "text-green-500"
-    if (temp >= 34) return "text-blue-500"
-    return "text-blue-700"
+  const getTemperatureColor = (clarity: number) => {
+    return "text-primary"
   }
 
   const selectedInterestLabels = SURVEY_QUESTIONS.interests.options
@@ -391,7 +387,7 @@ export function ProfilePage() {
                 <div className="flex-1">
                   <h2 className="text-xl font-bold">{user?.nickname}</h2>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className={`text-sm font-medium ${getTemperatureColor(user?.temperature || 36.5)}`}>
+                    <span className={`text-sm font-medium ${getTemperatureColor(user?.temperature ?? 50)}`}>
                       {Math.round(user?.temperature || 0)}%
                     </span>
                     <span className="text-xs text-muted-foreground">선명도</span>

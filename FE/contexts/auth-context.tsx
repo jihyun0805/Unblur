@@ -156,9 +156,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateTemperature = (rating: number) => {
     if (user) {
-      const delta = (rating - 3) * 0.25 // 1점: -0.5, 3점: 0, 5점: +0.5
-      const newTemp = Math.max(30, Math.min(50, user.temperature + delta))
-      const updatedUser = { ...user, temperature: Math.round(newTemp * 10) / 10 }
+      const delta = (rating - 3) * 5 // 1점: -10, 3점: 0, 5점: +10
+      const newTemp = Math.max(0, Math.min(100, user.temperature + delta))
+      const updatedUser = { ...user, temperature: Math.round(newTemp) }
       setUser(updatedUser)
       localStorage.setItem("user", JSON.stringify(updatedUser))
     }

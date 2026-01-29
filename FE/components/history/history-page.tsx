@@ -42,7 +42,7 @@ export function HistoryPage() {
         <HistorySummary
           totalCount={history.length}
           totalDuration="-"
-          temperature={user?.temperature ?? 36.5}
+          temperature={user?.temperature ?? 50}
         />
 
         <div className="space-y-3">
