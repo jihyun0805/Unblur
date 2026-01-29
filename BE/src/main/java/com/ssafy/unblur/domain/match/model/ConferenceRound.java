@@ -66,6 +66,9 @@ public class ConferenceRound {
     @Column(name = "ended_at")
     private LocalDateTime endedAt;
 
+    @Column(name = "summary_text", columnDefinition = "text")
+    private String summaryText;
+
     /**
      * 진행 상태
      */
@@ -86,5 +89,9 @@ public class ConferenceRound {
             long seconds = java.time.Duration.between(startedAt, endedAt).getSeconds();
             this.durationSeconds = (int) Math.max(seconds, 0);
         }
+    }
+
+    public void updateSummary(String summaryText) {
+        this.summaryText = summaryText;
     }
 }

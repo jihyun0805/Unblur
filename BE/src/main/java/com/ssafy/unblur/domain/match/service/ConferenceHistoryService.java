@@ -13,6 +13,7 @@ import com.ssafy.unblur.domain.match.dto.PartnerProfileResponseDto;
 import com.ssafy.unblur.domain.match.model.Conference;
 import com.ssafy.unblur.domain.match.model.ConferenceParticipant;
 import com.ssafy.unblur.domain.match.repository.ConferenceParticipantRepository;
+import com.ssafy.unblur.domain.match.repository.ConferenceRoundRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -35,6 +36,7 @@ public class ConferenceHistoryService {
     private final UserRepository userRepository;
     private final ConferenceParticipantRepository conferenceParticipantRepository;
     private final ChatMessageRepository chatMessageRepository;
+    private final ConferenceRoundRepository conferenceRoundRepository;
 
     @Transactional(readOnly = true)
     public ConferenceHistoryResponseDto getMyConferenceHistory(String email, Pageable pageable) {
@@ -157,6 +159,14 @@ public class ConferenceHistoryService {
                 .findFirst()
                 .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
 
-        return PartnerProfileResponseDto.from(partner);
+        List<PartnerProfileResponseDto.RoundSummaryDto> roundSummaries = conferenceRoundRepository
+                .findByConference_IdOrderByRoundNumberAsc(conferenceId).stream()
+                .map(round -> new PartnerProfileResponseDto.RoundSummaryDto(
+                        round.getRoundNumber(),
+                        round.getSummaryText()
+                ))
+                .toList();
+
+        return PartnerProfileResponseDto.from(partner, roundSummaries);
     }
 }

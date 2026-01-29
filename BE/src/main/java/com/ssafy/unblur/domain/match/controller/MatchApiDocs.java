@@ -176,14 +176,14 @@ public interface MatchApiDocs {
             )
     )
     @ApiResponse(
-            responseCode = "404",
+            responseCode = "400",
             description = "대상 사용자를 찾을 수 없음",
             content = @Content(
                     schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
-                              "statusCode": 404,
+                              "statusCode": 400,
                               "message": "대상 사용자를 찾을 수 없습니다.",
                               "errorCode": "MATCH-003"
                             }""")
@@ -268,14 +268,14 @@ public interface MatchApiDocs {
             )
     )
     @ApiResponse(
-            responseCode = "404",
+            responseCode = "400",
             description = "대기열 요청을 찾을 수 없음",
             content = @Content(
                     schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
-                              "statusCode": 404,
+                              "statusCode": 400,
                               "message": "매칭 요청을 찾을 수 없습니다.",
                               "errorCode": "MATCH-001"
                             }""")
@@ -335,14 +335,14 @@ public interface MatchApiDocs {
             )
     )
     @ApiResponse(
-            responseCode = "404",
+            responseCode = "400",
             description = "매칭 요청을 찾을 수 없음",
             content = @Content(
                     schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
-                              "statusCode": 404,
+                              "statusCode": 400,
                               "message": "매칭 요청을 찾을 수 없습니다.",
                               "errorCode": "MATCH-001"
                             }""")
@@ -426,14 +426,14 @@ public interface MatchApiDocs {
             )
     )
     @ApiResponse(
-            responseCode = "404",
+            responseCode = "400",
             description = "매칭 요청을 찾을 수 없음",
             content = @Content(
                     schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
-                              "statusCode": 404,
+                              "statusCode": 400,
                               "message": "매칭 요청을 찾을 수 없습니다.",
                               "errorCode": "MATCH-001"
                             }""")
@@ -531,14 +531,14 @@ public interface MatchApiDocs {
             )
     )
     @ApiResponse(
-            responseCode = "404",
+            responseCode = "400",
             description = "매칭 요청을 찾을 수 없음",
             content = @Content(
                     schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
                               "isSuccess": false,
-                              "statusCode": 404,
+                              "statusCode": 400,
                               "message": "매칭 요청을 찾을 수 없습니다.",
                               "errorCode": "MATCH-001"
                             }""")

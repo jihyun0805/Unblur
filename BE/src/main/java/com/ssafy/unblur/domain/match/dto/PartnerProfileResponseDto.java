@@ -12,9 +12,20 @@ public record PartnerProfileResponseDto(
         String region,
         String mbti,
         String intro,
-        List<String> interestTags
+        List<String> interestTags,
+        List<RoundSummaryDto> roundSummaries
 ) {
+    public record RoundSummaryDto(
+            Integer roundNumber,
+            String summaryText
+    ) {
+    }
+
     public static PartnerProfileResponseDto from(User user) {
+        return from(user, List.of());
+    }
+
+    public static PartnerProfileResponseDto from(User user, List<RoundSummaryDto> roundSummaries) {
         return new PartnerProfileResponseDto(
                 user.getNickname(),
                 user.getClarityScore(),
@@ -23,7 +34,8 @@ public record PartnerProfileResponseDto(
                 user.getRegion() != null ? user.getRegion().name() : null,
                 user.getMbti() != null ? user.getMbti().name() : null,
                 user.getIntro(),
-                user.getInterestTags()
+                user.getInterestTags(),
+                roundSummaries
         );
     }
 }

@@ -72,7 +72,7 @@ public interface ConferenceHistoryApiDocs {
             )
     )
     @ApiResponse(
-            responseCode = "404",
+            responseCode = "400",
             description = "정보를 찾을 수 없음",
             content = @Content(
                     schema = @Schema(implementation = BaseResponse.class),
@@ -80,7 +80,7 @@ public interface ConferenceHistoryApiDocs {
                             @ExampleObject(name = "세션을 찾을 수 없음", value = """
                             {
                               "isSuccess": false,
-                              "statusCode": 404,
+                              "statusCode": 400,
                               "message": "세션을 찾을 수 없습니다.",
                               "errorCode": "CONF-001"
                             }
@@ -88,7 +88,7 @@ public interface ConferenceHistoryApiDocs {
                             @ExampleObject(name = "상대방을 찾을 수 없음", value = """
                             {
                               "isSuccess": false,
-                              "statusCode": 404,
+                              "statusCode": 400,
                               "message": "상대방 사용자를 찾을 수 없습니다.",
                               "errorCode": "USER-001"
                             }
