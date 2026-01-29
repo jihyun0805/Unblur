@@ -56,11 +56,6 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
     private final ObjectMapper objectMapper;
 
     /**
-     * 세션별 참가 정보(방/사용자) 보관 맵
-     */
-    private final Map<String, SessionInfo> sessionInfos = new ConcurrentHashMap<>();
-
-    /**
      * 세션별 메시지 전송 동기화용 락 맵
      */
     private final Map<String, Object> sessionLocks = new ConcurrentHashMap<>();
@@ -125,17 +120,19 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         log.info("WebSocket 종료. sessionId={}, code={}, reason={}", session.getId(), status.getCode(), status.getReason());
 
-        // 세션 정보 정리
-        SessionInfo info = sessionInfos.remove(session.getId());
-        sessionLocks.remove(session.getId());
+        // 세션 정보 조회
+        String sessionId = session.getId();
+        sessionLocks.remove(sessionId);
 
         // 룸 퇴장 처리
-        if (info != null && info.conferenceId != null) {
-            kurentoRoomService.leave(info.conferenceId, info.userId);
-        }
+        sessionStore.getConferenceId(sessionId).ifPresent(conferenceId ->
+                sessionStore.getUserId(sessionId).ifPresent(userId ->
+                        kurentoRoomService.leave(conferenceId, userId)
+                )
+        );
 
         // 세션 저장소에서 제거
-        sessionStore.remove(session.getId());
+        sessionStore.remove(sessionId);
     }
 
     @Override
@@ -158,7 +155,6 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
         }
 
         // 세션 정보 저장
-        sessionInfos.put(session.getId(), new SessionInfo(null, userId));
         sessionStore.bindUser(session.getId(), userId);
 
         // 등록 완료 메시지 전송
@@ -186,8 +182,8 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
 
         // Kurento 룸 서비스에 입장 요청
         UserSession userSession = kurentoRoomService.join(conferenceId, userId);
-        sessionInfos.put(session.getId(), new SessionInfo(conferenceId, userId));
         sessionStore.bindUser(session.getId(), userId);
+        sessionStore.bindConference(session.getId(), conferenceId);
 
         // ICE Candidate 이벤트 리스너 등록
         userSession.webRtcEndpoint().addIceCandidateFoundListener(event ->
@@ -416,12 +412,4 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
-    /**
-     * 세션별 사용자/방 정보를 담는 레코드
-     *
-     * @param conferenceId 방 ID
-     * @param userId       사용자 ID
-     */
-    private record SessionInfo(UUID conferenceId, UUID userId) {
-    }
 }
