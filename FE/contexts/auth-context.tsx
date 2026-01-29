@@ -1,8 +1,9 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-import { apiFetch, clearAuthToken, getAuthToken, setAuthToken } from "@/lib/api"
+import { clearAuthToken, getAuthToken } from "@/lib/api"
 import * as authApi from "@/lib/api/auth"
+import { getMyProfile, withdrawAccount } from "@/lib/api/user"
 
 export interface SurveyData {
   dateStyle?: string
@@ -75,8 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return
       }
       try {
-        const response = await apiFetch("/api/v1/users/me")
-        const userData = (await response.json()) as User
+        const userData = await getMyProfile()
         setUser(userData)
         localStorage.setItem("user", JSON.stringify(userData))
       } catch {
@@ -96,8 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // 로그인 성공 후 사용자 정보 조회
       try {
-        const response = await apiFetch("/api/v1/users/me")
-        const userData = (await response.json()) as User
+        const userData = await getMyProfile()
         setUser(userData)
         localStorage.setItem("user", JSON.stringify(userData))
         return true
@@ -168,9 +167,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const deleteAccount = async (password: string): Promise<boolean> => {
     try {
-      // TODO: 백엔드에 계정 삭제 API가 구현되면 연결
-      // 현재는 로그아웃만 수행
-      await logout()
+      // 비밀번호는 현재 API 스펙에 포함되지 않음
+      await withdrawAccount()
+      setUser(null)
+      clearAuthToken()
       return true
     } catch (error) {
       console.error("계정 삭제 실패:", error)
