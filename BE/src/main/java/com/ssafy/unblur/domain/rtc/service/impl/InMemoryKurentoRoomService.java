@@ -21,7 +21,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * ConcurrentHashMap 기반 Kurento 방 관리 구현체
+ * 인메모리 기반 Kurento 방 관리 구현체
  */
 @Slf4j
 @Service
@@ -58,6 +58,7 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
         participantStore.add(conferenceId, userId);
 
         try {
+            // 회의 생명주기 서비스에 입장 알림
             conferenceLifecycleService.onJoin(conferenceId, userId);
             return userSession;
 
@@ -88,6 +89,7 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
 
     @Override
     public void leave(UUID conferenceId, UUID userId) {
+        // 회의 생명주기 서비스에 퇴장 알림
         conferenceLifecycleService.onLeave(conferenceId, userId);
 
         // 참가자 저장소에서 제거
@@ -167,7 +169,9 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
             WebRtcEndpoint endpoint = new WebRtcEndpoint.Builder(pipeline).build();
             UserSession userSession = new UserSession(userId, endpoint);
             participants.put(userId, userSession);
+
             log.info("RTC 사용자 입장. conferenceId={}, userId={}, size={}", conferenceId, userId, participants.size());
+
             return userSession;
         }
 
@@ -190,6 +194,7 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
                     other.webRtcEndpoint().connect(userSession.webRtcEndpoint());
                 }
             }
+
             return sdpAnswer;
         }
 
