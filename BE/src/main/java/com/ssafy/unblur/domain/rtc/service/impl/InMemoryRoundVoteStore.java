@@ -18,6 +18,8 @@ public class InMemoryRoundVoteStore implements RoundVoteStore {
 
     /**
      * 세션별 투표 저장소
+     * <p>
+     * Key: 컨퍼런스 ID, Value: 세션별 투표 데이터
      */
     private final Map<UUID, ConferenceVoteData> conferenceVotes = new ConcurrentHashMap<>();
 
@@ -25,16 +27,6 @@ public class InMemoryRoundVoteStore implements RoundVoteStore {
     public void vote(UUID conferenceId, UUID userId, VoteChoice vote) {
         ConferenceVoteData data = conferenceVotes.computeIfAbsent(conferenceId, k -> new ConferenceVoteData());
         data.votes.put(userId, vote);
-    }
-
-    @Override
-    public Optional<VoteChoice> getVote(UUID conferenceId, UUID userId) {
-        ConferenceVoteData data = conferenceVotes.get(conferenceId);
-        if (data == null) {
-            return Optional.empty();
-        }
-
-        return Optional.ofNullable(data.votes.get(userId));
     }
 
     @Override
@@ -108,8 +100,22 @@ public class InMemoryRoundVoteStore implements RoundVoteStore {
      * 세션별 투표 데이터
      */
     private static class ConferenceVoteData {
+
+        /**
+         * 사용자별 투표 맵
+         * <p>
+         * Key: 사용자 ID, Value: 투표 선택
+         */
         final Map<UUID, VoteChoice> votes = new ConcurrentHashMap<>();
+
+        /**
+         * 투표 상태
+         */
         volatile VoteState state = VoteState.WAITING;
+
+        /**
+         * 재확인 대상 사용자 ID
+         */
         volatile UUID confirmingUserId;
     }
 }

@@ -22,19 +22,10 @@ public interface RoundVoteStore {
     void vote(UUID conferenceId, UUID userId, VoteChoice vote);
 
     /**
-     * 특정 사용자의 투표를 조회하는 메서드
-     *
-     * @param conferenceId 세션 ID
-     * @param userId       사용자 ID
-     * @return 투표 내용
-     */
-    Optional<VoteChoice> getVote(UUID conferenceId, UUID userId);
-
-    /**
      * 세션의 모든 투표를 조회하는 메서드
      *
      * @param conferenceId 세션 ID
-     * @return 사용자별 투표 맵
+     * @return 사용자별 투표 맵 (Key: 사용자 ID, Value: 투표 내용)
      */
     Map<UUID, VoteChoice> getAllVotes(UUID conferenceId);
 
