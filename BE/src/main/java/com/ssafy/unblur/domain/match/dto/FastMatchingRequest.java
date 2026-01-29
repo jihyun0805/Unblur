@@ -1,10 +1,9 @@
 package com.ssafy.unblur.domain.match.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.Data;
 
 import java.util.Map;
-
-import lombok.*;
 
 /**
  * 빠른 매칭 요청 DTO

@@ -1,5 +1,6 @@
 package com.ssafy.unblur.common.config;
 
+import com.ssafy.unblur.common.security.InternalTokenFilter;
 import com.ssafy.unblur.common.security.handler.CustomAccessDeniedHandler;
 import com.ssafy.unblur.common.security.handler.CustomAuthenticationEntryPoint;
 import com.ssafy.unblur.common.security.jwt.JWTFilter;
@@ -26,6 +27,7 @@ public class SecurityConfig {
     private final JWTUtil jwtUtil;
     private final CustomAuthenticationEntryPoint authenticationEntryPoint;
     private final CustomAccessDeniedHandler accessDeniedHandler;
+    private final InternalTokenFilter internalTokenFilter;
 
     @Bean // 비밀번호 암호화
     public BCryptPasswordEncoder passwordEncoder() {
@@ -62,11 +64,13 @@ public class SecurityConfig {
                                 "/api/v1/auth/check-nickname",
                                 "/api/v1/auth/reissue"
                         ).permitAll()
+                        .requestMatchers("/api/internal/**").permitAll()
                         // 인증된 사용자만 접근 가능
                         .requestMatchers("api/v1/auth/logout", "api/v1/users/withdraw").authenticated()
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(new JWTFilter(jwtUtil), UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(internalTokenFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(new JWTFilter(jwtUtil), InternalTokenFilter.class)
                 .build();
     }
 }

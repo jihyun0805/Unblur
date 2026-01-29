@@ -1,13 +1,6 @@
 package com.ssafy.unblur.domain.match.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -70,7 +63,7 @@ public class Conference {
     /**
      * 세션을 진행 상태로 전환하는 메서드
      *
-     * @param startedAt   시작 시각
+     * @param startedAt 시작 시각
      */
     public void activate(LocalDateTime startedAt) {
         this.status = ConferenceStatus.ACTIVE;
@@ -88,6 +81,7 @@ public class Conference {
         if (this.currentRound == null) {
             this.currentRound = 0;
         }
+
         this.currentRound = this.currentRound + 1;
     }
 

@@ -1,9 +1,9 @@
-package com.ssafy.unblur.domain.match.model;
+package com.ssafy.unblur.domain.match.model.event;
 
 /**
- * 매칭 이벤트 유형
+ * SSE 매칭 이벤트 유형
  */
-public enum MatchEventType {
+public enum SseMatchEventType implements MatchEventType {
 
     /**
      * 빠른 매칭 대기 등록
@@ -29,11 +29,6 @@ public enum MatchEventType {
      * 빠른 매칭 취소
      */
     QUICK_CANCELED("quick-match-canceled"),
-
-    /**
-     * 라운드 종료 알림
-     */
-    ROUND_ENDED("round-ended"),
 
     /**
      * 1:1 매칭 요청 수신
@@ -62,7 +57,7 @@ public enum MatchEventType {
 
     private final String eventName;
 
-    MatchEventType(String eventName) {
+    SseMatchEventType(String eventName) {
         this.eventName = eventName;
     }
 

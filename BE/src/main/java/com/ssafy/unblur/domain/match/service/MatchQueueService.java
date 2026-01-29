@@ -11,7 +11,7 @@ import java.util.UUID;
 /**
  * 매칭 대기열 저장소 인터페이스
  */
-public interface MatchQueueStore {
+public interface MatchQueueService {
 
     /**
      * 대기열 항목을 등록하는 메서드
@@ -37,13 +37,6 @@ public interface MatchQueueStore {
      * @return 대기열 항목
      */
     Optional<MatchQueueItem> findByUserId(UUID userId, MatchQueueType queueType);
-
-    /**
-     * 대기열 항목을 삭제하는 메서드
-     *
-     * @param requestId 요청 ID
-     */
-    void delete(UUID requestId);
 
     /**
      * 대기 중인 항목 목록을 조회하는 메서드

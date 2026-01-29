@@ -4,8 +4,14 @@ package com.ssafy.unblur.domain.match.model;
  * 라운드 진행 상태.
  */
 public enum ConferenceRoundStatus {
-    /** 진행 중 */
+
+    /**
+     * 진행 중
+     */
     ACTIVE,
-    /** 완료 */
+
+    /**
+     * 완료
+     */
     COMPLETED
 }

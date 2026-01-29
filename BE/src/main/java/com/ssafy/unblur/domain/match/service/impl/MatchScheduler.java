@@ -14,7 +14,7 @@ public class MatchScheduler {
     private final MatchQueueProcessor queueProcessor;
 
     /**
-     * 대기열을 주기적으로 처리
+     * 대기열을 주기적으로 처리하는 메서드
      */
     @Scheduled(fixedDelayString = "${match.queue.process-interval-ms:1000}")
     public void processQueue() {

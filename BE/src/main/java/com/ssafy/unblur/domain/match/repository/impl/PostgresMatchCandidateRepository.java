@@ -1,7 +1,7 @@
 package com.ssafy.unblur.domain.match.repository.impl;
 
-import com.ssafy.unblur.domain.match.repository.MatchCandidateRepository;
 import com.ssafy.unblur.domain.auth.model.User;
+import com.ssafy.unblur.domain.match.repository.MatchCandidateRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;

@@ -38,3 +38,5 @@ out/
 /docs/
 /.env
 /src/main/resources/ssl/
+/recordings/
+/.tmp/
