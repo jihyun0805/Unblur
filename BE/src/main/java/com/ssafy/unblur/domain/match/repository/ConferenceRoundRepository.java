@@ -4,6 +4,7 @@ import com.ssafy.unblur.domain.match.model.ConferenceRound;
 import com.ssafy.unblur.domain.match.model.ConferenceRoundStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -20,4 +21,6 @@ public interface ConferenceRoundRepository extends JpaRepository<ConferenceRound
      * @return 라운드 정보
      */
     Optional<ConferenceRound> findFirstByConference_IdAndStatus(UUID conferenceId, ConferenceRoundStatus status);
+
+    List<ConferenceRound> findByConference_IdOrderByRoundNumberAsc(UUID conferenceId);
 }
