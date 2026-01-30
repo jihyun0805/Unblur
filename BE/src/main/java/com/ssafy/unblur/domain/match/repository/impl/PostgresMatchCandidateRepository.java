@@ -27,7 +27,6 @@ public interface PostgresMatchCandidateRepository extends MatchCandidateReposito
                     where u.id in (:candidateIds)
                       and u.id <> :userId
                       and u.is_active = true
-                      and u.is_online = true
                       and u.interests_vector is not null
                       and (:gender is null or u.gender = cast(:gender as varchar))
                       and (:region is null or u.region = cast(:region as varchar))
