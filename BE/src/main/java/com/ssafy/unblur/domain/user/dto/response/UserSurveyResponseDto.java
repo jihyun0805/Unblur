@@ -1,24 +1,19 @@
-package com.ssafy.unblur.domain.user.dto;
+package com.ssafy.unblur.domain.user.dto.response;
 
 import com.ssafy.unblur.domain.auth.model.User;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Getter;
 
 import java.util.List;
 import java.util.Map;
 
-@Getter
 @Builder
-@AllArgsConstructor
-public class UserSurveyResponseDto {
+public record UserSurveyResponseDto(
     @Schema(description = "설문 상세 데이터 (JSON 형식)", example = "[{\"QuestionId\": \"1\", \"Answer\": \"B\"}, {\"QuestionId\": \"2\", \"Answer\": \"A\"}]")
-    private List<Map<String, Object>> detailedInfo;
+    List<Map<String, Object>> detailedInfo
+) {
 
     public static UserSurveyResponseDto from(User user) {
-        return UserSurveyResponseDto.builder()
-                .detailedInfo(user.getDetailedInfo())
-                .build();
+        return new UserSurveyResponseDto(user.getDetailedInfo());
     }
 }

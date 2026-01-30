@@ -1,8 +1,8 @@
 package com.ssafy.unblur.domain.auth.model;
 
-import com.ssafy.unblur.domain.auth.dto.SignupDto;
-import com.ssafy.unblur.domain.user.dto.UserProfileUpdateRequestDto;
-import com.ssafy.unblur.domain.user.dto.UserSurveyUpdateRequestDto;
+import com.ssafy.unblur.domain.auth.dto.request.SignupRequestDto;
+import com.ssafy.unblur.domain.user.dto.request.UserProfileUpdateRequestDto;
+import com.ssafy.unblur.domain.user.dto.request.UserSurveyUpdateRequestDto;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -180,18 +180,18 @@ public class User {
     /**
      * SignupDto와 암호화된 비밀번호를 받아 User 엔티티를 생성합니다.
      */
-    public static User from(SignupDto dto, String encodedPassword) {
+    public static User from(SignupRequestDto dto, String encodedPassword) {
         return User.builder()
-                .email(dto.getEmail())
+                .email(dto.email())
                 .password(encodedPassword)
-                .nickname(dto.getNickname())
-                .birthDate(dto.getBirthDate())
-                .gender(dto.getGender())
-                .region(dto.getRegion())
-                .detailedInfo(dto.getDetailedInfo())
-                .interestTags(dto.getInterestTags() != null ? dto.getInterestTags() : new ArrayList<>())
-                .mbti(dto.getMbti())
-                .intro(dto.getIntro())
+                .nickname(dto.nickname())
+                .birthDate(dto.birthDate())
+                .gender(dto.gender())
+                .region(dto.region())
+                .detailedInfo(dto.detailedInfo())
+                .interestTags(dto.interestTags() != null ? dto.interestTags() : new ArrayList<>())
+                .mbti(dto.mbti())
+                .intro(dto.intro())
                 .build();
     }
 
@@ -227,32 +227,32 @@ public class User {
      */
     public void updateProfile(UserProfileUpdateRequestDto dto) {
 
-        if (dto.getNickname() != null && !dto.getNickname().isBlank()) {
-            this.nickname = dto.getNickname();
+        if (dto.nickname() != null && !dto.nickname().isBlank()) {
+            this.nickname = dto.nickname();
         }
 
-        if (dto.getBirthDate() != null) {
-            this.birthDate = dto.getBirthDate();
+        if (dto.birthDate() != null) {
+            this.birthDate = dto.birthDate();
         }
 
-        if (dto.getGender() != null) {
-            this.gender = dto.getGender();
+        if (dto.gender() != null) {
+            this.gender = dto.gender();
         }
 
-        if (dto.getRegion() != null) {
-            this.region = dto.getRegion();
+        if (dto.region() != null) {
+            this.region = dto.region();
         }
 
-        if (dto.getMbti() != null) {
-            this.mbti = dto.getMbti();
+        if (dto.mbti() != null) {
+            this.mbti = dto.mbti();
         }
 
-        if (dto.getIntro() != null) {
-            this.intro = dto.getIntro();
+        if (dto.intro() != null) {
+            this.intro = dto.intro();
         }
 
-        if (dto.getInterestTags() != null) {
-            this.interestTags = dto.getInterestTags();
+        if (dto.interestTags() != null) {
+            this.interestTags = dto.interestTags();
         }
     }
 
@@ -260,8 +260,8 @@ public class User {
      * 사용자의 관심사/가치관 설문조사 정보를 업데이트 합니다.
      */
     public void updateSurvey(UserSurveyUpdateRequestDto dto) {
-        if (dto.getDetailedInfo() != null) {
-            this.detailedInfo = dto.getDetailedInfo();
+        if (dto.detailedInfo() != null) {
+            this.detailedInfo = dto.detailedInfo();
         }
     }
 

@@ -3,7 +3,7 @@ package com.ssafy.unblur.domain.auth.service;
 import com.ssafy.unblur.common.exception.BaseException;
 import com.ssafy.unblur.common.exception.ErrorCode;
 import com.ssafy.unblur.common.security.jwt.JWTUtil;
-import com.ssafy.unblur.domain.auth.dto.TokenReissueResultDto;
+import com.ssafy.unblur.domain.auth.dto.response.TokenReissueResponseDto;
 import com.ssafy.unblur.domain.auth.model.RefreshToken;
 import com.ssafy.unblur.domain.auth.model.User;
 import com.ssafy.unblur.domain.auth.repository.RefreshTokenRepository;
@@ -70,7 +70,7 @@ public class RefreshTokenService {
      *
      */
     @Transactional
-    public TokenReissueResultDto reissue(String refreshToken) {
+    public TokenReissueResponseDto reissue(String refreshToken) {
         if (refreshToken == null) {
             throw new BaseException(ErrorCode.INVALID_TOKEN);
         }
@@ -109,7 +109,7 @@ public class RefreshTokenService {
                 jwtUtil.getJti(newRefreshToken),
                 jwtUtil.getExpiration(newRefreshToken).toInstant());
 
-        return new TokenReissueResultDto(newAccessToken, newRefreshToken);
+        return new TokenReissueResponseDto(newAccessToken, newRefreshToken);
     }
 
     /**

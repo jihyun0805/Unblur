@@ -1,7 +1,7 @@
 package com.ssafy.unblur.domain.game.controller;
 
 import com.ssafy.unblur.common.response.BaseResponse;
-import com.ssafy.unblur.domain.game.dto.QuestionDictionaryResponseDto;
+import com.ssafy.unblur.domain.game.dto.response.QuestionDictionaryResponseDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;

@@ -1,8 +1,11 @@
-package com.ssafy.unblur.domain.match.dto;
+package com.ssafy.unblur.domain.match.dto.response;
+
+import lombok.Builder;
 
 import java.time.LocalDate;
 import java.util.UUID;
 
+@Builder
 public record ConferenceHistoryItemDto(
         UUID conferenceId,
         Integer currentRound,

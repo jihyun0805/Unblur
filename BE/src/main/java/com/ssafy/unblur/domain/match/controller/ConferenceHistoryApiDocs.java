@@ -1,8 +1,8 @@
 package com.ssafy.unblur.domain.match.controller;
 
 import com.ssafy.unblur.common.response.BaseResponse;
-import com.ssafy.unblur.domain.match.dto.ConferenceHistoryResponseDto;
-import com.ssafy.unblur.domain.match.dto.PartnerProfileResponseDto;
+import com.ssafy.unblur.domain.match.dto.response.ConferenceHistoryResponseDto;
+import com.ssafy.unblur.domain.match.dto.response.PartnerProfileResponseDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;

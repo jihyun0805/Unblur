@@ -8,7 +8,14 @@ import com.ssafy.unblur.domain.auth.model.Gender;
 import com.ssafy.unblur.domain.auth.model.User;
 import com.ssafy.unblur.domain.auth.repository.UserRepository;
 import com.ssafy.unblur.domain.match.config.MatchConfig.MatchPolicy;
-import com.ssafy.unblur.domain.match.dto.*;
+import com.ssafy.unblur.domain.match.dto.event.QuickMatchStageEvent;
+import com.ssafy.unblur.domain.match.dto.request.FastMatchingRequest;
+import com.ssafy.unblur.domain.match.dto.request.OneOnOneMatchRequest;
+import com.ssafy.unblur.domain.match.dto.response.MatchingQueueResponse;
+import com.ssafy.unblur.domain.match.dto.response.OneOnOneMatchResponse;
+import com.ssafy.unblur.domain.match.dto.response.OneOnOneMatchedResponse;
+import com.ssafy.unblur.domain.match.dto.response.OnlineUserDto;
+import com.ssafy.unblur.domain.match.dto.response.OnlineUserListResponse;
 import com.ssafy.unblur.domain.match.model.*;
 import com.ssafy.unblur.domain.match.repository.ConferenceParticipantRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRepository;
@@ -96,7 +103,7 @@ public class MatchServiceImpl implements MatchService {
                 .requesterUserId(userId)
                 .matchType(MatchType.QUICK)
                 .createdAt(LocalDateTime.now(clock))
-                .filters(request.getFilters())
+                .filters(request.filters())
                 .build();
 
         matchQueueService.save(item);
@@ -162,7 +169,7 @@ public class MatchServiceImpl implements MatchService {
         // 대상 사용자 ID 파싱
         UUID targetUserId;
         try {
-            targetUserId = UUID.fromString(request.getTargetUserId());
+            targetUserId = UUID.fromString(request.targetUserId());
 
         } catch (IllegalArgumentException e) {
             throw new BaseException(ErrorCode.MATCH_TARGET_NOT_FOUND);

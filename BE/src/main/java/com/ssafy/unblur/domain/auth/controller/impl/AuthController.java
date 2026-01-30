@@ -4,7 +4,11 @@ import com.ssafy.unblur.common.response.BaseResponse;
 import com.ssafy.unblur.common.security.jwt.JWTUtil;
 import com.ssafy.unblur.common.util.SecurityUtil;
 import com.ssafy.unblur.domain.auth.controller.AuthApiDocs;
-import com.ssafy.unblur.domain.auth.dto.*;
+import com.ssafy.unblur.domain.auth.dto.request.LoginRequestDto;
+import com.ssafy.unblur.domain.auth.dto.request.SignupRequestDto;
+import com.ssafy.unblur.domain.auth.dto.response.LoginResponseDto;
+import com.ssafy.unblur.domain.auth.dto.response.SignupResponseDto;
+import com.ssafy.unblur.domain.auth.dto.response.TokenReissueResponseDto;
 import com.ssafy.unblur.domain.auth.model.User;
 import com.ssafy.unblur.domain.auth.service.AuthService;
 import com.ssafy.unblur.domain.auth.service.RefreshTokenService;
@@ -29,8 +33,8 @@ public class AuthController implements AuthApiDocs {
 
     @Override
     @PostMapping("/register")
-    public ResponseEntity<BaseResponse<SignupResponseDto>> signUp(@Valid @RequestBody SignupDto signUpDto) {
-        String createdUserId = authService.signUp(signUpDto);
+    public ResponseEntity<BaseResponse<SignupResponseDto>> signUp(@Valid @RequestBody SignupRequestDto signupRequestDto) {
+        String createdUserId = authService.signUp(signupRequestDto);
         SignupResponseDto responseDto = new SignupResponseDto(createdUserId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(
@@ -87,13 +91,13 @@ public class AuthController implements AuthApiDocs {
             HttpServletResponse response
     ) {
         String refreshToken = extractRefreshTokenFromCookie(request);
-        TokenReissueResultDto result = refreshTokenService.reissue(refreshToken);
+        TokenReissueResponseDto result = refreshTokenService.reissue(refreshToken);
 
-        response.addHeader("Authorization", "Bearer " + result.getAccessToken());
-        response.addCookie(createRefreshTokenCookie(result.getRefreshToken()));
+        response.addHeader("Authorization", "Bearer " + result.accessToken());
+        response.addCookie(createRefreshTokenCookie(result.refreshToken()));
 
         return ResponseEntity.ok(
-                BaseResponse.onSuccess("토큰 재발행에 성공했습니다.", new LoginResponseDto(result.getAccessToken()))
+                BaseResponse.onSuccess("토큰 재발행에 성공했습니다.", new LoginResponseDto(result.accessToken()))
         );
     }
 

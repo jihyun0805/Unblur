@@ -1,6 +1,11 @@
 package com.ssafy.unblur.domain.match.service;
 
-import com.ssafy.unblur.domain.match.dto.*;
+import com.ssafy.unblur.domain.match.dto.request.FastMatchingRequest;
+import com.ssafy.unblur.domain.match.dto.request.OneOnOneMatchRequest;
+import com.ssafy.unblur.domain.match.dto.response.MatchingQueueResponse;
+import com.ssafy.unblur.domain.match.dto.response.OneOnOneMatchResponse;
+import com.ssafy.unblur.domain.match.dto.response.OneOnOneMatchedResponse;
+import com.ssafy.unblur.domain.match.dto.response.OnlineUserListResponse;
 
 import java.util.UUID;
 

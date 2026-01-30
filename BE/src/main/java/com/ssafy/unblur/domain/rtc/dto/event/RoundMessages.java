@@ -1,8 +1,7 @@
-package com.ssafy.unblur.domain.rtc.dto;
+package com.ssafy.unblur.domain.rtc.dto.event;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Builder;
-import lombok.Getter;
 
 /**
  * 라운드/투표 관련 WebSocket 메시지 모음
@@ -15,14 +14,19 @@ public final class RoundMessages {
     /**
      * 라운드 시간 종료 메시지
      */
-    @Getter
     @Builder
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    public static class RoundTimeUp {
-        private final String type = "round-time-up";
-        private final String conferenceId;
-        private final int roundNumber;
-        private final String message;
+    public record RoundTimeUp(
+            String type,
+            String conferenceId,
+            int roundNumber,
+            String message
+    ) {
+        public RoundTimeUp {
+            if (type == null) {
+                type = "round-time-up";
+            }
+        }
 
         public static RoundTimeUp of(String conferenceId, int roundNumber) {
             return RoundTimeUp.builder()
@@ -36,13 +40,18 @@ public final class RoundMessages {
     /**
      * 상대방 투표 완료 알림 메시지
      */
-    @Getter
     @Builder
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    public static class PartnerVoted {
-        private final String type = "partner-voted";
-        private final String conferenceId;
-        private final String message;
+    public record PartnerVoted(
+            String type,
+            String conferenceId,
+            String message
+    ) {
+        public PartnerVoted {
+            if (type == null) {
+                type = "partner-voted";
+            }
+        }
 
         public static PartnerVoted of(String conferenceId) {
             return PartnerVoted.builder()
@@ -55,13 +64,18 @@ public final class RoundMessages {
     /**
      * 투표 재확인 요청 메시지
      */
-    @Getter
     @Builder
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    public static class VoteConfirmRequest {
-        private final String type = "vote-confirm-request";
-        private final String conferenceId;
-        private final String message;
+    public record VoteConfirmRequest(
+            String type,
+            String conferenceId,
+            String message
+    ) {
+        public VoteConfirmRequest {
+            if (type == null) {
+                type = "vote-confirm-request";
+            }
+        }
 
         public static VoteConfirmRequest of(String conferenceId) {
             return VoteConfirmRequest.builder()
@@ -74,13 +88,18 @@ public final class RoundMessages {
     /**
      * 투표 재확인 대기 메시지
      */
-    @Getter
     @Builder
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    public static class VoteWaitingConfirm {
-        private final String type = "vote-waiting-confirm";
-        private final String conferenceId;
-        private final String message;
+    public record VoteWaitingConfirm(
+            String type,
+            String conferenceId,
+            String message
+    ) {
+        public VoteWaitingConfirm {
+            if (type == null) {
+                type = "vote-waiting-confirm";
+            }
+        }
 
         public static VoteWaitingConfirm of(String conferenceId) {
             return VoteWaitingConfirm.builder()
@@ -93,26 +112,36 @@ public final class RoundMessages {
     /**
      * 새 라운드 시작 메시지
      */
-    @Getter
     @Builder
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    public static class RoundStarted {
-        private final String type = "round-started";
-        private final String conferenceId;
-        private final int roundNumber;
-        private final boolean isUnlimited;
+    public record RoundStarted(
+            String type,
+            String conferenceId,
+            int roundNumber,
+            boolean isUnlimited
+    ) {
+        public RoundStarted {
+            if (type == null) {
+                type = "round-started";
+            }
+        }
     }
 
     /**
      * 세션 종료 메시지
      */
-    @Getter
     @Builder
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    public static class ConferenceEnded {
-        private final String type = "conference-ended";
-        private final String conferenceId;
-        private final String message;
+    public record ConferenceEnded(
+            String type,
+            String conferenceId,
+            String message
+    ) {
+        public ConferenceEnded {
+            if (type == null) {
+                type = "conference-ended";
+            }
+        }
 
         public static ConferenceEnded of(String conferenceId) {
             return ConferenceEnded.builder()

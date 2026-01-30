@@ -1,6 +1,6 @@
 package com.ssafy.unblur.domain.ai.controller.impl;
 
-import com.ssafy.unblur.common.dto.MinioEventRequest;
+import com.ssafy.unblur.domain.ai.dto.request.MinioEventRequest;
 import com.ssafy.unblur.common.response.BaseResponse;
 import com.ssafy.unblur.domain.ai.service.AiSummaryPipelineService;
 import lombok.RequiredArgsConstructor;

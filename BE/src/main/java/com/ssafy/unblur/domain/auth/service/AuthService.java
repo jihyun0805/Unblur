@@ -4,8 +4,8 @@ import com.ssafy.unblur.common.exception.BaseException;
 import com.ssafy.unblur.common.exception.ErrorCode;
 import com.ssafy.unblur.domain.survey.service.EmbeddingService;
 import com.ssafy.unblur.domain.survey.service.SurveyTextConverter;
-import com.ssafy.unblur.domain.auth.dto.LoginRequestDto;
-import com.ssafy.unblur.domain.auth.dto.SignupDto;
+import com.ssafy.unblur.domain.auth.dto.request.LoginRequestDto;
+import com.ssafy.unblur.domain.auth.dto.request.SignupRequestDto;
 import com.ssafy.unblur.domain.auth.model.User;
 import com.ssafy.unblur.domain.auth.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -32,14 +32,14 @@ public class AuthService {
      * 비밀번호를 암호화하여 데이터베이스에 유저 정보를 저장합니다.</p>
      */
     @Transactional
-    public String signUp(SignupDto signUpDto) {
-        validateDuplicateEmail(signUpDto.getEmail());
-        validateDuplicateNickname(signUpDto.getNickname());
+    public String signUp(SignupRequestDto signupRequestDto) {
+        validateDuplicateEmail(signupRequestDto.email());
+        validateDuplicateNickname(signupRequestDto.nickname());
 
-        String encodedPassword = bCryptPasswordEncoder.encode(signUpDto.getPassword());
-        User user = User.from(signUpDto, encodedPassword);
+        String encodedPassword = bCryptPasswordEncoder.encode(signupRequestDto.password());
+        User user = User.from(signupRequestDto, encodedPassword);
 
-        String surveyText = surveyTextConverter.convert(signUpDto.getDetailedInfo());
+        String surveyText = surveyTextConverter.convert(signupRequestDto.detailedInfo());
         if (surveyText != null) {
             float[] vector = embeddingService.embed(surveyText);
             if (vector != null) {
@@ -61,10 +61,10 @@ public class AuthService {
      */
     @Transactional
     public User login(LoginRequestDto loginRequestDto) {
-        User user = userRepository.findByEmail(loginRequestDto.getEmail())
+        User user = userRepository.findByEmail(loginRequestDto.email())
                 .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
 
-        if (!bCryptPasswordEncoder.matches(loginRequestDto.getPassword(), user.getPassword())) {
+        if (!bCryptPasswordEncoder.matches(loginRequestDto.password(), user.getPassword())) {
             throw new BaseException(ErrorCode.INVALID_CREDENTIALS);
         }
 

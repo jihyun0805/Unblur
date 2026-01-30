@@ -1,18 +1,18 @@
-package com.ssafy.unblur.domain.match.dto;
+package com.ssafy.unblur.domain.match.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
+import lombok.Builder;
 
 import java.util.Map;
 
 /**
  * 빠른 매칭 요청 DTO
  */
-@Data
+@Builder
 @Schema(description = "빠른 매칭 요청")
-public class FastMatchingRequest {
+public record FastMatchingRequest(
 
     @Schema(description = "추가 필터 (자유 형식)")
-    private Map<String, Object> filters;
-
+    Map<String, Object> filters
+) {
 }

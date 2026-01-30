@@ -1,4 +1,4 @@
-package com.ssafy.unblur.domain.match.dto;
+package com.ssafy.unblur.domain.match.dto.event;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;

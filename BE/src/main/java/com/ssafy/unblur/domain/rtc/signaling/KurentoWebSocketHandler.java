@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.unblur.common.exception.BaseException;
 import com.ssafy.unblur.common.exception.ErrorCode;
-import com.ssafy.unblur.domain.rtc.dto.SignalingMessages;
+import com.ssafy.unblur.domain.rtc.dto.event.SignalingMessages;
 import com.ssafy.unblur.domain.rtc.model.UserSession;
 import com.ssafy.unblur.domain.match.model.VoteChoice;
 import com.ssafy.unblur.domain.match.service.ConferenceLifecycleService;

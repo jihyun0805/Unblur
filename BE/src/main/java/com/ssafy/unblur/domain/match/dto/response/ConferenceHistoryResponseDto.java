@@ -1,7 +1,10 @@
-package com.ssafy.unblur.domain.match.dto;
+package com.ssafy.unblur.domain.match.dto.response;
+
+import lombok.Builder;
 
 import java.util.List;
 
+@Builder
 public record ConferenceHistoryResponseDto(
         ConferenceHistorySummaryDto summary,
         List<ConferenceHistoryItemDto> items,
@@ -11,4 +14,3 @@ public record ConferenceHistoryResponseDto(
         int totalPages
 ) {
 }
-

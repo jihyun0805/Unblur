@@ -1,9 +1,11 @@
-package com.ssafy.unblur.domain.match.dto;
+package com.ssafy.unblur.domain.match.dto.response;
 
 import com.ssafy.unblur.domain.auth.model.User;
+import lombok.Builder;
 
 import java.util.List;
 
+@Builder
 public record PartnerProfileResponseDto(
         String nickname,
         Integer clarityScore,
@@ -15,6 +17,7 @@ public record PartnerProfileResponseDto(
         List<String> interestTags,
         List<RoundSummaryDto> roundSummaries
 ) {
+    @Builder
     public record RoundSummaryDto(
             Integer roundNumber,
             String summaryText
