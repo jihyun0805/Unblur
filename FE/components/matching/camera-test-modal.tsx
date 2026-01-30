@@ -33,13 +33,11 @@ export function CameraTestModal({ open, onOpenChange, onReady }: CameraTestModal
   const [beautyFilter, setBeautyFilter] = useState({
     enabled: false,
     smoothness: 50,
-    brightness: 55,
     lipIntensity: 67,
-    underEyeIntensity: 35,
-    underEyeTone: 50,
   })
 
-  const isBeautyActive = beautyFilter.enabled && selectedBlur === BLUR_LEVELS.length - 1
+  const isFinalRound = selectedBlur === BLUR_LEVELS.length - 1
+  const isBeautyActive = beautyFilter.enabled && isFinalRound
 
   useEffect(() => {
     if (open) {
@@ -59,6 +57,12 @@ export function CameraTestModal({ open, onOpenChange, onReady }: CameraTestModal
       // Autoplay may be blocked; user interaction will start playback.
     })
   }, [stream, isBeautyActive])
+
+  useEffect(() => {
+    if (!isFinalRound && beautyFilter.enabled) {
+      setBeautyFilter((prev) => ({ ...prev, enabled: false }))
+    }
+  }, [isFinalRound, beautyFilter.enabled])
 
   const initCamera = async () => {
     // Check if mediaDevices API is available
@@ -235,10 +239,7 @@ export function CameraTestModal({ open, onOpenChange, onReady }: CameraTestModal
                       stream={stream}
                       blurLevel={currentBlur.level}
                       smoothness={beautyFilter.smoothness}
-                      brightness={beautyFilter.brightness}
                       lipIntensity={beautyFilter.lipIntensity}
-                      underEyeIntensity={beautyFilter.underEyeIntensity}
-                      underEyeTone={beautyFilter.underEyeTone}
                     />
                   </div>
                 )}
@@ -300,11 +301,16 @@ export function CameraTestModal({ open, onOpenChange, onReady }: CameraTestModal
               </div>
               <Switch
                 checked={beautyFilter.enabled}
-                onCheckedChange={(checked) => setBeautyFilter({ ...beautyFilter, enabled: checked })}
+                onCheckedChange={(checked) => setBeautyFilter((prev) => ({ ...prev, enabled: checked }))}
+                disabled={!isFinalRound}
               />
             </div>
 
-            {beautyFilter.enabled && (
+            {!isFinalRound && (
+              <p className="text-xs text-muted-foreground">뷰티 필터는 최종 라운드에서만 확인할 수 있어요.</p>
+            )}
+
+            {beautyFilter.enabled && isFinalRound && (
               <div className="space-y-4 pt-2">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -313,7 +319,7 @@ export function CameraTestModal({ open, onOpenChange, onReady }: CameraTestModal
                   </div>
                   <Slider
                     value={[beautyFilter.smoothness]}
-                    onValueChange={([value]) => setBeautyFilter({ ...beautyFilter, smoothness: value })}
+                    onValueChange={([value]) => setBeautyFilter((prev) => ({ ...prev, smoothness: value }))}
                     max={100}
                     step={1}
                     className="w-full"
@@ -326,26 +332,7 @@ export function CameraTestModal({ open, onOpenChange, onReady }: CameraTestModal
                   </div>
                   <Slider
                     value={[beautyFilter.lipIntensity]}
-                    onValueChange={([value]) => setBeautyFilter({ ...beautyFilter, lipIntensity: value })}
-                    max={100}
-                    step={1}
-                    className="w-full"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs text-muted-foreground">다크서클 보정</Label>
-                    <span className="text-xs text-muted-foreground">{beautyFilter.underEyeIntensity}%</span>
-                  </div>
-                  <Slider
-                    value={[beautyFilter.underEyeIntensity]}
-                    onValueChange={([value]) =>
-                      setBeautyFilter({
-                        ...beautyFilter,
-                        underEyeIntensity: value,
-                        underEyeTone: value,
-                      })
-                    }
+                    onValueChange={([value]) => setBeautyFilter((prev) => ({ ...prev, lipIntensity: value }))}
                     max={100}
                     step={1}
                     className="w-full"
