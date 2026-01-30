@@ -43,6 +43,7 @@ export function ProfilePage() {
   const [editingSurvey, setEditingSurvey] = useState(false)
   const [surveyStep, setSurveyStep] = useState(1)
   const SURVEY_TOTAL_STEPS = 4
+  const [testResultCode, setTestResultCode] = useState("")
   // birthDate 파싱 (예: "1995-03-15" -> year, month, day)
   const parseBirthDate = (birthDate?: string) => {
     if (!birthDate) return { year: "", month: "", day: "" }
@@ -163,6 +164,12 @@ export function ProfilePage() {
       setDeletePassword("")
     }
   }, [showDeleteConfirm])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const stored = localStorage.getItem("loveTestResult") || sessionStorage.getItem("loveTestResult") || ""
+    setTestResultCode(stored)
+  }, [])
 
   const checkNickname = async () => {
     if (basicData.nickname.trim().length < 2) {
@@ -366,6 +373,13 @@ export function ProfilePage() {
     .filter((option) => surveyData.interests.includes(option.value))
     .map((option) => option.label)
 
+  const getTestResultImage = (code?: string) => {
+    if (!code) return null
+    const normalized = code.trim().toUpperCase()
+    if (!/^[EI][FT][PS][DA]$/.test(normalized)) return null
+    return `/test/results/${normalized}.PNG`
+  }
+  const testResultImage = getTestResultImage(testResultCode)
 
   return (
     <>
@@ -381,9 +395,17 @@ export function ProfilePage() {
             <CardContent className="p-5">
               {/* 상단: 아바타 + 닉네임/온도 + 수정 버튼 */}
               <div className="flex items-center gap-4 pb-4">
-                <div className="w-14 h-14 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-                  <User className="w-7 h-7 text-primary-foreground" />
-                </div>
+                {testResultImage ? (
+                  <img
+                    src={testResultImage}
+                    alt={`${user?.mbti} 테스트 결과 이미지`}
+                    className="w-14 h-14 rounded-full object-cover bg-card flex-shrink-0"
+                  />
+                ) : (
+                  <div className="w-14 h-14 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                    <User className="w-7 h-7 text-primary-foreground" />
+                  </div>
+                )}
                 <div className="flex-1">
                   <h2 className="text-xl font-bold">{user?.nickname}</h2>
                   <div className="flex items-center gap-1.5 mt-0.5">
