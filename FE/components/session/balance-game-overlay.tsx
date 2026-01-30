@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { X, Heart, Loader2 } from "lucide-react"
+import { Heart, Loader2, X } from "lucide-react"
 
 interface BalanceGameOverlayProps {
   onClose: () => void
@@ -251,6 +251,9 @@ const QUESTIONS = [
   },
 ]
 
+const TIME_LIMIT_SECONDS = 10
+const START_LIMIT_SECONDS = 10
+
 export function BalanceGameOverlay({ onClose }: BalanceGameOverlayProps) {
   const questions = useMemo(() => {
     const shuffled = [...QUESTIONS]
@@ -261,10 +264,25 @@ export function BalanceGameOverlay({ onClose }: BalanceGameOverlayProps) {
     return shuffled
   }, [])
   const [currentQuestion, setCurrentQuestion] = useState(0)
-  const [myChoice, setMyChoice] = useState<"A" | "B" | null>(null)
-  const [partnerChoice, setPartnerChoice] = useState<"A" | "B" | null>(null)
+  const [myChoice, setMyChoice] = useState<"A" | "B" | "NONE" | null>(null)
+  const [partnerChoice, setPartnerChoice] = useState<"A" | "B" | "NONE" | null>(null)
   const [isWaiting, setIsWaiting] = useState(false)
   const [showResult, setShowResult] = useState(false)
+  const [gameStarted, setGameStarted] = useState(false)
+  const [myReady, setMyReady] = useState(false)
+  const [partnerReady, setPartnerReady] = useState(false)
+  const [timeLeft, setTimeLeft] = useState(TIME_LIMIT_SECONDS)
+  const [startTimeLeft, setStartTimeLeft] = useState(START_LIMIT_SECONDS)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const startTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const partnerAcceptRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const startIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const myReadyRef = useRef(false)
+  const partnerReadyRef = useRef(false)
+  const onCloseRef = useRef(onClose)
+  const myChoiceRef = useRef<"A" | "B" | "NONE" | null>(null)
+  const partnerChoiceRef = useRef<"A" | "B" | "NONE" | null>(null)
 
   const question = questions[currentQuestion]
 
@@ -276,10 +294,147 @@ export function BalanceGameOverlay({ onClose }: BalanceGameOverlayProps) {
     setTimeout(() => {
       const partnerPick = Math.random() > 0.5 ? "A" : "B"
       setPartnerChoice(partnerPick)
-      setIsWaiting(false)
-      setShowResult(true)
+      if (myChoiceRef.current) {
+        setShowResult(true)
+        setIsWaiting(false)
+      }
     }, 1500)
   }
+
+  const clearTimers = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current)
+      timeoutRef.current = null
+    }
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+      intervalRef.current = null
+    }
+    if (startTimeoutRef.current) {
+      clearTimeout(startTimeoutRef.current)
+      startTimeoutRef.current = null
+    }
+    if (partnerAcceptRef.current) {
+      clearTimeout(partnerAcceptRef.current)
+      partnerAcceptRef.current = null
+    }
+    if (startIntervalRef.current) {
+      clearInterval(startIntervalRef.current)
+      startIntervalRef.current = null
+    }
+  }
+
+  useEffect(() => clearTimers, [])
+
+  useEffect(() => {
+    myReadyRef.current = myReady
+    partnerReadyRef.current = partnerReady
+  }, [myReady, partnerReady])
+
+  useEffect(() => {
+    myChoiceRef.current = myChoice
+    partnerChoiceRef.current = partnerChoice
+  }, [myChoice, partnerChoice])
+
+  useEffect(() => {
+    if (!gameStarted && myReady && partnerReady) {
+      startGame()
+    }
+  }, [gameStarted, myReady, partnerReady])
+
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
+
+  const startGame = () => {
+    setGameStarted(true)
+    setCurrentQuestion(0)
+    setMyChoice(null)
+    setPartnerChoice(null)
+    setShowResult(false)
+    setIsWaiting(false)
+  }
+
+  useEffect(() => {
+    clearTimers()
+    if (!gameStarted || showResult) {
+      return
+    }
+
+    setTimeLeft(TIME_LIMIT_SECONDS)
+    const startedAt = Date.now()
+
+    intervalRef.current = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startedAt) / 1000)
+      setTimeLeft(Math.max(0, TIME_LIMIT_SECONDS - elapsed))
+    }, 200)
+
+    timeoutRef.current = setTimeout(() => {
+      setIsWaiting(false)
+      setMyChoice((prev) => prev ?? "NONE")
+      setPartnerChoice((prev) => prev ?? "NONE")
+      setShowResult(true)
+    }, TIME_LIMIT_SECONDS * 1000)
+
+    return clearTimers
+  }, [currentQuestion, gameStarted, showResult])
+
+  useEffect(() => {
+    if (!gameStarted || showResult) {
+      return
+    }
+
+    if (myChoice && partnerChoice) {
+      clearTimers()
+      setShowResult(true)
+      setIsWaiting(false)
+    }
+  }, [gameStarted, myChoice, partnerChoice, showResult])
+
+  useEffect(() => {
+    if (gameStarted) {
+      if (startTimeoutRef.current) {
+        clearTimeout(startTimeoutRef.current)
+        startTimeoutRef.current = null
+      }
+      if (startIntervalRef.current) {
+        clearInterval(startIntervalRef.current)
+        startIntervalRef.current = null
+      }
+      return
+    }
+
+    setStartTimeLeft(START_LIMIT_SECONDS)
+    const startedAt = Date.now()
+
+    if (!startIntervalRef.current) {
+      startIntervalRef.current = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - startedAt) / 1000)
+        setStartTimeLeft(Math.max(0, START_LIMIT_SECONDS - elapsed))
+      }, 200)
+    }
+
+    if (!startTimeoutRef.current) {
+      startTimeoutRef.current = setTimeout(() => {
+        if (myReadyRef.current && partnerReadyRef.current) {
+          startGame()
+        } else {
+          onCloseRef.current()
+        }
+      }, START_LIMIT_SECONDS * 1000)
+    }
+
+    return () => {
+      if (startTimeoutRef.current) {
+        clearTimeout(startTimeoutRef.current)
+        startTimeoutRef.current = null
+      }
+      if (startIntervalRef.current) {
+        clearInterval(startIntervalRef.current)
+        startIntervalRef.current = null
+      }
+    }
+  }, [gameStarted])
 
   const handleNext = () => {
     if (currentQuestion < QUESTIONS.length - 1) {
@@ -287,29 +442,96 @@ export function BalanceGameOverlay({ onClose }: BalanceGameOverlayProps) {
       setMyChoice(null)
       setPartnerChoice(null)
       setShowResult(false)
+      setIsWaiting(false)
     } else {
       onClose()
     }
   }
 
-  const isMatch = myChoice === partnerChoice
+  const isMatch = myChoice !== null && myChoice !== "NONE" && myChoice === partnerChoice
+  const isNoChoice = myChoice === "NONE"
+
+  useEffect(() => {
+    if (!showResult) {
+      return
+    }
+
+    const closeTimer = setTimeout(() => {
+      onCloseRef.current()
+    }, 10000)
+
+    return () => {
+      clearTimeout(closeTimer)
+    }
+  }, [showResult])
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
       <div className="w-full max-w-lg mx-4 bg-background rounded-2xl overflow-hidden">
         <div className="p-4 border-b border-border flex items-center justify-between">
           <h3 className="font-semibold">밸런스 게임</h3>
-          <div className="flex items-center gap-3">
-            <button onClick={onClose}>
+          {(showResult || !gameStarted) && (
+            <button onClick={onClose} aria-label="닫기">
               <X className="w-5 h-5 text-muted-foreground" />
             </button>
-          </div>
+          )}
         </div>
 
         <div className="p-6">
-          <h4 className="text-xl font-bold text-center mb-6">{question.question}</h4>
+          {!gameStarted ? (
+            <div className="space-y-6">
+              <div className="mb-1">
+                <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
+                  <span>남은 시간</span>
+                  <span>{startTimeLeft}초</span>
+                </div>
+                <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full bg-primary transition-[width] duration-200"
+                    style={{ width: `${((START_LIMIT_SECONDS - startTimeLeft) / START_LIMIT_SECONDS) * 100}%` }}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2 text-center">
+                <h4 className="text-xl font-bold">게임을 시작할까요?</h4>
+                <p className="text-sm text-muted-foreground">
+                  10초 동안 상대 또는 내가 선택하지 않으면 자동으로 종료돼요.
+                </p>
+              </div>
+              <Button
+                variant={myReady ? "default" : "outline"}
+                className={`w-full ${myReady ? "bg-primary text-primary-foreground" : ""}`}
+                onClick={() => {
+                  setMyReady(true)
+                  if (!partnerAcceptRef.current) {
+                    partnerAcceptRef.current = setTimeout(() => {
+                      setPartnerReady(true)
+                    }, 1500)
+                  }
+                }}
+                disabled={myReady}
+              >
+                시작하기
+              </Button>
+            </div>
+          ) : (
+            !showResult && (
+            <div className="mb-5">
+              <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
+                <span>남은 시간</span>
+                <span>{timeLeft}초</span>
+              </div>
+              <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full bg-primary transition-[width] duration-200"
+                  style={{ width: `${((TIME_LIMIT_SECONDS - timeLeft) / TIME_LIMIT_SECONDS) * 100}%` }}
+                />
+              </div>
+            </div>
+          ))}
+          {gameStarted && <h4 className="text-xl font-bold text-center mb-6">{question.question}</h4>}
 
-          {!showResult ? (
+          {gameStarted && !showResult ? (
             <div className="space-y-3">
               <Button
                 variant={myChoice === "A" ? "default" : "outline"}
@@ -341,41 +563,46 @@ export function BalanceGameOverlay({ onClose }: BalanceGameOverlayProps) {
                 </div>
               )}
             </div>
-          ) : (
+          ) : gameStarted ? (
             <div className="space-y-4">
-              <div className={`p-4 rounded-xl text-center ${isMatch ? "bg-green-100 border-2 border-green-500" : "bg-accent/30"}`}>
-                {isMatch ? (
-                  <div>
-                    <div className="flex items-center justify-center gap-2 mb-2">
-                      <Heart className="w-5 h-5 text-red-500 fill-red-500" />
-                      <span className="font-semibold text-green-700">취향이 같아요!</span>
-                    </div>
-                    <p className="text-sm text-green-600">이 주제로 대화를 나눠보세요</p>
-                  </div>
-                ) : (
-                  <div>
-                    <span className="font-semibold text-muted-foreground">서로 다른 취향이네요</span>
-                    <p className="text-sm text-muted-foreground mt-1">다양성도 좋아요!</p>
-                  </div>
-                )}
-              </div>
-
               <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 rounded-xl bg-card text-center">
-                  <p className="text-sm text-muted-foreground mb-1">나의 선택</p>
-                  <p className="font-semibold">{myChoice}</p>
+                <div
+                  className={`p-4 rounded-xl text-center ${
+                    myChoice === "A"
+                      ? "bg-pink-50 border-2 border-pink-200"
+                      : myChoice === "B"
+                        ? "bg-sky-50 border-2 border-sky-200"
+                        : "bg-card"
+                  }`}
+                >
+                  <p className="text-base text-muted-foreground mb-1">나의 선택</p>
+                  <p className="text-lg font-semibold">{myChoice === "NONE" || myChoice === null ? "선택 안함" : myChoice}</p>
                 </div>
-                <div className="p-4 rounded-xl bg-card text-center">
-                  <p className="text-sm text-muted-foreground mb-1">상대방 선택</p>
-                  <p className="font-semibold">{partnerChoice}</p>
+                <div
+                  className={`p-4 rounded-xl text-center ${
+                    partnerChoice === "A"
+                      ? "bg-pink-50 border-2 border-pink-200"
+                      : partnerChoice === "B"
+                        ? "bg-sky-50 border-2 border-sky-200"
+                        : "bg-card"
+                  }`}
+                >
+                  <p className="text-base text-muted-foreground mb-1">상대방 선택</p>
+                  <p className="text-lg font-semibold">
+                    {partnerChoice === "NONE" || partnerChoice === null ? "선택 안함" : partnerChoice}
+                  </p>
                 </div>
               </div>
+              {!isNoChoice && (
+                <div className="text-center text-sm text-muted-foreground">
+                  {isMatch
+                    ? "같은 걸 선택했어요. 이 주제로 대화를 나눠보세요!"
+                    : "서로 다른 의견이에요. 이 주제로 대화를 나눠보세요!"}
+                </div>
+              )}
 
-              <Button onClick={handleNext} className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
-                {currentQuestion < QUESTIONS.length - 1 ? "다음 질문" : "게임 종료"}
-              </Button>
             </div>
-          )}
+          ) : null}
         </div>
       </div>
     </div>
