@@ -180,13 +180,44 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
      */
     @Slf4j
     private static class Room {
+
+        /**
+         * 방 ID
+         */
         private final UUID conferenceId;
+
+        /**
+         * 미디어 파이프라인
+         */
         private final MediaPipeline pipeline;
+
+        /**
+         * 오디오 믹싱을 위한 Composite
+         */
         private final Composite composite;
+
+        /**
+         * 참가자 맵
+         * <p>
+         * Key: 사용자 ID, Value: 사용자 세션
+         */
         private final Map<UUID, UserSession> participants = new ConcurrentHashMap<>();
+
+        /**
+         * HubPort 맵
+         * <p>
+         * Key: 사용자 ID, Value: HubPort
+         */
         private final Map<UUID, HubPort> hubPorts = new ConcurrentHashMap<>();
 
+        /**
+         * 녹음기 엔드포인트
+         */
         private RecorderEndpoint recorder;
+
+        /**
+         * 녹음 파일 경로
+         */
         private Path recordingPath;
 
         /**
