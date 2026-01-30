@@ -277,6 +277,7 @@ public class MatchQueueProcessor {
                 candidateIds,
                 filters.gender() != null ? filters.gender().name() : null,
                 filters.region() != null ? filters.region().name() : null,
+                filters.loveDna() != null ? filters.loveDna().name() : null,
                 maxBirthDate,
                 minBirthDate,
                 limit
@@ -450,6 +451,10 @@ public class MatchQueueProcessor {
         }
 
         if (filters.region() != null && target.getRegion() != filters.region()) {
+            return false;
+        }
+
+        if (filters.loveDna() != null && target.getLoveDna() != filters.loveDna()) {
             return false;
         }
 
