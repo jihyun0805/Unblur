@@ -5,6 +5,7 @@ import com.ssafy.unblur.common.exception.ErrorCode;
 import com.ssafy.unblur.common.service.SseService;
 import com.ssafy.unblur.common.service.event.SseEventType;
 import com.ssafy.unblur.common.util.TransactionUtils;
+import com.ssafy.unblur.common.annotation.TimeWindow;
 import com.ssafy.unblur.domain.auth.model.Gender;
 import com.ssafy.unblur.domain.auth.model.User;
 import com.ssafy.unblur.domain.auth.repository.UserRepository;
@@ -81,6 +82,7 @@ public class MatchServiceImpl implements MatchService {
 
     @Override
     @Transactional
+//    @TimeWindow(start = "20:00", end = "02:00") // Todo: 테스트 이후 주석 해제
     public MatchingQueueResponse startQuickMatch(UUID userId, FastMatchingRequest request) {
         // 동일 사용자가 이미 대기 중이면 중복 등록 방지
         if (matchQueueService.existsWaiting(userId, MatchType.QUICK)) {
