@@ -25,6 +25,16 @@ public class InternalTokenFilter extends OncePerRequestFilter {
         String requestPath = request.getRequestURI();
         if (requestPath.startsWith("/api/internal/")) {
             String token = request.getHeader("X-Internal-Token");
+            if (token == null || token.isBlank()) {
+                String auth = request.getHeader("Authorization");
+                if (auth != null && !auth.isBlank()) {
+                    if (auth.startsWith("Bearer ")) {
+                        token = auth.substring("Bearer ".length()).trim();
+                    } else {
+                        token = auth.trim();
+                    }
+                }
+            }
             if (token == null || internalToken == null || internalToken.isBlank() || !internalToken.equals(token)) {
                 response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid internal token");
                 return;
