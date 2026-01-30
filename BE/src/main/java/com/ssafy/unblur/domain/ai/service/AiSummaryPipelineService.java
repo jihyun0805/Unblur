@@ -10,8 +10,8 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.client.MultipartBodyBuilder;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestClient;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
@@ -39,8 +39,8 @@ public class AiSummaryPipelineService {
     @Qualifier("geminiRestClient")
     private final RestClient geminiRestClient;
     private final ConferenceRoundRepository conferenceRoundRepository;
+    private final TransactionTemplate transactionTemplate;
 
-    @Transactional
     public void handleObjectCreated(String bucket, String objectKey) {
         String decodedKey = URLDecoder.decode(objectKey, StandardCharsets.UTF_8);
         String filename = decodedKey.substring(decodedKey.lastIndexOf('/') + 1);
@@ -53,10 +53,12 @@ public class AiSummaryPipelineService {
             downloadFromMinio(bucket, decodedKey, tempFile);
             String transcript = transcribe(tempFile);
             String summary = summarize(transcript);
-            ConferenceRound round = conferenceRoundRepository
-                    .findByConference_IdAndRoundNumber(meta.conferenceId(), meta.roundNumber())
-                    .orElseThrow(() -> new BaseException(ErrorCode.CONFERENCE_NOT_FOUND));
-            round.updateSummary(summary);
+            transactionTemplate.executeWithoutResult(status -> {
+                ConferenceRound round = conferenceRoundRepository
+                        .findByConference_IdAndRoundNumber(meta.conferenceId(), meta.roundNumber())
+                        .orElseThrow(() -> new BaseException(ErrorCode.CONFERENCE_NOT_FOUND));
+                round.updateSummary(summary);
+            });
             log.info("AI pipeline done: conferenceId={}, round={}", meta.conferenceId(), meta.roundNumber());
         } catch (IOException e) {
             log.error("AI pipeline IO error", e);
