@@ -10,6 +10,7 @@ import com.ssafy.unblur.domain.match.repository.ConferenceRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRoundRepository;
 import com.ssafy.unblur.domain.match.service.ConferenceLifecycleService;
 import com.ssafy.unblur.domain.match.service.RoundTimerService;
+import com.ssafy.unblur.domain.rtc.service.KurentoRoomService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -54,6 +55,11 @@ public class ConferenceLifecycleServiceImpl implements ConferenceLifecycleServic
      * 라운드 타이머 서비스
      */
     private final RoundTimerService roundTimerService;
+
+    /**
+     * Kurento 녹음 서비스
+     */
+    private final KurentoRoomService kurentoRoomService;
 
     /**
      * 기준 시각 제공용 Clock
@@ -130,6 +136,9 @@ public class ConferenceLifecycleServiceImpl implements ConferenceLifecycleServic
                             .stream()
                             .map(p -> p.getUser().getId())
                             .toList();
+
+                    // 1라운드 녹음 시작
+                    kurentoRoomService.startRecording(conferenceId, 1);
 
                     roundTimerService.startRoundTimer(conferenceId, 1, participantIds);
                 }

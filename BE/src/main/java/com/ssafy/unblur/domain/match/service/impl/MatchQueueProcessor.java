@@ -142,7 +142,8 @@ public class MatchQueueProcessor {
 
         for (MatchQueueItem item : matchQueueService.findAllWaitingByMatchType(MatchType.QUICK)) {
             if (isOlderThan(item, now, policy.timeout())) {
-                User user = findUser(item.getRequesterUserId());
+                User user = userRepository.findById(item.getRequesterUserId())
+                        .orElse(null);
 
                 // 사용자 정보를 찾지 못하면 타임아웃 처리
                 if (user == null) {
@@ -191,7 +192,9 @@ public class MatchQueueProcessor {
                     publishRelaxedEvent(item, now);
                 }
 
-                User user = findUser(item.getRequesterUserId());
+                User user = userRepository.findById(item.getRequesterUserId())
+                        .orElse(null);
+
                 if (user == null) {
                     continue;
                 }
@@ -290,7 +293,9 @@ public class MatchQueueProcessor {
             }
 
             // 상대 사용자 정보 조회(벡터가 없으면 스킵)
-            User targetUser = findUser(targetItem.getRequesterUserId());
+            User targetUser = userRepository.findById(targetItem.getRequesterUserId())
+                    .orElse(null);
+
             if (targetUser == null || targetUser.getInterestsVector() == null) {
                 continue;
             }
@@ -411,16 +416,6 @@ public class MatchQueueProcessor {
         }
 
         return bestPair;
-    }
-
-    /**
-     * 사용자 ID로 사용자 정보를 조회하는 메서드
-     *
-     * @param userId 사용자 ID
-     * @return 사용자, 없으면 null
-     */
-    private User findUser(UUID userId) {
-        return userRepository.findById(userId).orElse(null);
     }
 
     /**

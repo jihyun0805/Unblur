@@ -62,4 +62,20 @@ public interface KurentoRoomService {
      */
     void leave(UUID conferenceId, UUID userId);
 
+    /**
+     * 녹음을 시작하는 메서드
+     *
+     * @param conferenceId 방 ID
+     * @param roundNumber  라운드 번호
+     */
+    void startRecording(UUID conferenceId, int roundNumber);
+
+    /**
+     * 녹음을 중지하고 파일을 업로드하는 메서드
+     *
+     * @param conferenceId 방 ID
+     * @param roundNumber  라운드 번호
+     */
+    void stopRecordingAndUpload(UUID conferenceId, int roundNumber);
+
 }
