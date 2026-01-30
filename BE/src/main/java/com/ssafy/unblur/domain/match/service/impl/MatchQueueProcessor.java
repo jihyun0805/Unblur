@@ -10,6 +10,7 @@ import com.ssafy.unblur.domain.match.dto.QuickMatchResultEvent;
 import com.ssafy.unblur.domain.match.dto.QuickMatchStageEvent;
 import com.ssafy.unblur.domain.match.model.*;
 import com.ssafy.unblur.common.service.event.SseEventType;
+import com.ssafy.unblur.common.util.TransactionUtils;
 import com.ssafy.unblur.domain.match.repository.ConferenceParticipantRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRepository;
 import com.ssafy.unblur.domain.match.repository.MatchCandidateRepository;
@@ -551,8 +552,10 @@ public class MatchQueueProcessor {
                 .matchedAt(matchedAt)
                 .build();
 
-        eventPublisher.publish(left.getRequesterUserId(), SseEventType.QUICK_MATCHED, leftEvent);
-        eventPublisher.publish(right.getRequesterUserId(), SseEventType.QUICK_MATCHED, rightEvent);
+        TransactionUtils.runAfterCommit(() -> {
+            eventPublisher.publish(left.getRequesterUserId(), SseEventType.QUICK_MATCHED, leftEvent);
+            eventPublisher.publish(right.getRequesterUserId(), SseEventType.QUICK_MATCHED, rightEvent);
+        });
     }
 
     /**
