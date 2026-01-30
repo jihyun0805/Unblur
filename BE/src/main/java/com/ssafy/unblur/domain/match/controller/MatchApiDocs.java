@@ -39,7 +39,7 @@ public interface MatchApiDocs {
                             schema = @Schema(implementation = FastMatchingRequest.class),
                             examples = @ExampleObject(value = """
                                     {
-                                      "filters": {"ageMin": 24, "ageMax": 32}
+                                      "filters": {"ageMin": 24, "ageMax": 32, "gender": "FEMALE", "region": "SEOUL", "loveDna": "EFPD"}
                                     }"""))
             )
     )

@@ -34,6 +34,9 @@ public record UserProfileResponseDto(
     @Schema(description = "MBTI 유형", example = "ENFJ", nullable = true)
     String mbti,
 
+    @Schema(description = "연애 성향 유형", example = "EFPD", nullable = true)
+    String loveDna,
+
     @Schema(description = "한 줄 소개 (자기소개)", example = "반갑습니다!", nullable = true)
     String intro,
 
@@ -48,19 +51,20 @@ public record UserProfileResponseDto(
 ) {
 
     public static UserProfileResponseDto from(User user) {
-        return new UserProfileResponseDto(
-                user.getId(),
-                user.getEmail(),
-                user.getNickname(),
-                user.getAge(),
-                user.getBirthDate().toString(),
-                user.getGender().name(),
-                user.getRegion() != null ? user.getRegion().name() : null,
-                user.getMbti() != null ? user.getMbti().name() : null,
-                user.getIntro(),
-                user.getDetailedInfo(),
-                user.getInterestTags(),
-                user.getClarityScore()
-        );
+        return UserProfileResponseDto.builder()
+                .id(user.getId())
+                .email(user.getEmail())
+                .nickname(user.getNickname())
+                .age(user.getAge())
+                .birthDate(user.getBirthDate().toString())
+                .gender(user.getGender().name())
+                .region(user.getRegion() != null ? user.getRegion().name() : null)
+                .mbti(user.getMbti() != null ? user.getMbti().name() : null)
+                .loveDna(user.getLoveDna() != null ? user.getLoveDna().name() : null)
+                .intro(user.getIntro())
+                .detailedInfo(user.getDetailedInfo())
+                .interestTags(user.getInterestTags())
+                .clarityScore(user.getClarityScore())
+                .build();
     }
 }

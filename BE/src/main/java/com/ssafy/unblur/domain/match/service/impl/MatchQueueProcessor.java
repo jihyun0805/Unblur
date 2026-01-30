@@ -10,6 +10,7 @@ import com.ssafy.unblur.domain.match.dto.event.QuickMatchResultEvent;
 import com.ssafy.unblur.domain.match.dto.event.QuickMatchStageEvent;
 import com.ssafy.unblur.domain.match.model.*;
 import com.ssafy.unblur.common.service.event.SseEventType;
+import com.ssafy.unblur.common.util.TransactionUtils;
 import com.ssafy.unblur.domain.match.repository.ConferenceParticipantRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRepository;
 import com.ssafy.unblur.domain.match.repository.MatchCandidateRepository;
@@ -276,6 +277,7 @@ public class MatchQueueProcessor {
                 candidateIds,
                 filters.gender() != null ? filters.gender().name() : null,
                 filters.region() != null ? filters.region().name() : null,
+                filters.loveDna() != null ? filters.loveDna().name() : null,
                 maxBirthDate,
                 minBirthDate,
                 limit
@@ -452,6 +454,10 @@ public class MatchQueueProcessor {
             return false;
         }
 
+        if (filters.loveDna() != null && target.getLoveDna() != filters.loveDna()) {
+            return false;
+        }
+
         if (target.getBirthDate() == null) {
             // 나이 정보가 없으면 요청 필터도 비어있어야 통과
             return filters.ageMin() == null && filters.ageMax() == null;
@@ -551,8 +557,10 @@ public class MatchQueueProcessor {
                 .matchedAt(matchedAt)
                 .build();
 
-        eventPublisher.publish(left.getRequesterUserId(), SseEventType.QUICK_MATCHED, leftEvent);
-        eventPublisher.publish(right.getRequesterUserId(), SseEventType.QUICK_MATCHED, rightEvent);
+        TransactionUtils.runAfterCommit(() -> {
+            eventPublisher.publish(left.getRequesterUserId(), SseEventType.QUICK_MATCHED, leftEvent);
+            eventPublisher.publish(right.getRequesterUserId(), SseEventType.QUICK_MATCHED, rightEvent);
+        });
     }
 
     /**

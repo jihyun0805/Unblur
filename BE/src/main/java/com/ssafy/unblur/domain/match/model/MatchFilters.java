@@ -1,6 +1,7 @@
 package com.ssafy.unblur.domain.match.model;
 
 import com.ssafy.unblur.domain.auth.model.Gender;
+import com.ssafy.unblur.domain.auth.model.LoveDna;
 import com.ssafy.unblur.domain.auth.model.Region;
 
 import java.util.Map;
@@ -12,12 +13,14 @@ import java.util.Map;
  * @param ageMax 최대 나이
  * @param gender 선호 성별
  * @param region 선호 지역
+ * @param loveDna 선호 Love DNA
  */
 public record MatchFilters(
         Integer ageMin,
         Integer ageMax,
         Gender gender,
-        Region region
+        Region region,
+        LoveDna loveDna
 ) {
 
     /**
@@ -30,15 +33,16 @@ public record MatchFilters(
      */
     public static MatchFilters from(Map<String, Object> filters) {
         if (filters == null) {
-            return new MatchFilters(null, null, null, null);
+            return new MatchFilters(null, null, null, null, null);
         }
 
         Integer ageMin = toInteger(filters.get("ageMin"));
         Integer ageMax = toInteger(filters.get("ageMax"));
         Gender gender = toGender(filters.get("gender"));
         Region region = toRegion(filters.get("region"));
+        LoveDna loveDna = toLoveDna(filters.get("loveDna"));
 
-        return new MatchFilters(ageMin, ageMax, gender, region);
+        return new MatchFilters(ageMin, ageMax, gender, region, loveDna);
     }
 
     private static Integer toInteger(Object value) {
@@ -92,6 +96,26 @@ public record MatchFilters(
         String raw = value.toString().trim().toUpperCase();
         try {
             return Region.valueOf(raw);
+
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Love DNA 값을 LoveDna로 변환하는 메서드
+     *
+     * @param value 원본 값
+     * @return 변환된 LoveDna, 없으면 null
+     */
+    private static LoveDna toLoveDna(Object value) {
+        if (value == null) {
+            return null;
+        }
+
+        String raw = value.toString().trim().toUpperCase();
+        try {
+            return LoveDna.valueOf(raw);
 
         } catch (IllegalArgumentException e) {
             return null;

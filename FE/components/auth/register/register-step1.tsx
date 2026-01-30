@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import type React from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -42,6 +43,7 @@ export function RegisterStep1({
   onNext,
   onSwitchToLogin,
 }: RegisterStep1Props) {
+  const [showNicknameLimit, setShowNicknameLimit] = useState(false)
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     onNext()
@@ -58,7 +60,15 @@ export function RegisterStep1({
             placeholder="소개팅에서 사용할 닉네임"
             value={formData.nickname}
             onChange={(e) => {
-              updateFormData({ nickname: e.target.value })
+              const newValue = e.target.value
+              if (newValue.length <= 10) {
+                updateFormData({ nickname: newValue })
+                if (showNicknameLimit) {
+                  setShowNicknameLimit(false)
+                }
+                return
+              }
+              setShowNicknameLimit(true)
             }}
             className="bg-input flex-1"
           />
@@ -71,6 +81,7 @@ export function RegisterStep1({
             {nicknameAvailable ? "사용 가능한 닉네임입니다." : "이미 사용 중인 닉네임입니다."}
           </p>
         )}
+        {showNicknameLimit ? <p className="text-sm text-destructive">닉네임은 최대 10자까지 입력할 수 있습니다.</p> : null}
       </div>
       <div className="space-y-2">
         <Label htmlFor="reg-email">이메일</Label>

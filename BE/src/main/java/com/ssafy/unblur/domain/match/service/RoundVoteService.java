@@ -1,6 +1,7 @@
 package com.ssafy.unblur.domain.match.service;
 
 import com.ssafy.unblur.common.service.event.WsEventType;
+import com.ssafy.unblur.common.util.TransactionUtils;
 import com.ssafy.unblur.domain.auth.model.User;
 import com.ssafy.unblur.domain.auth.repository.UserRepository;
 import com.ssafy.unblur.domain.match.model.*;
@@ -20,6 +21,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * 라운드 투표 처리 서비스
@@ -80,6 +83,11 @@ public class RoundVoteService {
     private final KurentoRoomService kurentoRoomService;
 
     /**
+     * 라운드 투표 처리 동시성 보호용 락
+     */
+    private final Map<UUID, ReentrantLock> voteLocks = new ConcurrentHashMap<>();
+
+    /**
      * 투표를 처리하는 메서드
      *
      * @param conferenceId 세션 ID
@@ -88,27 +96,40 @@ public class RoundVoteService {
      */
     @Transactional
     public void processVote(UUID conferenceId, UUID userId, VoteChoice vote) {
-        VoteState currentState = voteStore.getVoteState(conferenceId);
-        List<UUID> participants = timerService.getParticipants(conferenceId);
+        ReentrantLock lock = voteLocks.computeIfAbsent(conferenceId, id -> new ReentrantLock());
+        lock.lock();
 
-        log.info("투표 처리. conferenceId={}, userId={}, vote={}, state={}", conferenceId, userId, vote, currentState);
+        try {
+            VoteState currentState = voteStore.getVoteState(conferenceId);
+            List<UUID> participants = timerService.getParticipants(conferenceId);
 
-        // 재확인 상태인 경우
-        if (currentState == VoteState.CONFIRMING) {
-            handleConfirmingVote(conferenceId, userId, vote, participants);
-            return;
-        }
+            log.info("투표 처리. conferenceId={}, userId={}, vote={}, state={}", conferenceId, userId, vote, currentState);
 
-        // 일반 투표 처리
-        voteStore.vote(conferenceId, userId, vote);
-        int voteCount = voteStore.getTotalVoteCount(conferenceId);
+            if (currentState == VoteState.COMPLETED) {
+                log.info("이미 투표 완료 상태입니다. conferenceId={}", conferenceId);
+                return;
+            }
 
-        if (voteCount == 1) {
-            voteStore.setVoteState(conferenceId, VoteState.PENDING);
+            // 재확인 상태인 경우
+            if (currentState == VoteState.CONFIRMING) {
+                handleConfirmingVote(conferenceId, userId, vote, participants);
+                return;
+            }
 
-        } else if (voteCount >= 2) {
-            voteStore.setVoteState(conferenceId, VoteState.COMPLETED);
-            processVoteResult(conferenceId, participants);
+            // 일반 투표 처리
+            voteStore.vote(conferenceId, userId, vote);
+            int voteCount = voteStore.getTotalVoteCount(conferenceId);
+
+            if (voteCount == 1) {
+                voteStore.setVoteState(conferenceId, VoteState.PENDING);
+
+            } else if (voteCount >= 2) {
+                voteStore.setVoteState(conferenceId, VoteState.COMPLETED);
+                processVoteResult(conferenceId, participants);
+            }
+
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -266,9 +287,7 @@ public class RoundVoteService {
             return;
         }
 
-        // 현재 라운드 녹음 중지 및 업로드
         int currentRound = conference.getCurrentRound();
-        kurentoRoomService.stopRecordingAndUpload(conferenceId, currentRound);
 
         // 현재 라운드 종료 처리
         roundRepository.findFirstByConference_IdAndStatus(conferenceId, ConferenceRoundStatus.ACTIVE)
@@ -294,25 +313,30 @@ public class RoundVoteService {
 
         log.info("다음 라운드 시작. conferenceId={}, round={}", conferenceId, nextRound);
 
-        // 투표 리셋
-        voteStore.resetVotes(conferenceId);
+        TransactionUtils.runAfterCommit(() -> {
+            // 현재 라운드 녹음 중지 및 업로드
+            kurentoRoomService.stopRecordingAndUpload(conferenceId, currentRound);
 
-        // 양쪽에게 알림
-        RoundMessages.RoundStarted message = RoundMessages.RoundStarted.builder()
-                .conferenceId(conferenceId.toString())
-                .roundNumber(nextRound)
-                .isUnlimited(nextRound >= MAX_ROUND)
-                .build();
+            // 투표 리셋
+            voteStore.resetVotes(conferenceId);
 
-        for (UUID userId : participants) {
-            eventPublisher.publish(userId, WsEventType.ROUND_STARTED, message);
-        }
+            // 양쪽에게 알림
+            RoundMessages.RoundStarted message = RoundMessages.RoundStarted.builder()
+                    .conferenceId(conferenceId.toString())
+                    .roundNumber(nextRound)
+                    .isUnlimited(nextRound >= MAX_ROUND)
+                    .build();
 
-        // 새 라운드 녹음 시작
-        kurentoRoomService.startRecording(conferenceId, nextRound);
+            for (UUID userId : participants) {
+                eventPublisher.publish(userId, WsEventType.ROUND_STARTED, message);
+            }
 
-        // 새 라운드 타이머 시작
-        timerService.startRoundTimer(conferenceId, nextRound, participants);
+            // 새 라운드 녹음 시작
+            kurentoRoomService.startRecording(conferenceId, nextRound);
+
+            // 새 라운드 타이머 시작
+            timerService.startRoundTimer(conferenceId, nextRound, participants);
+        });
     }
 
     /**
@@ -330,8 +354,7 @@ public class RoundVoteService {
             return;
         }
 
-        // 현재 라운드 녹음 중지 및 업로드
-        kurentoRoomService.stopRecordingAndUpload(conferenceId, conference.getCurrentRound());
+        int currentRound = conference.getCurrentRound();
 
         // 현재 라운드 종료 처리
         roundRepository.findFirstByConference_IdAndStatus(conferenceId, ConferenceRoundStatus.ACTIVE)
@@ -346,15 +369,21 @@ public class RoundVoteService {
 
         log.info("세션 종료. conferenceId={}", conferenceId);
 
-        // 양쪽에게 알림
-        RoundMessages.ConferenceEnded message = RoundMessages.ConferenceEnded.of(conferenceId.toString());
+        TransactionUtils.runAfterCommit(() -> {
+            // 현재 라운드 녹음 중지 및 업로드
+            kurentoRoomService.stopRecordingAndUpload(conferenceId, currentRound);
 
-        for (UUID userId : participants) {
-            eventPublisher.publish(userId, WsEventType.CONFERENCE_ENDED, message);
-        }
+            // 양쪽에게 알림
+            RoundMessages.ConferenceEnded message = RoundMessages.ConferenceEnded.of(conferenceId.toString());
 
-        // 타이머 정리
-        timerService.cleanup(conferenceId);
+            for (UUID userId : participants) {
+                eventPublisher.publish(userId, WsEventType.CONFERENCE_ENDED, message);
+            }
+
+            // 타이머 정리
+            timerService.cleanup(conferenceId);
+            voteLocks.remove(conferenceId);
+        });
     }
 
 }

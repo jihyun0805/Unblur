@@ -14,6 +14,7 @@ public record ConferenceHistoryItemDto(
         long unreadCount,
         String partnerName,
         String partnerProfileImageUrl,
-        Integer partnerClarityScore
+        Integer partnerClarityScore,
+        Boolean partnerOnline
 ) {
 }

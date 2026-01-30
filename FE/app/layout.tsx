@@ -5,6 +5,7 @@ import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 import { AuthProvider } from "@/contexts/auth-context"
 import { Toaster } from "@/components/ui/toaster"
+import { ConsoleErrorFilter } from "@/components/debug/console-error-filter"
 
 const _geist = Geist({ subsets: ["latin"] })
 
@@ -24,6 +25,7 @@ export default function RootLayout({
     <html lang="ko">
       <body className="font-sans antialiased">
         <AuthProvider>
+          <ConsoleErrorFilter />
           {children}
           <Toaster />
         </AuthProvider>
