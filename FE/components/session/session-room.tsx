@@ -345,7 +345,7 @@ export function SessionRoom({
                 showArrow={false}
                 className="bg-white text-foreground text-xs font-medium rounded-md px-3 py-1.5"
               >
-                질문 뱅크
+                질문 사전
               </TooltipContent>
             </Tooltip>
             <Tooltip>
