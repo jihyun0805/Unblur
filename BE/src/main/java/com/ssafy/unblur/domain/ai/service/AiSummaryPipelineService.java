@@ -87,9 +87,10 @@ public class AiSummaryPipelineService {
     }
 
     private String transcribe(Path file) {
+        String contentType = resolveContentType(file);
         MultipartBodyBuilder builder = new MultipartBodyBuilder();
         builder.part("file", new FileSystemResource(file))
-                .contentType(MediaType.parseMediaType("audio/mpeg"))
+                .contentType(MediaType.parseMediaType(contentType))
                 .filename(file.getFileName().toString());
         builder.part("model", "whisper-1");
 
@@ -110,6 +111,23 @@ public class AiSummaryPipelineService {
             throw new BaseException(ErrorCode.INTERNAL_SERVER_ERROR);
         }
         return response.text();
+    }
+
+    private String resolveContentType(Path file) {
+        String filename = file.getFileName().toString().toLowerCase();
+        if (filename.endsWith(".webm")) {
+            return "audio/webm";
+        }
+        if (filename.endsWith(".mp3")) {
+            return "audio/mpeg";
+        }
+        if (filename.endsWith(".wav")) {
+            return "audio/wav";
+        }
+        if (filename.endsWith(".m4a")) {
+            return "audio/mp4";
+        }
+        return "application/octet-stream";
     }
 
     private String summarize(String transcript) {
