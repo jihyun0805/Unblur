@@ -52,8 +52,11 @@ export function CameraTestModal({ open, onOpenChange, onReady }: CameraTestModal
     if (isBeautyActive) return
     if (!stream || !videoRef.current) return
 
-    videoRef.current.srcObject = stream
-    videoRef.current.play().catch(() => {
+    if (videoRef.current.srcObject !== stream) {
+      videoRef.current.srcObject = stream
+    }
+    videoRef.current.play().catch((error) => {
+      if (error?.name === "AbortError") return
       // Autoplay may be blocked; user interaction will start playback.
     })
   }, [stream, isBeautyActive])
@@ -142,29 +145,6 @@ export function CameraTestModal({ open, onOpenChange, onReady }: CameraTestModal
       
       setStream(combinedStream)
       registerStream(combinedStream)
-      
-      if (videoRef.current && videoStream) {
-        videoRef.current.srcObject = combinedStream
-        
-        // 비디오가 로드될 때까지 대기
-        videoRef.current.onloadedmetadata = () => {
-          console.log("[CameraTest] Video loaded, dimensions:", videoRef.current?.videoWidth, "x", videoRef.current?.videoHeight)
-          console.log("[CameraTest] Video readyState:", videoRef.current?.readyState)
-        }
-        
-        videoRef.current.oncanplay = () => {
-          console.log("[CameraTest] Video can play")
-        }
-        
-        videoRef.current.onplay = () => {
-          console.log("[CameraTest] Video playing")
-        }
-        
-        // 비디오 재생 강제
-        videoRef.current.play().catch((error) => {
-          console.error("[CameraTest] Failed to play video:", error)
-        })
-      }
     }
   }
 
@@ -217,7 +197,6 @@ export function CameraTestModal({ open, onOpenChange, onReady }: CameraTestModal
                 {!isBeautyActive ? (
                   <video 
                     ref={videoRef} 
-                    autoPlay 
                     playsInline 
                     muted 
                     className="absolute inset-0 w-full h-full object-cover transition-all duration-500 -scale-x-100"
