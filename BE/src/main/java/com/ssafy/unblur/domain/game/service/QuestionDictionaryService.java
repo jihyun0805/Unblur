@@ -1,6 +1,6 @@
 package com.ssafy.unblur.domain.game.service;
 
-import com.ssafy.unblur.domain.game.dto.QuestionDictionaryResponseDto;
+import com.ssafy.unblur.domain.game.dto.response.QuestionDictionaryResponseDto;
 import com.ssafy.unblur.domain.game.model.QuestionDictionary;
 import com.ssafy.unblur.domain.game.model.RoundGroup;
 import com.ssafy.unblur.domain.game.repository.QuestionDictionaryRepository;

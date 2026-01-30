@@ -8,7 +8,7 @@ import com.ssafy.unblur.domain.match.model.*;
 import com.ssafy.unblur.domain.match.repository.ConferenceRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRoundRepository;
 import com.ssafy.unblur.domain.match.repository.RoundVoteRepository;
-import com.ssafy.unblur.domain.rtc.dto.RoundMessages;
+import com.ssafy.unblur.domain.rtc.dto.event.RoundMessages;
 import com.ssafy.unblur.domain.rtc.service.KurentoRoomService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

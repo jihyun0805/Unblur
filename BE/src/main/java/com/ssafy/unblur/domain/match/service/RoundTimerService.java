@@ -3,7 +3,7 @@ package com.ssafy.unblur.domain.match.service;
 import com.ssafy.unblur.common.service.event.WsEventType;
 import com.ssafy.unblur.domain.match.config.MatchConfig.RoundDurationPolicy;
 import com.ssafy.unblur.domain.match.model.VoteState;
-import com.ssafy.unblur.domain.rtc.dto.RoundMessages;
+import com.ssafy.unblur.domain.rtc.dto.event.RoundMessages;
 import com.ssafy.unblur.domain.rtc.service.RtcParticipantStore;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;

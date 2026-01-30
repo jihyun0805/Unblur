@@ -2,10 +2,10 @@ package com.ssafy.unblur.domain.user.controller;
 
 import com.ssafy.unblur.common.response.BaseResponse;
 import com.ssafy.unblur.common.response.SwaggerResponses;
-import com.ssafy.unblur.domain.user.dto.UserProfileResponseDto;
-import com.ssafy.unblur.domain.user.dto.UserProfileUpdateRequestDto;
-import com.ssafy.unblur.domain.user.dto.UserSurveyResponseDto;
-import com.ssafy.unblur.domain.user.dto.UserSurveyUpdateRequestDto;
+import com.ssafy.unblur.domain.user.dto.response.UserProfileResponseDto;
+import com.ssafy.unblur.domain.user.dto.request.UserProfileUpdateRequestDto;
+import com.ssafy.unblur.domain.user.dto.response.UserSurveyResponseDto;
+import com.ssafy.unblur.domain.user.dto.request.UserSurveyUpdateRequestDto;
 import com.ssafy.unblur.domain.user.dto.LoveDnaUpdateRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;

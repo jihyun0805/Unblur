@@ -2,10 +2,10 @@ package com.ssafy.unblur.domain.auth.controller;
 
 import com.ssafy.unblur.common.response.BaseResponse;
 import com.ssafy.unblur.common.response.SwaggerResponses;
-import com.ssafy.unblur.domain.auth.dto.LoginRequestDto;
-import com.ssafy.unblur.domain.auth.dto.LoginResponseDto;
-import com.ssafy.unblur.domain.auth.dto.SignupDto;
-import com.ssafy.unblur.domain.auth.dto.SignupResponseDto;
+import com.ssafy.unblur.domain.auth.dto.request.LoginRequestDto;
+import com.ssafy.unblur.domain.auth.dto.response.LoginResponseDto;
+import com.ssafy.unblur.domain.auth.dto.request.SignupRequestDto;
+import com.ssafy.unblur.domain.auth.dto.response.SignupResponseDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -24,7 +24,7 @@ public interface AuthApiDocs {
     /**
      * 새로운 사용자를 등록합니다.
      *
-     * @param signUpDto 회원가입에 필요한 정보(이메일, 비밀번호, 닉네임 등)
+     * @param signupRequestDto 회원가입에 필요한 정보(이메일, 비밀번호, 닉네임 등)
      * @return 성공 시 201 상태 코드와 함께 생성된 유저의 ID를 반환
      */
     @Operation(summary = "회원가입", description = "새로운 사용자를 등록합니다.")
@@ -74,7 +74,7 @@ public interface AuthApiDocs {
                     }
             )
     )
-    ResponseEntity<BaseResponse<SignupResponseDto>> signUp(@RequestBody SignupDto signUpDto);
+    ResponseEntity<BaseResponse<SignupResponseDto>> signUp(@RequestBody SignupRequestDto signupRequestDto);
 
     /**
      * 이메일 중복 여부를 확인합니다.

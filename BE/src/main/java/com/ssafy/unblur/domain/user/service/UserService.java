@@ -10,10 +10,10 @@ import com.ssafy.unblur.domain.auth.model.UserBlock;
 import com.ssafy.unblur.domain.auth.repository.UserRepository;
 import com.ssafy.unblur.domain.auth.service.AuthService;
 import com.ssafy.unblur.domain.auth.service.RefreshTokenService;
-import com.ssafy.unblur.domain.user.dto.UserProfileResponseDto;
-import com.ssafy.unblur.domain.user.dto.UserProfileUpdateRequestDto;
-import com.ssafy.unblur.domain.user.dto.UserSurveyResponseDto;
-import com.ssafy.unblur.domain.user.dto.UserSurveyUpdateRequestDto;
+import com.ssafy.unblur.domain.user.dto.response.UserProfileResponseDto;
+import com.ssafy.unblur.domain.user.dto.request.UserProfileUpdateRequestDto;
+import com.ssafy.unblur.domain.user.dto.response.UserSurveyResponseDto;
+import com.ssafy.unblur.domain.user.dto.request.UserSurveyUpdateRequestDto;
 import com.ssafy.unblur.domain.user.dto.LoveDnaUpdateRequest;
 import com.ssafy.unblur.domain.user.repository.UserBlockRepository;
 import lombok.RequiredArgsConstructor;
@@ -87,7 +87,7 @@ public class UserService {
 
         user.updateSurvey(dto);
 
-        String surveyText = surveyTextConverter.convert(dto.getDetailedInfo());
+        String surveyText = surveyTextConverter.convert(dto.detailedInfo());
         if (surveyText != null) {
             float[] vector = embeddingService.embed(surveyText);
             if (vector != null) {
