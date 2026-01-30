@@ -8,6 +8,7 @@ import com.ssafy.unblur.domain.match.repository.ConferenceRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRoundRepository;
 import com.ssafy.unblur.domain.match.repository.RoundVoteRepository;
 import com.ssafy.unblur.domain.rtc.dto.RoundMessages;
+import com.ssafy.unblur.domain.rtc.service.KurentoRoomService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -72,6 +73,11 @@ public class RoundVoteService {
      * 기준 시각 제공용 Clock
      */
     private final Clock clock;
+
+    /**
+     * Kurento 녹음 서비스
+     */
+    private final KurentoRoomService kurentoRoomService;
 
     /**
      * 투표를 처리하는 메서드
@@ -260,6 +266,10 @@ public class RoundVoteService {
             return;
         }
 
+        // 현재 라운드 녹음 중지 및 업로드
+        int currentRound = conference.getCurrentRound();
+        kurentoRoomService.stopRecordingAndUpload(conferenceId, currentRound);
+
         // 현재 라운드 종료 처리
         roundRepository.findFirstByConference_IdAndStatus(conferenceId, ConferenceRoundStatus.ACTIVE)
                 .ifPresent(round -> {
@@ -298,6 +308,9 @@ public class RoundVoteService {
             eventPublisher.publish(userId, WsEventType.ROUND_STARTED, message);
         }
 
+        // 새 라운드 녹음 시작
+        kurentoRoomService.startRecording(conferenceId, nextRound);
+
         // 새 라운드 타이머 시작
         timerService.startRoundTimer(conferenceId, nextRound, participants);
     }
@@ -316,6 +329,9 @@ public class RoundVoteService {
             log.error("세션을 찾을 수 없습니다. conferenceId={}", conferenceId);
             return;
         }
+
+        // 현재 라운드 녹음 중지 및 업로드
+        kurentoRoomService.stopRecordingAndUpload(conferenceId, conference.getCurrentRound());
 
         // 현재 라운드 종료 처리
         roundRepository.findFirstByConference_IdAndStatus(conferenceId, ConferenceRoundStatus.ACTIVE)
