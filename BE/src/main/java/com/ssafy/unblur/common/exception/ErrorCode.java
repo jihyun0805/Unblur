@@ -39,6 +39,9 @@ public enum ErrorCode {
     CONFERENCE_NOT_PARTICIPANT(HttpStatus.FORBIDDEN, "CONF-002", "해당 세션의 참여자가 아닙니다."),
     CONFERENCE_ALREADY_COMPLETED(HttpStatus.CONFLICT, "CONF-003", "이미 종료된 세션입니다."),
     CONFERENCE_MAX_ROUND_REACHED(HttpStatus.CONFLICT, "CONF-004", "최대 라운드에 도달했습니다."),
+    CONFERENCE_NOT_COMPLETED(HttpStatus.CONFLICT, "CONF-005", "아직 종료되지 않은 세션입니다."),
+
+    CLARITY_EVALUATION_ALREADY_EXISTS(HttpStatus.CONFLICT, "EVAL-001", "이미 선명도 평가를 완료했습니다."),
 
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "COMMON-001", "서버 내부 오류가 발생했습니다."),
     INVALID_INPUT_VALUE(HttpStatus.BAD_REQUEST, "COMMON-002", "잘못된 요청 값입니다."),
