@@ -1,8 +1,8 @@
-package com.ssafy.unblur.domain.match.controller;
+package com.ssafy.unblur.domain.ai.controller.impl;
 
 import com.ssafy.unblur.common.dto.MinioEventRequest;
 import com.ssafy.unblur.common.response.BaseResponse;
-import com.ssafy.unblur.domain.match.service.AiSummaryPipelineService;
+import com.ssafy.unblur.domain.ai.service.AiSummaryPipelineService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;

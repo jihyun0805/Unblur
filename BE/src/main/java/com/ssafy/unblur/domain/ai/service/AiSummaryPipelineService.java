@@ -1,4 +1,4 @@
-package com.ssafy.unblur.domain.match.service;
+package com.ssafy.unblur.domain.ai.service;
 
 import com.ssafy.unblur.common.exception.BaseException;
 import com.ssafy.unblur.common.exception.ErrorCode;
