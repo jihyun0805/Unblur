@@ -26,6 +26,12 @@ public class JWTFilter extends OncePerRequestFilter {
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
 
+        String requestPath = request.getRequestURI();
+        if (requestPath != null && requestPath.startsWith("/api/internal/")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         String authorizationHeader = request.getHeader("Authorization");
 
         if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
