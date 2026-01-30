@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { Mic, MicOff, PhoneOff, MessageCircle, Gamepad2, BookOpen, Send, Clock, X, Lightbulb, AlertCircle } from "lucide-react"
@@ -280,50 +281,115 @@ export function SessionRoom({
             >
               {formatTime(timeLeft)}
             </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleMute}
-              className={`ml-1 h-8 w-8 rounded-full ${
-                isMuted ? "bg-red-500 hover:bg-red-600" : "bg-white/20 hover:bg-white/30"
-              }`}
-            >
-              {isMuted ? <MicOff className="h-4 w-4 text-white" /> : <Mic className="h-4 w-4 text-white" />}
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={toggleMute}
+                  className={`ml-1 h-8 w-8 rounded-full ${
+                    isMuted ? "bg-red-500 hover:bg-red-600" : "bg-white/20 hover:bg-white/30"
+                  }`}
+                >
+                  {isMuted ? <MicOff className="h-4 w-4 text-white" /> : <Mic className="h-4 w-4 text-white" />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent
+                side="bottom"
+                sideOffset={8}
+                align="center"
+                showArrow={false}
+                className="bg-white text-foreground text-xs font-medium rounded-md px-3 py-1.5"
+              >
+                {isMuted ? "마이크 켜기" : "마이크 끄기"}
+              </TooltipContent>
+            </Tooltip>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowGame(true)}
-              className="text-white hover:bg-white/20"
-            >
-              <Gamepad2 className="w-5 h-5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowQuestionBank(true)}
-              className="text-white hover:bg-white/20"
-            >
-              <BookOpen className="w-5 h-5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowChat(!showChat)}
-              className="text-white hover:bg-white/20"
-            >
-              <MessageCircle className="w-5 h-5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleLeave}
-              className="text-white hover:bg-red-500/20"
-            >
-              <PhoneOff className="w-5 h-5" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowGame(true)}
+                  className="text-white hover:bg-white/20"
+                >
+                  <Gamepad2 className="w-5 h-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent
+                side="bottom"
+                sideOffset={8}
+                align="center"
+                showArrow={false}
+                className="bg-white text-foreground text-xs font-medium rounded-md px-3 py-1.5"
+              >
+                밸런스 게임
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowQuestionBank(true)}
+                  className="text-white hover:bg-white/20"
+                >
+                  <BookOpen className="w-5 h-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent
+                side="bottom"
+                sideOffset={8}
+                align="center"
+                showArrow={false}
+                className="bg-white text-foreground text-xs font-medium rounded-md px-3 py-1.5"
+              >
+                질문 뱅크
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowChat(!showChat)}
+                  className="text-white hover:bg-white/20"
+                >
+                  <MessageCircle className="w-5 h-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent
+                side="bottom"
+                sideOffset={8}
+                align="center"
+                showArrow={false}
+                className="bg-white text-foreground text-xs font-medium rounded-md px-3 py-1.5"
+              >
+                채팅
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleLeave}
+                  className="text-white hover:bg-red-500/20"
+                >
+                  <PhoneOff className="w-5 h-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent
+                side="bottom"
+                sideOffset={8}
+                align="center"
+                showArrow={false}
+                className="bg-white text-foreground text-xs font-medium rounded-md px-3 py-1.5"
+              >
+                나가기
+              </TooltipContent>
+            </Tooltip>
           </div>
         </div>
       </header>

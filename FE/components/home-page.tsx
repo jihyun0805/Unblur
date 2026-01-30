@@ -35,6 +35,7 @@ export function HomePage() {
       toast({
         title: "1:1 매칭 수락!",
         description: "상대방이 매칭 요청을 수락했습니다. 매칭방으로 이동하시겠습니까?",
+        duration: Number.POSITIVE_INFINITY,
         action: (
           <Button
             size="sm"
