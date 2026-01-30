@@ -1,8 +1,8 @@
 package com.ssafy.unblur.domain.match.controller;
 
 import com.ssafy.unblur.common.response.BaseResponse;
-import com.ssafy.unblur.domain.match.dto.ConferenceHistoryResponseDto;
-import com.ssafy.unblur.domain.match.dto.PartnerProfileResponseDto;
+import com.ssafy.unblur.domain.match.dto.response.ConferenceHistoryResponseDto;
+import com.ssafy.unblur.domain.match.dto.response.PartnerProfileResponseDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -19,9 +19,46 @@ import java.util.UUID;
 @Tag(name = "History", description = "대화방 이력 조회 API")
 public interface ConferenceHistoryApiDocs {
 
-    @Operation(summary = "대화방 이력 조회", description = "로그인된 사용자가 참여한 대화방 이력을 페이지로 조회합니다.")
+    @Operation(summary = "대화방 이력 조회", description = "로그인된 사용자가 참여한 대화방 이력을 페이지로 조회합니다. (상대방 온라인 여부 포함)")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "조회 성공",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = BaseResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "isSuccess": true,
+                                      "statusCode": 200,
+                                      "message": "OK",
+                                      "data": {
+                                        "summary": {
+                                          "totalMatches": 3,
+                                          "totalMinutes": 42,
+                                          "myClarityScore": 50
+                                        },
+                                        "items": [
+                                          {
+                                            "conferenceId": "550e8400-e29b-41d4-a716-446655440000",
+                                            "currentRound": 2,
+                                            "createdDate": "2026-01-30",
+                                            "durationMinutes": 15,
+                                            "unreadCount": 0,
+                                            "partnerName": "상대",
+                                            "partnerProfileImageUrl": "https://example.com/profile.jpg",
+                                            "partnerClarityScore": 48,
+                                            "partnerOnline": true
+                                          }
+                                        ],
+                                        "page": 0,
+                                        "size": 20,
+                                        "totalElements": 1,
+                                        "totalPages": 1
+                                      }
+                                    }""")
+                    )
+            ),
             @ApiResponse(responseCode = "401", description = "인증 실패"),
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })

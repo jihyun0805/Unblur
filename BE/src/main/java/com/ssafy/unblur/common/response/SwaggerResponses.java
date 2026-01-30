@@ -1,9 +1,9 @@
 package com.ssafy.unblur.common.response;
 
-import com.ssafy.unblur.domain.auth.dto.LoginResponseDto;
-import com.ssafy.unblur.domain.auth.dto.SignupResponseDto;
-import com.ssafy.unblur.domain.user.dto.UserProfileResponseDto;
-import com.ssafy.unblur.domain.user.dto.UserSurveyResponseDto;
+import com.ssafy.unblur.domain.auth.dto.response.LoginResponseDto;
+import com.ssafy.unblur.domain.auth.dto.response.SignupResponseDto;
+import com.ssafy.unblur.domain.user.dto.response.UserProfileResponseDto;
+import com.ssafy.unblur.domain.user.dto.response.UserSurveyResponseDto;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 public class SwaggerResponses {

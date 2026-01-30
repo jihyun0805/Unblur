@@ -474,10 +474,10 @@ export default function MbtiResultPage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return
-    const stored = sessionStorage.getItem("mbtiResult")
-    const type = stored || user?.mbti || ""
+    const stored = localStorage.getItem("loveTestResult") || sessionStorage.getItem("loveTestResult")
+    const type = stored || ""
     setResult(getResultLabel(type))
-  }, [user?.mbti])
+  }, [])
 
   const resultContent = RESULT_CONTENT[result] || RESULT_CONTENT.DEFAULT
   const oppositeGender = user?.gender === "male" ? "female" : user?.gender === "female" ? "male" : undefined

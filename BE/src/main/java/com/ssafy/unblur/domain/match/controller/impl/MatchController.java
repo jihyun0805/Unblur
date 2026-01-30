@@ -3,7 +3,12 @@ package com.ssafy.unblur.domain.match.controller.impl;
 import com.ssafy.unblur.common.response.BaseResponse;
 import com.ssafy.unblur.common.security.auth.CustomUserDetails;
 import com.ssafy.unblur.domain.match.controller.MatchApiDocs;
-import com.ssafy.unblur.domain.match.dto.*;
+import com.ssafy.unblur.domain.match.dto.request.FastMatchingRequest;
+import com.ssafy.unblur.domain.match.dto.request.OneOnOneMatchRequest;
+import com.ssafy.unblur.domain.match.dto.response.MatchingQueueResponse;
+import com.ssafy.unblur.domain.match.dto.response.OneOnOneMatchResponse;
+import com.ssafy.unblur.domain.match.dto.response.OneOnOneMatchedResponse;
+import com.ssafy.unblur.domain.match.dto.response.OnlineUserListResponse;
 import com.ssafy.unblur.domain.match.service.MatchService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -69,11 +74,11 @@ public class MatchController implements MatchApiDocs {
 
     @Override
     @PostMapping("/one-on-one/{request_id}/accept")
-    public ResponseEntity<BaseResponse<OneOnOneMatchResponse>> acceptOneOnOne(
+    public ResponseEntity<BaseResponse<OneOnOneMatchedResponse>> acceptOneOnOne(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable("request_id") String requestId
     ) {
-        OneOnOneMatchResponse response = matchService.acceptOneOnOneMatch(
+        OneOnOneMatchedResponse response = matchService.acceptOneOnOneMatch(
                 userDetails.getUserId(), requestId
         );
         return ResponseEntity.ok(

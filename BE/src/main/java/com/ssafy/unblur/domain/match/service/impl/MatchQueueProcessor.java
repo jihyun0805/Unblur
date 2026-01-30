@@ -6,10 +6,11 @@ import com.ssafy.unblur.common.util.VectorUtils;
 import com.ssafy.unblur.domain.auth.model.User;
 import com.ssafy.unblur.domain.auth.repository.UserRepository;
 import com.ssafy.unblur.domain.match.config.MatchConfig.MatchPolicy;
-import com.ssafy.unblur.domain.match.dto.QuickMatchResultEvent;
-import com.ssafy.unblur.domain.match.dto.QuickMatchStageEvent;
+import com.ssafy.unblur.domain.match.dto.event.QuickMatchResultEvent;
+import com.ssafy.unblur.domain.match.dto.event.QuickMatchStageEvent;
 import com.ssafy.unblur.domain.match.model.*;
-import com.ssafy.unblur.domain.match.model.event.SseMatchEventType;
+import com.ssafy.unblur.common.service.event.SseEventType;
+import com.ssafy.unblur.common.util.TransactionUtils;
 import com.ssafy.unblur.domain.match.repository.ConferenceParticipantRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRepository;
 import com.ssafy.unblur.domain.match.repository.MatchCandidateRepository;
@@ -140,9 +141,10 @@ public class MatchQueueProcessor {
     private void processTimeouts() {
         LocalDateTime now = LocalDateTime.now(clock);
 
-        for (MatchQueueItem item : matchQueueService.findWaitingByType(MatchQueueType.QUICK)) {
+        for (MatchQueueItem item : matchQueueService.findAllWaitingByMatchType(MatchType.QUICK)) {
             if (isOlderThan(item, now, policy.timeout())) {
-                User user = findUser(item.getRequesterUserId());
+                User user = userRepository.findById(item.getRequesterUserId())
+                        .orElse(null);
 
                 // 사용자 정보를 찾지 못하면 타임아웃 처리
                 if (user == null) {
@@ -174,7 +176,7 @@ public class MatchQueueProcessor {
                 .occurredAt(LocalDateTime.now(clock))
                 .build();
 
-        eventPublisher.publish(item.getRequesterUserId(), SseMatchEventType.QUICK_TIMEOUT, event);
+        eventPublisher.publish(item.getRequesterUserId(), SseEventType.QUICK_TIMEOUT, event);
     }
 
     /**
@@ -184,14 +186,16 @@ public class MatchQueueProcessor {
      */
     private void processRelaxedMatches() {
         LocalDateTime now = LocalDateTime.now(clock);
-        for (MatchQueueItem item : matchQueueService.findWaitingByType(MatchQueueType.QUICK)) {
+        for (MatchQueueItem item : matchQueueService.findAllWaitingByMatchType(MatchType.QUICK)) {
             if (isOlderThan(item, now, policy.relaxDelay())) {
                 if (item.getRelaxedAt() == null) {
                     item.markRelaxed(now);
                     publishRelaxedEvent(item, now);
                 }
 
-                User user = findUser(item.getRequesterUserId());
+                User user = userRepository.findById(item.getRequesterUserId())
+                        .orElse(null);
+
                 if (user == null) {
                     continue;
                 }
@@ -211,7 +215,7 @@ public class MatchQueueProcessor {
         LocalDateTime now = LocalDateTime.now(clock);
         List<MatchQueueItem> candidates = new ArrayList<>();
 
-        for (MatchQueueItem item : matchQueueService.findWaitingByType(MatchQueueType.QUICK)) {
+        for (MatchQueueItem item : matchQueueService.findAllWaitingByMatchType(MatchType.QUICK)) {
             if (isOlderThan(item, now, policy.batchDelay())) {
                 candidates.add(item);
             }
@@ -250,7 +254,7 @@ public class MatchQueueProcessor {
         }
 
         // 현재 대기열에서 자기 자신을 제외한 후보 목록 추출
-        List<UUID> candidateIds = matchQueueService.findWaitingByType(MatchQueueType.QUICK)
+        List<UUID> candidateIds = matchQueueService.findAllWaitingByMatchType(MatchType.QUICK)
                 .stream()
                 .map(MatchQueueItem::getRequesterUserId)
                 .filter(id -> !id.equals(user.getId()))
@@ -273,13 +277,14 @@ public class MatchQueueProcessor {
                 candidateIds,
                 filters.gender() != null ? filters.gender().name() : null,
                 filters.region() != null ? filters.region().name() : null,
+                filters.loveDna() != null ? filters.loveDna().name() : null,
                 maxBirthDate,
                 minBirthDate,
                 limit
         );
 
         for (MatchCandidate candidate : candidates) {
-            Optional<MatchQueueItem> candidateItem = matchQueueService.findByUserId(candidate.id(), MatchQueueType.QUICK);
+            Optional<MatchQueueItem> candidateItem = matchQueueService.findUserRequestByMatchType(candidate.id(), MatchType.QUICK);
             if (candidateItem.isEmpty()) {
                 continue;
             }
@@ -290,7 +295,9 @@ public class MatchQueueProcessor {
             }
 
             // 상대 사용자 정보 조회(벡터가 없으면 스킵)
-            User targetUser = findUser(targetItem.getRequesterUserId());
+            User targetUser = userRepository.findById(targetItem.getRequesterUserId())
+                    .orElse(null);
+
             if (targetUser == null || targetUser.getInterestsVector() == null) {
                 continue;
             }
@@ -414,16 +421,6 @@ public class MatchQueueProcessor {
     }
 
     /**
-     * 사용자 ID로 사용자 정보를 조회하는 메서드
-     *
-     * @param userId 사용자 ID
-     * @return 사용자, 없으면 null
-     */
-    private User findUser(UUID userId) {
-        return userRepository.findById(userId).orElse(null);
-    }
-
-    /**
      * 사용자 목록에서 사용자 ID를 찾아 반환하는 메서드
      *
      * @param users  사용자 목록
@@ -454,6 +451,10 @@ public class MatchQueueProcessor {
         }
 
         if (filters.region() != null && target.getRegion() != filters.region()) {
+            return false;
+        }
+
+        if (filters.loveDna() != null && target.getLoveDna() != filters.loveDna()) {
             return false;
         }
 
@@ -525,7 +526,7 @@ public class MatchQueueProcessor {
                 .occurredAt(now)
                 .build();
 
-        eventPublisher.publish(item.getRequesterUserId(), SseMatchEventType.QUICK_RELAXED, event);
+        eventPublisher.publish(item.getRequesterUserId(), SseEventType.QUICK_RELAXED, event);
     }
 
     /**
@@ -541,7 +542,7 @@ public class MatchQueueProcessor {
         QuickMatchResultEvent leftEvent = QuickMatchResultEvent.builder()
                 .requestId(left.getRequestId().toString())
                 .status("matched")
-                .queueType(left.getQueueType().name().toLowerCase())
+                .queueType(left.getMatchType().name().toLowerCase())
                 .matchedUserId(right.getRequesterUserId().toString())
                 .conferenceId(conferenceId)
                 .matchedAt(matchedAt)
@@ -550,14 +551,16 @@ public class MatchQueueProcessor {
         QuickMatchResultEvent rightEvent = QuickMatchResultEvent.builder()
                 .requestId(right.getRequestId().toString())
                 .status("matched")
-                .queueType(right.getQueueType().name().toLowerCase())
+                .queueType(right.getMatchType().name().toLowerCase())
                 .matchedUserId(left.getRequesterUserId().toString())
                 .conferenceId(conferenceId)
                 .matchedAt(matchedAt)
                 .build();
 
-        eventPublisher.publish(left.getRequesterUserId(), SseMatchEventType.QUICK_MATCHED, leftEvent);
-        eventPublisher.publish(right.getRequesterUserId(), SseMatchEventType.QUICK_MATCHED, rightEvent);
+        TransactionUtils.runAfterCommit(() -> {
+            eventPublisher.publish(left.getRequesterUserId(), SseEventType.QUICK_MATCHED, leftEvent);
+            eventPublisher.publish(right.getRequesterUserId(), SseEventType.QUICK_MATCHED, rightEvent);
+        });
     }
 
     /**

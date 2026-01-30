@@ -10,10 +10,11 @@ import com.ssafy.unblur.domain.auth.model.UserBlock;
 import com.ssafy.unblur.domain.auth.repository.UserRepository;
 import com.ssafy.unblur.domain.auth.service.AuthService;
 import com.ssafy.unblur.domain.auth.service.RefreshTokenService;
-import com.ssafy.unblur.domain.user.dto.UserProfileResponseDto;
-import com.ssafy.unblur.domain.user.dto.UserProfileUpdateRequestDto;
-import com.ssafy.unblur.domain.user.dto.UserSurveyResponseDto;
-import com.ssafy.unblur.domain.user.dto.UserSurveyUpdateRequestDto;
+import com.ssafy.unblur.domain.user.dto.response.UserProfileResponseDto;
+import com.ssafy.unblur.domain.user.dto.request.UserProfileUpdateRequestDto;
+import com.ssafy.unblur.domain.user.dto.response.UserSurveyResponseDto;
+import com.ssafy.unblur.domain.user.dto.request.UserSurveyUpdateRequestDto;
+import com.ssafy.unblur.domain.user.dto.LoveDnaUpdateRequest;
 import com.ssafy.unblur.domain.user.repository.UserBlockRepository;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
@@ -86,7 +87,7 @@ public class UserService {
 
         user.updateSurvey(dto);
 
-        String surveyText = surveyTextConverter.convert(dto.getDetailedInfo());
+        String surveyText = surveyTextConverter.convert(dto.detailedInfo());
         if (surveyText != null) {
             float[] vector = embeddingService.embed(surveyText);
             if (vector != null) {
@@ -95,6 +96,18 @@ public class UserService {
         }
 
         return UserSurveyResponseDto.from(user);
+    }
+
+    /**
+     * 사용자의 연애 성향 유형 정보를 수정하는 메서드
+     */
+    @Transactional
+    public UserProfileResponseDto updateLoveDna(LoveDnaUpdateRequest dto) {
+        User user = getLoginUserAndCheckActive();
+
+        user.updateLoveDna(dto.getLoveDna());
+
+        return UserProfileResponseDto.from(user);
     }
 
     /**

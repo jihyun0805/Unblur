@@ -49,8 +49,8 @@ export function OneOnOneModal({
 
   const handleRequestChat = (userId: string, nickname: string) => {
     toast({
-      title: "1:1 매칭 수락!",
-      description: "상대방이 매칭 요청을 수락했습니다. 매칭방으로 이동하시겠습니까?",
+      title: "1:1 매칭 요청",
+      description: "상대방에게 매칭 요청을 보냈습니다.",
     })
     onRequestChat(userId)
     onOpenChange(false)

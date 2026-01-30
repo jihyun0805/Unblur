@@ -1,11 +1,11 @@
 package com.ssafy.unblur.domain.match.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ssafy.unblur.domain.match.model.event.MatchEventType;
-import com.ssafy.unblur.domain.match.model.event.SseMatchEventType;
-import com.ssafy.unblur.domain.match.model.event.WsEventType;
+import com.ssafy.unblur.common.service.event.EventType;
+import com.ssafy.unblur.common.service.event.SseEventType;
+import com.ssafy.unblur.common.service.event.WsEventType;
 import com.ssafy.unblur.domain.match.service.MatchEventPublisher;
-import com.ssafy.unblur.domain.match.service.MatchSseService;
+import com.ssafy.unblur.common.service.SseService;
 import com.ssafy.unblur.domain.rtc.service.RtcSessionStore;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,7 +29,7 @@ public class MatchEventPublisherImpl implements MatchEventPublisher {
     /**
      * 매칭 SSE 서비스
      */
-    private final MatchSseService sseService;
+    private final SseService sseService;
 
     /**
      * RTC 세션 저장소
@@ -42,8 +42,8 @@ public class MatchEventPublisherImpl implements MatchEventPublisher {
     private final ObjectMapper objectMapper;
 
     @Override
-    public void publish(UUID userId, MatchEventType type, Object data) {
-        if (type instanceof SseMatchEventType sseType) {
+    public void publish(UUID userId, EventType type, Object data) {
+        if (type instanceof SseEventType sseType) {
             sseService.publish(userId, sseType, data);
 
         } else if (type instanceof WsEventType) {

@@ -2,7 +2,7 @@ package com.ssafy.unblur.domain.match.controller.impl;
 
 import com.ssafy.unblur.common.security.auth.CustomUserDetails;
 import com.ssafy.unblur.domain.match.controller.MatchSseDocs;
-import com.ssafy.unblur.domain.match.service.MatchSseService;
+import com.ssafy.unblur.common.service.SseService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -19,7 +19,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @RequiredArgsConstructor
 public class MatchSseController implements MatchSseDocs {
 
-    private final MatchSseService matchSseService;
+    private final SseService sseService;
 
     /**
      * 빠른 매칭 상태를 구독하는 메서드
@@ -29,6 +29,6 @@ public class MatchSseController implements MatchSseDocs {
      */
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter connect(@AuthenticationPrincipal CustomUserDetails userDetails) {
-        return matchSseService.connect(userDetails.getUserId());
+        return sseService.connect(userDetails.getUserId());
     }
 }

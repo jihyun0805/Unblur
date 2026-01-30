@@ -1,7 +1,9 @@
 "use client"
 
+import { useState } from "react"
 import type React from "react"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { useRegisterForm } from "@/hooks/use-register-form"
@@ -34,13 +36,105 @@ interface RegisterStep2Props {
 }
 
 export function RegisterStep2({ formData, updateFormData, onNext, onPrev }: RegisterStep2Props) {
-  const currentYear = new Date().getFullYear()
-  const years = Array.from({ length: 30 }, (_, i) => currentYear - 20 - i)
-  const months = Array.from({ length: 12 }, (_, i) => i + 1)
-  const days = Array.from({ length: 31 }, (_, i) => i + 1)
+  const [birthError, setBirthError] = useState("")
+  const [birthInput, setBirthInput] = useState(() => {
+    if (!formData.birthYear || !formData.birthMonth || !formData.birthDay) {
+      return ""
+    }
+    return `${formData.birthYear.slice(-2)}${formData.birthMonth.padStart(2, "0")}${formData.birthDay.padStart(2, "0")}`
+  })
+  const normalizeBirthValue = (value: string) => value.replace(/\D/g, "").slice(0, 6)
+
+  const getFullYear = (twoDigitYear: number) => {
+    const currentYear = new Date().getFullYear()
+    const cutoff = currentYear % 100
+    return twoDigitYear <= cutoff ? 2000 + twoDigitYear : 1900 + twoDigitYear
+  }
+
+  const parseBirthInput = (input: string) => {
+    const yy = Number.parseInt(input.slice(0, 2), 10)
+    const mm = Number.parseInt(input.slice(2, 4), 10)
+    const dd = Number.parseInt(input.slice(4, 6), 10)
+    if (Number.isNaN(yy) || Number.isNaN(mm) || Number.isNaN(dd)) {
+      return null
+    }
+    const year = getFullYear(yy)
+    return { year, month: mm, day: dd }
+  }
+
+  const getBirthError = (input: string, allowPartial: boolean) => {
+    if (!input) {
+      return allowPartial ? "" : "생년월일 6자리를 입력해주세요."
+    }
+
+    if (input.length < 6) {
+      return "생년월일 6자리를 입력해주세요."
+    }
+
+    const month = Number.parseInt(input.slice(2, 4), 10)
+    if (Number.isNaN(month) || month < 1 || month > 12) {
+      return "월은 1부터 12 사이여야 합니다."
+    }
+
+    const day = Number.parseInt(input.slice(4, 6), 10)
+    if (Number.isNaN(day) || day < 1 || day > 31) {
+      return "일은 1부터 31 사이여야 합니다."
+    }
+
+    const parsed = parseBirthInput(input)
+    if (!parsed || parsed.year < 1900) {
+      return "생년은 1900년 이후로 입력해주세요."
+    }
+
+    const date = new Date(parsed.year, parsed.month - 1, parsed.day)
+    if (date.getFullYear() !== parsed.year || date.getMonth() !== parsed.month - 1 || date.getDate() !== parsed.day) {
+      return "유효한 날짜를 입력해주세요."
+    }
+
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    if (date > today) {
+      return "미래 날짜는 입력할 수 없습니다."
+    }
+
+    return ""
+  }
+
+  const handleBirthChange = (value: string) => {
+    const nextValue = normalizeBirthValue(value)
+    setBirthInput(nextValue)
+    const error = getBirthError(nextValue, true)
+    setBirthError(error)
+
+    if (nextValue.length === 6 && !error) {
+      const parsed = parseBirthInput(nextValue)
+      if (parsed) {
+        updateFormData({
+          birthYear: parsed.year.toString(),
+          birthMonth: parsed.month.toString(),
+          birthDay: parsed.day.toString(),
+        })
+      }
+    } else {
+      updateFormData({ birthYear: "", birthMonth: "", birthDay: "" })
+    }
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    const errorMessage = getBirthError(birthInput, false)
+    if (errorMessage) {
+      setBirthError(errorMessage)
+      return
+    }
+    const parsed = parseBirthInput(birthInput)
+    if (parsed) {
+      updateFormData({
+        birthYear: parsed.year.toString(),
+        birthMonth: parsed.month.toString(),
+        birthDay: parsed.day.toString(),
+      })
+    }
     onNext()
   }
 
@@ -48,44 +142,16 @@ export function RegisterStep2({ formData, updateFormData, onNext, onPrev }: Regi
     <form onSubmit={handleSubmit} className="space-y-4 mt-4">
       <div className="space-y-2">
         <Label>생년월일</Label>
-        <div className="grid grid-cols-3 gap-2">
-          <Select value={formData.birthYear} onValueChange={(value) => updateFormData({ birthYear: value })}>
-            <SelectTrigger className="bg-input">
-              <SelectValue placeholder="년" />
-            </SelectTrigger>
-            <SelectContent>
-              {years.map((year) => (
-                <SelectItem key={year} value={year.toString()}>
-                  {year}년
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={formData.birthMonth} onValueChange={(value) => updateFormData({ birthMonth: value })}>
-            <SelectTrigger className="bg-input">
-              <SelectValue placeholder="월" />
-            </SelectTrigger>
-            <SelectContent>
-              {months.map((month) => (
-                <SelectItem key={month} value={month.toString()}>
-                  {month}월
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={formData.birthDay} onValueChange={(value) => updateFormData({ birthDay: value })}>
-            <SelectTrigger className="bg-input">
-              <SelectValue placeholder="일" />
-            </SelectTrigger>
-            <SelectContent>
-              {days.map((day) => (
-                <SelectItem key={day} value={day.toString()}>
-                  {day}일
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <Input
+          id="birth_str"
+          type="text"
+          inputMode="numeric"
+          placeholder="생년월일 6자리 (예: 980101)"
+          value={birthInput}
+          maxLength={6}
+          onChange={(e) => handleBirthChange(e.target.value)}
+        />
+        {birthError ? <p className="text-sm text-destructive">{birthError}</p> : null}
       </div>
       <div className="space-y-2">
         <Label>성별</Label>

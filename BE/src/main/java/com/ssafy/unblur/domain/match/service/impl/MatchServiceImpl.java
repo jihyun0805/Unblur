@@ -2,19 +2,28 @@ package com.ssafy.unblur.domain.match.service.impl;
 
 import com.ssafy.unblur.common.exception.BaseException;
 import com.ssafy.unblur.common.exception.ErrorCode;
+import com.ssafy.unblur.common.service.SseService;
+import com.ssafy.unblur.common.service.event.SseEventType;
+import com.ssafy.unblur.common.util.TransactionUtils;
+import com.ssafy.unblur.common.annotation.TimeWindow;
 import com.ssafy.unblur.domain.auth.model.Gender;
 import com.ssafy.unblur.domain.auth.model.User;
 import com.ssafy.unblur.domain.auth.repository.UserRepository;
 import com.ssafy.unblur.domain.match.config.MatchConfig.MatchPolicy;
-import com.ssafy.unblur.domain.match.dto.*;
+import com.ssafy.unblur.domain.match.dto.event.QuickMatchStageEvent;
+import com.ssafy.unblur.domain.match.dto.request.FastMatchingRequest;
+import com.ssafy.unblur.domain.match.dto.request.OneOnOneMatchRequest;
+import com.ssafy.unblur.domain.match.dto.response.MatchingQueueResponse;
+import com.ssafy.unblur.domain.match.dto.response.OneOnOneMatchResponse;
+import com.ssafy.unblur.domain.match.dto.response.OneOnOneMatchedResponse;
+import com.ssafy.unblur.domain.match.dto.response.OnlineUserDto;
+import com.ssafy.unblur.domain.match.dto.response.OnlineUserListResponse;
 import com.ssafy.unblur.domain.match.model.*;
-import com.ssafy.unblur.domain.match.model.event.SseMatchEventType;
 import com.ssafy.unblur.domain.match.repository.ConferenceParticipantRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRepository;
 import com.ssafy.unblur.domain.match.service.MatchEventPublisher;
 import com.ssafy.unblur.domain.match.service.MatchQueueService;
 import com.ssafy.unblur.domain.match.service.MatchService;
-import com.ssafy.unblur.domain.match.service.MatchSseService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,7 +65,7 @@ public class MatchServiceImpl implements MatchService {
     /**
      * SSE 서비스 (연결 상태 조회용)
      */
-    private final MatchSseService sseService;
+    private final SseService sseService;
 
     /**
      * 매칭 정책 설정값
@@ -78,18 +87,12 @@ public class MatchServiceImpl implements MatchService {
      */
     private final ConferenceParticipantRepository participantRepository;
 
-    /**
-     * 빠른 매칭 요청을 대기열에 등록하고 즉시 매칭을 시도하는 메서드
-     *
-     * @param userId  사용자 ID
-     * @param request 요청 DTO
-     * @return 대기열 상태
-     */
     @Override
     @Transactional
+//    @TimeWindow(start = "20:00", end = "02:00") // Todo: 테스트 이후 주석 해제
     public MatchingQueueResponse startQuickMatch(UUID userId, FastMatchingRequest request) {
         // 동일 사용자가 이미 대기 중이면 중복 등록 방지
-        if (matchQueueService.existsWaiting(userId, MatchQueueType.QUICK)) {
+        if (matchQueueService.existsWaiting(userId, MatchType.QUICK)) {
             throw new BaseException(ErrorCode.MATCH_ALREADY_QUEUED);
         }
 
@@ -97,13 +100,13 @@ public class MatchServiceImpl implements MatchService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
 
-        // 대기열 항목 생성 및 등록(요청 시점 스냅샷)
+        // 대기열 항목 생성 및 등록
         MatchQueueItem item = MatchQueueItem.builder()
                 .requestId(UUID.randomUUID())
                 .requesterUserId(userId)
-                .queueType(MatchQueueType.QUICK)
+                .matchType(MatchType.QUICK)
                 .createdAt(LocalDateTime.now(clock))
-                .filters(request.getFilters())
+                .filters(request.filters())
                 .build();
 
         matchQueueService.save(item);
@@ -114,71 +117,24 @@ public class MatchServiceImpl implements MatchService {
         MatchingQueueResponse response = buildResponse(item);
 
         if (!matched) {
-            eventPublisher.publish(userId, SseMatchEventType.QUICK_WAITING, response);
+            eventPublisher.publish(userId, SseEventType.QUICK_WAITING, response);
         }
 
         return response;
     }
 
-    /**
-     * 빠른 매칭 응답을 구성하는 메서드
-     *
-     * @param item 대기열 항목
-     * @return 응답 DTO
-     */
-    private MatchingQueueResponse buildResponse(MatchQueueItem item) {
-        // 현재 대기열 기준으로 순번/대기시간을 계산
-        List<MatchQueueItem> waiting = matchQueueService.findWaitingByType(MatchQueueType.QUICK);
-        int waitingCount = waiting.size();
-
-        Integer position = null;
-        Integer estimatedWaitSeconds = null;
-        boolean isQueued = item.getStatus() == MatchQueueStatus.WAITING;
-
-        if (isQueued) {
-            int index = -1;
-            for (int i = 0; i < waiting.size(); i++) {
-                if (waiting.get(i).getRequestId().equals(item.getRequestId())) {
-                    index = i;
-                    break;
-                }
-            }
-
-            if (index >= 0) {
-                position = index + 1;
-                // 평균 대기 시간을 기준으로 단순 추정
-                estimatedWaitSeconds = position * policy.averageWaitSeconds();
-            }
-        }
-
-        return MatchingQueueResponse.builder()
-                .requestId(item.getRequestId().toString())
-                .status(item.getStatus().name().toLowerCase())
-                .isQueued(isQueued)
-                .position(position)
-                .estimatedWaitSeconds(estimatedWaitSeconds)
-                .queueType(item.getQueueType().name().toLowerCase())
-                .waitingCount(waitingCount)
-                .queuedAt(item.getCreatedAt())
-                .build();
-    }
-
-    /**
-     * 빠른 매칭을 취소하는 메서드
-     *
-     * @param userId    사용자 ID
-     * @param requestId 매칭 요청 ID
-     */
     @Override
     public void cancelQuickMatch(UUID userId, String requestId) {
+        // 요청 ID 파싱
         UUID parsedRequestId;
         try {
             parsedRequestId = UUID.fromString(requestId);
+
         } catch (IllegalArgumentException e) {
             throw new BaseException(ErrorCode.MATCH_REQUEST_NOT_FOUND);
         }
 
-        MatchQueueItem item = matchQueueService.findByRequestId(parsedRequestId)
+        MatchQueueItem item = matchQueueService.findRequestById(parsedRequestId)
                 .orElseThrow(() -> new BaseException(ErrorCode.MATCH_REQUEST_NOT_FOUND));
 
         // 본인의 요청인지 확인
@@ -200,35 +156,24 @@ public class MatchServiceImpl implements MatchService {
                 .occurredAt(LocalDateTime.now(clock))
                 .build();
 
-        eventPublisher.publish(userId, SseMatchEventType.QUICK_CANCELED, event);
+        eventPublisher.publish(userId, SseEventType.QUICK_CANCELED, event);
     }
 
-    /**
-     * 매칭 대기 상태를 조회하는 메서드
-     *
-     * @param userId 사용자 ID
-     * @return 대기열 상태 (대기 중인 요청이 없으면 null)
-     */
     @Override
     public MatchingQueueResponse getQueueStatus(UUID userId) {
-        return matchQueueService.findByUserId(userId, MatchQueueType.QUICK)
+        return matchQueueService.findUserRequestByMatchType(userId, MatchType.QUICK)
                 .map(this::buildResponse)
                 .orElse(null);
     }
 
-    /**
-     * 1:1 매칭 요청을 처리하는 메서드
-     *
-     * @param userId  요청자 사용자 ID
-     * @param request 1:1 매칭 요청 DTO
-     * @return 1:1 매칭 응답
-     */
     @Override
     @Transactional
     public OneOnOneMatchResponse startOneOnOneMatch(UUID userId, OneOnOneMatchRequest request) {
+        // 대상 사용자 ID 파싱
         UUID targetUserId;
         try {
-            targetUserId = UUID.fromString(request.getTargetUserId());
+            targetUserId = UUID.fromString(request.targetUserId());
+
         } catch (IllegalArgumentException e) {
             throw new BaseException(ErrorCode.MATCH_TARGET_NOT_FOUND);
         }
@@ -239,7 +184,7 @@ public class MatchServiceImpl implements MatchService {
         }
 
         // 동일 사용자가 이미 대기 중이면 중복 등록 방지
-        if (matchQueueService.existsWaiting(userId, MatchQueueType.ONE_ON_ONE)) {
+        if (matchQueueService.existsWaiting(userId, MatchType.ONE_ON_ONE)) {
             throw new BaseException(ErrorCode.MATCH_ALREADY_QUEUED);
         }
 
@@ -255,7 +200,7 @@ public class MatchServiceImpl implements MatchService {
                 .requestId(UUID.randomUUID())
                 .requesterUserId(userId)
                 .recipientUserId(targetUserId)
-                .queueType(MatchQueueType.ONE_ON_ONE)
+                .matchType(MatchType.ONE_ON_ONE)
                 .createdAt(now)
                 .filters(Map.of())
                 .build();
@@ -264,24 +209,24 @@ public class MatchServiceImpl implements MatchService {
 
         // 대상 사용자에게 알림 전송
         OneOnOneMatchResponse response = buildOneOnOneResponse(item, "pending");
-        eventPublisher.publish(targetUserId, SseMatchEventType.ONE_ON_ONE_REQUESTED, response);
+        eventPublisher.publish(targetUserId, SseEventType.ONE_ON_ONE_REQUESTED, response);
 
         return response;
     }
 
-    /**
-     * 1:1 매칭 요청을 수락하는 메서드
-     *
-     * @param userId    수신자 사용자 ID
-     * @param requestId 매칭 요청 ID
-     * @return 1:1 매칭 응답
-     */
     @Override
     @Transactional
-    public OneOnOneMatchResponse acceptOneOnOneMatch(UUID userId, String requestId) {
-        UUID parsedRequestId = parseRequestId(requestId);
+    public OneOnOneMatchedResponse acceptOneOnOneMatch(UUID userId, String requestId) {
+        // 요청 ID 파싱
+        UUID parsedRequestId;
+        try {
+            parsedRequestId = UUID.fromString(requestId);
 
-        MatchQueueItem item = matchQueueService.findByRequestId(parsedRequestId)
+        } catch (IllegalArgumentException e) {
+            throw new BaseException(ErrorCode.MATCH_REQUEST_NOT_FOUND);
+        }
+
+        MatchQueueItem item = matchQueueService.findRequestById(parsedRequestId)
                 .orElseThrow(() -> new BaseException(ErrorCode.MATCH_REQUEST_NOT_FOUND));
 
         // 수신자 본인인지 확인
@@ -307,29 +252,31 @@ public class MatchServiceImpl implements MatchService {
         // 컨퍼런스 생성
         Conference conference = createConference(requester, recipient);
 
-        // 양쪽에 매칭 완료 이벤트 전송
-        OneOnOneMatchResponse requesterResponse = buildOneOnOneMatchedResponse(item, conference, "accepted");
-        OneOnOneMatchResponse recipientResponse = buildOneOnOneMatchedResponse(item, conference, "accepted");
+        // 양쪽에 매칭 완료 이벤트 전송 (각자에게 상대방 ID 전달)
+        OneOnOneMatchedResponse requesterResponse = buildOneOnOneMatchedResponse(item, conference, userId);
+        OneOnOneMatchedResponse recipientResponse = buildOneOnOneMatchedResponse(item, conference, item.getRequesterUserId());
 
-        eventPublisher.publish(item.getRequesterUserId(), SseMatchEventType.ONE_ON_ONE_ACCEPTED, requesterResponse);
-        eventPublisher.publish(userId, SseMatchEventType.ONE_ON_ONE_ACCEPTED, recipientResponse);
+        TransactionUtils.runAfterCommit(() -> {
+            eventPublisher.publish(item.getRequesterUserId(), SseEventType.ONE_ON_ONE_ACCEPTED, requesterResponse);
+            eventPublisher.publish(userId, SseEventType.ONE_ON_ONE_ACCEPTED, recipientResponse);
+        });
 
         return recipientResponse;
     }
 
-    /**
-     * 1:1 매칭 요청을 거절하는 메서드
-     *
-     * @param userId    수신자 사용자 ID
-     * @param requestId 매칭 요청 ID
-     * @return 1:1 매칭 응답
-     */
     @Override
     @Transactional
     public OneOnOneMatchResponse declineOneOnOneMatch(UUID userId, String requestId) {
-        UUID parsedRequestId = parseRequestId(requestId);
+        // 요청 ID 파싱
+        UUID parsedRequestId;
+        try {
+            parsedRequestId = UUID.fromString(requestId);
 
-        MatchQueueItem item = matchQueueService.findByRequestId(parsedRequestId)
+        } catch (IllegalArgumentException e) {
+            throw new BaseException(ErrorCode.MATCH_REQUEST_NOT_FOUND);
+        }
+
+        MatchQueueItem item = matchQueueService.findRequestById(parsedRequestId)
                 .orElseThrow(() -> new BaseException(ErrorCode.MATCH_REQUEST_NOT_FOUND));
 
         // 수신자 본인인지 확인
@@ -347,93 +294,9 @@ public class MatchServiceImpl implements MatchService {
 
         // 요청자에게 거절 이벤트 전송
         OneOnOneMatchResponse requesterResponse = buildOneOnOneResponse(item, "declined");
-        eventPublisher.publish(item.getRequesterUserId(), SseMatchEventType.ONE_ON_ONE_DECLINED, requesterResponse);
+        eventPublisher.publish(item.getRequesterUserId(), SseEventType.ONE_ON_ONE_DECLINED, requesterResponse);
 
         return buildOneOnOneResponse(item, "declined");
-    }
-
-    /**
-     * 요청 ID를 파싱하는 메서드
-     *
-     * @param requestId 요청 ID 문자열
-     * @return 파싱된 UUID
-     */
-    private UUID parseRequestId(String requestId) {
-        try {
-            return UUID.fromString(requestId);
-        } catch (IllegalArgumentException e) {
-            throw new BaseException(ErrorCode.MATCH_REQUEST_NOT_FOUND);
-        }
-    }
-
-    /**
-     * 1:1 매칭 응답을 구성하는 메서드
-     *
-     * @param item         대기열 항목
-     * @param targetStatus 대상 상태
-     * @return 1:1 매칭 응답
-     */
-    private OneOnOneMatchResponse buildOneOnOneResponse(MatchQueueItem item, String targetStatus) {
-        return new OneOnOneMatchResponse(
-                item.getRequestId().toString(),
-                item.getStatus().name().toLowerCase(),
-                item.getQueueType().name().toLowerCase(),
-                item.getRecipientUserId().toString(),
-                targetStatus,
-                policy.averageWaitSeconds(),
-                item.getCreatedAt()
-        );
-    }
-
-    /**
-     * 1:1 매칭 완료 응답을 구성하는 메서드
-     *
-     * @param item         대기열 항목
-     * @param conference   생성된 컨퍼런스
-     * @param targetStatus 대상 상태
-     * @return 1:1 매칭 응답
-     */
-    private OneOnOneMatchResponse buildOneOnOneMatchedResponse(MatchQueueItem item, Conference conference, String targetStatus) {
-        return new OneOnOneMatchResponse(
-                item.getRequestId().toString(),
-                item.getStatus().name().toLowerCase(),
-                item.getQueueType().name().toLowerCase(),
-                item.getRecipientUserId().toString(),
-                targetStatus,
-                null,
-                item.getCreatedAt()
-        );
-    }
-
-    /**
-     * 컨퍼런스와 참여자를 생성하는 메서드
-     *
-     * @param requester 요청자 사용자
-     * @param recipient 수신자 사용자
-     * @return 생성된 컨퍼런스
-     */
-    private Conference createConference(User requester, User recipient) {
-        Conference conference = Conference.builder()
-                .status(ConferenceStatus.WAITING)
-                .currentRound(0)
-                .build();
-
-        Conference savedConference = conferenceRepository.save(conference);
-
-        ConferenceParticipant requesterParticipant = ConferenceParticipant.builder()
-                .conference(savedConference)
-                .user(requester)
-                .build();
-
-        ConferenceParticipant recipientParticipant = ConferenceParticipant.builder()
-                .conference(savedConference)
-                .user(recipient)
-                .build();
-
-        participantRepository.save(requesterParticipant);
-        participantRepository.save(recipientParticipant);
-
-        return savedConference;
     }
 
     @Override
@@ -474,5 +337,116 @@ public class MatchServiceImpl implements MatchService {
                 .onlineUsers(result)
                 .build();
     }
+
+    /**
+     * 빠른 매칭 응답을 구성하는 메서드
+     *
+     * @param item 대기열 항목
+     * @return 응답 DTO
+     */
+    private MatchingQueueResponse buildResponse(MatchQueueItem item) {
+        // 현재 대기열 기준으로 순번/대기시간을 계산
+        List<MatchQueueItem> waiting = matchQueueService.findAllWaitingByMatchType(MatchType.QUICK);
+        int waitingCount = waiting.size();
+
+        Integer position = null;
+        Integer estimatedWaitSeconds = null;
+        boolean isQueued = item.getStatus() == MatchQueueStatus.WAITING;
+
+        if (isQueued) {
+            int index = -1;
+            for (int i = 0; i < waiting.size(); i++) {
+                if (waiting.get(i).getRequestId().equals(item.getRequestId())) {
+                    index = i;
+                    break;
+                }
+            }
+
+            if (index >= 0) {
+                position = index + 1;
+                // 평균 대기 시간을 기준으로 단순 추정
+                estimatedWaitSeconds = position * policy.averageWaitSeconds();
+            }
+        }
+
+        return MatchingQueueResponse.builder()
+                .requestId(item.getRequestId().toString())
+                .status(item.getStatus().name().toLowerCase())
+                .isQueued(isQueued)
+                .position(position)
+                .estimatedWaitSeconds(estimatedWaitSeconds)
+                .queueType(item.getMatchType().name().toLowerCase())
+                .waitingCount(waitingCount)
+                .queuedAt(item.getCreatedAt())
+                .build();
+    }
+
+    /**
+     * 1:1 매칭 응답을 구성하는 메서드
+     *
+     * @param item         대기열 항목
+     * @param targetStatus 대상 상태
+     * @return 1:1 매칭 응답
+     */
+    private OneOnOneMatchResponse buildOneOnOneResponse(MatchQueueItem item, String targetStatus) {
+        return OneOnOneMatchResponse.builder()
+                .requestId(item.getRequestId().toString())
+                .status(item.getStatus().name().toLowerCase())
+                .queueType(item.getMatchType().name().toLowerCase())
+                .targetUserId(item.getRecipientUserId().toString())
+                .targetStatus(targetStatus)
+                .estimatedWaitSeconds(policy.averageWaitSeconds())
+                .queuedAt(item.getCreatedAt())
+                .build();
+    }
+
+    /**
+     * 1:1 매칭 완료 응답을 구성하는 메서드
+     *
+     * @param item         대기열 항목
+     * @param conference   생성된 컨퍼런스
+     * @param targetUserId 상대방 사용자 ID
+     * @return 1:1 매칭 완료 응답
+     */
+    private OneOnOneMatchedResponse buildOneOnOneMatchedResponse(MatchQueueItem item, Conference conference, UUID targetUserId) {
+        return OneOnOneMatchedResponse.builder()
+                .requestId(item.getRequestId().toString())
+                .conferenceId(conference.getId().toString())
+                .targetUserId(targetUserId.toString())
+                .matchedAt(item.getMatchedAt())
+                .build();
+    }
+
+    /**
+     * 컨퍼런스와 참여자를 생성하는 메서드
+     *
+     * @param requester 요청자 사용자
+     * @param recipient 수신자 사용자
+     * @return 생성된 컨퍼런스
+     */
+    private Conference createConference(User requester, User recipient) {
+        Conference conference = Conference.builder()
+                .status(ConferenceStatus.WAITING)
+                .currentRound(0)
+                .build();
+
+        Conference savedConference = conferenceRepository.save(conference);
+
+        ConferenceParticipant requesterParticipant = ConferenceParticipant.builder()
+                .conference(savedConference)
+                .user(requester)
+                .build();
+
+        ConferenceParticipant recipientParticipant = ConferenceParticipant.builder()
+                .conference(savedConference)
+                .user(recipient)
+                .build();
+
+        participantRepository.save(requesterParticipant);
+        participantRepository.save(recipientParticipant);
+
+        return savedConference;
+    }
+
 
 }

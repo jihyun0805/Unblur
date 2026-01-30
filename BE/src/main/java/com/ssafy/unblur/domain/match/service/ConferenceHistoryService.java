@@ -2,14 +2,15 @@ package com.ssafy.unblur.domain.match.service;
 
 import com.ssafy.unblur.common.exception.BaseException;
 import com.ssafy.unblur.common.exception.ErrorCode;
+import com.ssafy.unblur.common.service.SseService;
 import com.ssafy.unblur.common.util.SecurityUtil;
 import com.ssafy.unblur.domain.auth.model.User;
 import com.ssafy.unblur.domain.auth.repository.UserRepository;
 import com.ssafy.unblur.domain.chat.repository.ChatMessageRepository;
-import com.ssafy.unblur.domain.match.dto.ConferenceHistoryItemDto;
-import com.ssafy.unblur.domain.match.dto.ConferenceHistoryResponseDto;
-import com.ssafy.unblur.domain.match.dto.ConferenceHistorySummaryDto;
-import com.ssafy.unblur.domain.match.dto.PartnerProfileResponseDto;
+import com.ssafy.unblur.domain.match.dto.response.ConferenceHistoryItemDto;
+import com.ssafy.unblur.domain.match.dto.response.ConferenceHistoryResponseDto;
+import com.ssafy.unblur.domain.match.dto.response.ConferenceHistorySummaryDto;
+import com.ssafy.unblur.domain.match.dto.response.PartnerProfileResponseDto;
 import com.ssafy.unblur.domain.match.model.Conference;
 import com.ssafy.unblur.domain.match.model.ConferenceParticipant;
 import com.ssafy.unblur.domain.match.repository.ConferenceParticipantRepository;
@@ -26,6 +27,7 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -37,6 +39,7 @@ public class ConferenceHistoryService {
     private final ConferenceParticipantRepository conferenceParticipantRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final ConferenceRoundRepository conferenceRoundRepository;
+    private final SseService sseService;
 
     @Transactional(readOnly = true)
     public ConferenceHistoryResponseDto getMyConferenceHistory(String email, Pageable pageable) {
@@ -52,8 +55,10 @@ public class ConferenceHistoryService {
 
         Map<UUID, List<ConferenceParticipant>> participantsByConference = fetchParticipantsByConference(conferenceIds);
 
+        Set<UUID> connectedUserIds = sseService.getConnectedUserIds();
+
         List<ConferenceHistoryItemDto> items = page.getContent().stream()
-                .map(cp -> toHistoryItem(cp, user, participantsByConference))
+                .map(cp -> toHistoryItem(cp, user, participantsByConference, connectedUserIds))
                 .toList();
 
         ConferenceHistorySummaryDto summary = buildSummary(user);
@@ -79,7 +84,8 @@ public class ConferenceHistoryService {
     private ConferenceHistoryItemDto toHistoryItem(
             ConferenceParticipant participant,
             User me,
-            Map<UUID, List<ConferenceParticipant>> participantsByConference
+            Map<UUID, List<ConferenceParticipant>> participantsByConference,
+            Set<UUID> connectedUserIds
     ) {
         Conference conference = participant.getConference();
         List<ConferenceParticipant> participants = participantsByConference.getOrDefault(conference.getId(), List.of());
@@ -94,6 +100,8 @@ public class ConferenceHistoryService {
         LocalDate createdDate = conference.getCreatedAt() != null ? conference.getCreatedAt().toLocalDate() : null;
         long durationMinutes = calculateDurationMinutes(conference.getStartedAt(), conference.getEndedAt());
 
+        Boolean partnerOnline = partnerUser != null ? connectedUserIds.contains(partnerUser.getId()) : null;
+
         return new ConferenceHistoryItemDto(
                 conference.getId(),
                 conference.getCurrentRound(),
@@ -102,7 +110,8 @@ public class ConferenceHistoryService {
                 computeUnreadCount(conference, participant, me),
                 partnerUser != null ? partnerUser.getNickname() : null,
                 partnerUser != null ? partnerUser.getProfileImageUrl() : null,
-                partnerUser != null ? partnerUser.getClarityScore() : null
+                partnerUser != null ? partnerUser.getClarityScore() : null,
+                partnerOnline
         );
     }
 

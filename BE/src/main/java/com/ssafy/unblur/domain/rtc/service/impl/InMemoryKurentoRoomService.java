@@ -2,30 +2,31 @@ package com.ssafy.unblur.domain.rtc.service.impl;
 
 import com.ssafy.unblur.common.exception.BaseException;
 import com.ssafy.unblur.common.exception.ErrorCode;
-import com.ssafy.unblur.domain.match.service.ConferenceLifecycleService;
 import com.ssafy.unblur.domain.rtc.config.KurentoClientProvider;
 import com.ssafy.unblur.domain.rtc.model.UserSession;
 import com.ssafy.unblur.domain.rtc.service.KurentoRoomService;
-import lombok.RequiredArgsConstructor;
+import com.ssafy.unblur.domain.rtc.service.RtcParticipantStore;
 import lombok.extern.slf4j.Slf4j;
-import org.kurento.client.IceCandidate;
-import org.kurento.client.KurentoClient;
-import org.kurento.client.MediaPipeline;
-import org.kurento.client.WebRtcEndpoint;
+import org.kurento.client.*;
 import org.kurento.jsonrpc.JsonRpcClientClosedException;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.web.socket.WebSocketSession;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * ConcurrentHashMap 기반 Kurento 방 관리 구현체
+ * 인메모리 기반 Kurento 방 관리 구현체
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class InMemoryKurentoRoomService implements KurentoRoomService {
 
     /**
@@ -34,35 +35,47 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
     private final KurentoClientProvider kurentoClientProvider;
 
     /**
-     * 회의 생명주기 서비스
+     * 참가자 저장소
      */
-    private final ConferenceLifecycleService conferenceLifecycleService;
+    private final RtcParticipantStore participantStore;
+
+    /**
+     * S3 클라이언트 (MinIO)
+     */
+    private final S3Client s3Client;
+
+    /**
+     * MinIO 버킷 이름
+     */
+    private final String bucketName;
 
     /**
      * 방 정보 저장소
      */
     private final Map<UUID, Room> rooms = new ConcurrentHashMap<>();
 
+    public InMemoryKurentoRoomService(
+            KurentoClientProvider kurentoClientProvider,
+            RtcParticipantStore participantStore,
+            S3Client s3Client,
+            @Value("${minio.bucket}") String bucketName
+    ) {
+        this.kurentoClientProvider = kurentoClientProvider;
+        this.participantStore = participantStore;
+        this.s3Client = s3Client;
+        this.bucketName = bucketName;
+    }
+
     @Override
-    public UserSession join(UUID conferenceId, UUID userId, WebSocketSession session) {
+    public UserSession join(UUID conferenceId, UUID userId) {
         // 방이 없으면 새로 생성하고, 있으면 기존 방을 사용
         Room room = rooms.computeIfAbsent(conferenceId, this::createRoom);
-        UserSession userSession = room.join(userId, session);
+        UserSession userSession = room.join(userId);
 
-        try {
-            conferenceLifecycleService.onJoin(conferenceId, userId);
-            return userSession;
+        // 참가자 저장소에 등록
+        participantStore.add(conferenceId, userId);
 
-        } catch (RuntimeException e) {
-            room.leave(userId);
-
-            if (room.isEmpty()) {
-                rooms.remove(conferenceId);
-                room.release();
-            }
-
-            throw e;
-        }
+        return userSession;
     }
 
     @Override
@@ -79,7 +92,8 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
 
     @Override
     public void leave(UUID conferenceId, UUID userId) {
-        conferenceLifecycleService.onLeave(conferenceId, userId);
+        // 참가자 저장소에서 제거
+        participantStore.remove(conferenceId, userId);
 
         Room room = rooms.get(conferenceId);
         if (room == null) {
@@ -90,6 +104,43 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
         if (room.isEmpty()) {
             rooms.remove(conferenceId);
             room.release();
+        }
+    }
+
+    @Override
+    public void startRecording(UUID conferenceId, int roundNumber) {
+        Room room = getRoom(conferenceId);
+        room.startRecording(roundNumber);
+    }
+
+    @Override
+    public void stopRecordingAndUpload(UUID conferenceId, int roundNumber) {
+        Room room = getRoom(conferenceId);
+        Path recordingPath = room.stopRecording();
+
+        if (recordingPath == null || !Files.exists(recordingPath)) {
+            log.warn("녹음 파일이 없습니다. conferenceId={}, roundNumber={}", conferenceId, roundNumber);
+            return;
+        }
+
+        try {
+            // MinIO에 업로드
+            String objectKey = conferenceId + "_" + roundNumber + ".webm";
+            PutObjectRequest putRequest = PutObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(objectKey)
+                    .contentType("audio/webm")
+                    .build();
+
+            s3Client.putObject(putRequest, RequestBody.fromFile(recordingPath));
+            log.info("녹음 파일 업로드 완료. bucket={}, key={}", bucketName, objectKey);
+
+            // 임시 파일 삭제
+            Files.deleteIfExists(recordingPath);
+
+        } catch (IOException e) {
+            log.error("녹음 파일 업로드 실패. conferenceId={}, roundNumber={}", conferenceId, roundNumber, e);
+            throw new BaseException(ErrorCode.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -129,9 +180,45 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
      */
     @Slf4j
     private static class Room {
+
+        /**
+         * 방 ID
+         */
         private final UUID conferenceId;
+
+        /**
+         * 미디어 파이프라인
+         */
         private final MediaPipeline pipeline;
+
+        /**
+         * 오디오 믹싱을 위한 Composite
+         */
+        private final Composite composite;
+
+        /**
+         * 참가자 맵
+         * <p>
+         * Key: 사용자 ID, Value: 사용자 세션
+         */
         private final Map<UUID, UserSession> participants = new ConcurrentHashMap<>();
+
+        /**
+         * HubPort 맵
+         * <p>
+         * Key: 사용자 ID, Value: HubPort
+         */
+        private final Map<UUID, HubPort> hubPorts = new ConcurrentHashMap<>();
+
+        /**
+         * 녹음기 엔드포인트
+         */
+        private RecorderEndpoint recorder;
+
+        /**
+         * 녹음 파일 경로
+         */
+        private Path recordingPath;
 
         /**
          * 방 생성자
@@ -142,21 +229,28 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
         Room(KurentoClient kurentoClient, UUID conferenceId) {
             this.conferenceId = conferenceId;
             this.pipeline = kurentoClient.createMediaPipeline();
+            this.composite = new Composite.Builder(pipeline).build();
             log.info("RTC 방 생성. conferenceId={}", conferenceId);
         }
 
         /**
          * 사용자 입장을 처리하는 메서드
          *
-         * @param userId  사용자 ID
-         * @param session WebSocket 세션
+         * @param userId 사용자 ID
          * @return 사용자 세션
          */
-        UserSession join(UUID userId, WebSocketSession session) {
+        UserSession join(UUID userId) {
             WebRtcEndpoint endpoint = new WebRtcEndpoint.Builder(pipeline).build();
-            UserSession userSession = new UserSession(userId, session, endpoint);
+            UserSession userSession = new UserSession(userId, endpoint);
             participants.put(userId, userSession);
+
+            // 오디오 믹싱을 위해 Composite에 연결
+            HubPort hubPort = new HubPort.Builder(composite).build();
+            endpoint.connect(hubPort, MediaType.AUDIO);
+            hubPorts.put(userId, hubPort);
+
             log.info("RTC 사용자 입장. conferenceId={}, userId={}, size={}", conferenceId, userId, participants.size());
+
             return userSession;
         }
 
@@ -179,6 +273,7 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
                     other.webRtcEndpoint().connect(userSession.webRtcEndpoint());
                 }
             }
+
             return sdpAnswer;
         }
 
@@ -217,9 +312,72 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
         }
 
         /**
+         * 라운드 녹음을 시작하는 메서드
+         *
+         * @param roundNumber 라운드 번호
+         */
+        void startRecording(int roundNumber) {
+            try {
+                // 임시 파일 생성
+                String filename = conferenceId + "_" + roundNumber + ".webm";
+                this.recordingPath = Files.createTempFile("kurento-recording-", "-" + filename);
+
+                // RecorderEndpoint 생성 및 Composite 연결
+                this.recorder = new RecorderEndpoint.Builder(pipeline, "file://" + recordingPath.toAbsolutePath())
+                        .withMediaProfile(MediaProfileSpecType.WEBM_AUDIO_ONLY)
+                        .build();
+
+                // Composite의 출력 포트를 생성하여 RecorderEndpoint에 연결
+                HubPort recorderPort = new HubPort.Builder(composite).build();
+                recorderPort.connect(recorder, MediaType.AUDIO);
+
+                recorder.record();
+                log.info("녹음 시작. conferenceId={}, roundNumber={}, path={}", conferenceId, roundNumber, recordingPath);
+
+            } catch (IOException e) {
+                log.error("녹음 시작 실패. conferenceId={}, roundNumber={}", conferenceId, roundNumber, e);
+                throw new BaseException(ErrorCode.INTERNAL_SERVER_ERROR);
+            }
+        }
+
+        /**
+         * 라운드 녹음을 중지하는 메서드
+         *
+         * @return 녹음 파일 경로
+         */
+        Path stopRecording() {
+            if (recorder == null) {
+                log.warn("녹음 중인 레코더가 없습니다. conferenceId={}", conferenceId);
+                return null;
+            }
+
+            try {
+                recorder.stop();
+                recorder.release();
+                log.info("녹음 중지. conferenceId={}, path={}", conferenceId, recordingPath);
+
+            } catch (Exception e) {
+                log.error("녹음 중지 실패. conferenceId={}", conferenceId, e);
+            }
+
+            Path path = this.recordingPath;
+            this.recorder = null;
+            this.recordingPath = null;
+            return path;
+        }
+
+        /**
          * 리소스를 해제하는 메서드
          */
         void release() {
+            // 녹음 중이면 중지
+            if (recorder != null) {
+                try {
+                    recorder.stop();
+                    recorder.release();
+                } catch (Exception ignored) {
+                }
+            }
             pipeline.release();
             log.info("RTC 방 해제. conferenceId={}", conferenceId);
         }

@@ -2,7 +2,6 @@ package com.ssafy.unblur.domain.rtc.service;
 
 import com.ssafy.unblur.domain.rtc.model.UserSession;
 import org.kurento.client.IceCandidate;
-import org.springframework.web.socket.WebSocketSession;
 
 import java.util.UUID;
 
@@ -16,10 +15,9 @@ public interface KurentoRoomService {
      *
      * @param conferenceId 방 ID
      * @param userId       사용자 ID
-     * @param session      WebSocket 세션
      * @return 사용자 세션
      */
-    UserSession join(UUID conferenceId, UUID userId, WebSocketSession session);
+    UserSession join(UUID conferenceId, UUID userId);
 
     // WebRTC 통신에서 SDP(Session Description Protocol)는 연결을 시도하는 두 기기가 서로의 미디어 정보와 연결 가능한 네트워크 후보 정보를 이해하기 위해 주고받는 텍스트 형식의 데이터이다.
     // 여기에는 미디어 정보(오디오/비디오 코덱, 해상도 등), 네트워크 후보 정보(IP, 포트 등), 기타 연결 설정 정보가 포함된다.
@@ -63,5 +61,21 @@ public interface KurentoRoomService {
      * @param userId       사용자 ID
      */
     void leave(UUID conferenceId, UUID userId);
+
+    /**
+     * 녹음을 시작하는 메서드
+     *
+     * @param conferenceId 방 ID
+     * @param roundNumber  라운드 번호
+     */
+    void startRecording(UUID conferenceId, int roundNumber);
+
+    /**
+     * 녹음을 중지하고 파일을 업로드하는 메서드
+     *
+     * @param conferenceId 방 ID
+     * @param roundNumber  라운드 번호
+     */
+    void stopRecordingAndUpload(UUID conferenceId, int roundNumber);
 
 }

@@ -2,7 +2,12 @@ package com.ssafy.unblur.domain.match.controller;
 
 import com.ssafy.unblur.common.response.BaseResponse;
 import com.ssafy.unblur.common.security.auth.CustomUserDetails;
-import com.ssafy.unblur.domain.match.dto.*;
+import com.ssafy.unblur.domain.match.dto.request.FastMatchingRequest;
+import com.ssafy.unblur.domain.match.dto.request.OneOnOneMatchRequest;
+import com.ssafy.unblur.domain.match.dto.response.MatchingQueueResponse;
+import com.ssafy.unblur.domain.match.dto.response.OneOnOneMatchResponse;
+import com.ssafy.unblur.domain.match.dto.response.OneOnOneMatchedResponse;
+import com.ssafy.unblur.domain.match.dto.response.OnlineUserListResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -34,7 +39,7 @@ public interface MatchApiDocs {
                             schema = @Schema(implementation = FastMatchingRequest.class),
                             examples = @ExampleObject(value = """
                                     {
-                                      "filters": {"ageMin": 24, "ageMax": 32}
+                                      "filters": {"ageMin": 24, "ageMax": 32, "gender": "FEMALE", "region": "SEOUL", "loveDna": "EFPD"}
                                     }"""))
             )
     )
@@ -374,12 +379,9 @@ public interface MatchApiDocs {
                               "message": "OK",
                               "data": {
                                 "requestId": "queue-id",
-                                "status": "matched",
-                                "queueType": "one-on-one",
+                                "conferenceId": "550e8400-e29b-41d4-a716-446655440000",
                                 "targetUserId": "0f4d8f6a-8df6-4fa9-9b9d-2b3bcd0b7b8f",
-                                "targetStatus": "accepted",
-                                "estimatedWaitSeconds": null,
-                                "queuedAt": "2024-01-14T14:30:00"
+                                "matchedAt": "2024-01-14T14:30:00"
                               }
                             }"""))
     )
@@ -453,7 +455,7 @@ public interface MatchApiDocs {
                             }""")
             )
     )
-    ResponseEntity<BaseResponse<OneOnOneMatchResponse>> acceptOneOnOne(
+    ResponseEntity<BaseResponse<OneOnOneMatchedResponse>> acceptOneOnOne(
             @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
             @Parameter(description = "매칭 요청 ID", example = "0f4d8f6a-8df6-4fa9-9b9d-2b3bcd0b7b8f")
             @PathVariable("request_id") String requestId

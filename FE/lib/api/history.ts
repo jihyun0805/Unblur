@@ -1,6 +1,6 @@
 import type { HistoryItem } from "@/lib/history-types"
-
-/** API 명세 없음. 더미 전용. 명세 확정 시 이 파일을 실제 fetch 구현으로 교체. */
+import { apiFetch } from "@/lib/api"
+import type { BaseResponse } from "@/lib/api/auth"
 
 const MOCK_HISTORY: HistoryItem[] = [
   {
@@ -41,11 +41,23 @@ export async function getHistoryList(): Promise<HistoryItem[]> {
 }
 
 export async function blockPartner(id: string): Promise<void> {
-  // 더미: no-op. 명세 확정 시 실제 API 호출로 교체.
-  return Promise.resolve()
+  const response = await apiFetch(`/api/v1/users/${encodeURIComponent(id)}/block`, {
+    method: "POST",
+  })
+
+  const baseResponse: BaseResponse<null> = await response.json()
+  if (!baseResponse.isSuccess) {
+    throw new Error(baseResponse.message || baseResponse.errorCode || "사용자 차단에 실패했습니다.")
+  }
 }
 
 export async function unblockPartner(id: string): Promise<void> {
-  // 더미: no-op. 명세 확정 시 실제 API 호출로 교체.
-  return Promise.resolve()
+  const response = await apiFetch(`/api/v1/users/${encodeURIComponent(id)}/block`, {
+    method: "DELETE",
+  })
+
+  const baseResponse: BaseResponse<null> = await response.json()
+  if (!baseResponse.isSuccess) {
+    throw new Error(baseResponse.message || baseResponse.errorCode || "사용자 차단 해제에 실패했습니다.")
+  }
 }

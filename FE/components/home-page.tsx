@@ -32,13 +32,15 @@ export function HomePage() {
 
   const handleRequestChat = (userId: string) => {
     setTimeout(() => {
-      toast({
+      const { dismiss } = toast({
         title: "1:1 매칭 수락!",
         description: "상대방이 매칭 요청을 수락했습니다. 매칭방으로 이동하시겠습니까?",
+        duration: Number.POSITIVE_INFINITY,
         action: (
           <Button
             size="sm"
             onClick={() => {
+              dismiss()
               setPendingSessionId(userId)
               setShowCameraTest(true)
             }}
@@ -50,16 +52,12 @@ export function HomePage() {
     }, 5000)
   }
 
-  const getTemperatureColor = (temp: number) => {
-    if (temp >= 40) return "text-red-500"
-    if (temp >= 38) return "text-orange-500"
-    if (temp >= 36) return "text-green-500"
-    if (temp >= 34) return "text-blue-500"
-    return "text-blue-700"
+  const getTemperatureColor = (clarity: number) => {
+    return "text-primary"
   }
 
-  const getClarityPercent = (temp: number) => {
-    const percent = Math.round(((temp - 30) / 20) * 100)
+  const getClarityPercent = (clarity: number) => {
+    const percent = Math.round(clarity)
     return Math.max(0, Math.min(100, percent))
   }
 
@@ -72,8 +70,8 @@ export function HomePage() {
           <Tooltip>
             <TooltipTrigger asChild>
               <div className="inline-flex items-center gap-2 mt-3 px-4 py-2 rounded-full bg-card cursor-default">
-                <span className={`font-semibold ${getTemperatureColor(user?.temperature || 36.5)}`}>
-                  {getClarityPercent(user?.temperature ?? 36.5)}%
+                <span className={`font-semibold ${getTemperatureColor(user?.temperature ?? 50)}`}>
+                  {getClarityPercent(user?.temperature ?? 50)}%
                 </span>
                 <span className="text-xs text-muted-foreground">선명도</span>
               </div>
