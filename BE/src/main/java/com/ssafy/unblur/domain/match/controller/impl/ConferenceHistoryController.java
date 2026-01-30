@@ -1,9 +1,10 @@
-package com.ssafy.unblur.domain.match.controller;
+package com.ssafy.unblur.domain.match.controller.impl;
 
 import com.ssafy.unblur.common.exception.BaseException;
 import com.ssafy.unblur.common.exception.ErrorCode;
 import com.ssafy.unblur.common.response.BaseResponse;
 import com.ssafy.unblur.common.util.SecurityUtil;
+import com.ssafy.unblur.domain.match.controller.ConferenceHistoryApiDocs;
 import com.ssafy.unblur.domain.match.dto.ConferenceHistoryResponseDto;
 import com.ssafy.unblur.domain.match.dto.PartnerProfileResponseDto;
 import com.ssafy.unblur.domain.match.service.ConferenceHistoryService;

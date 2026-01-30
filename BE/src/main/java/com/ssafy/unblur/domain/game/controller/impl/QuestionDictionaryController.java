@@ -1,6 +1,7 @@
-package com.ssafy.unblur.domain.game.controller;
+package com.ssafy.unblur.domain.game.controller.impl;
 
 import com.ssafy.unblur.common.response.BaseResponse;
+import com.ssafy.unblur.domain.game.controller.QuestionDictionaryApiDocs;
 import com.ssafy.unblur.domain.game.dto.QuestionDictionaryResponseDto;
 import com.ssafy.unblur.domain.game.service.QuestionDictionaryService;
 import lombok.RequiredArgsConstructor;

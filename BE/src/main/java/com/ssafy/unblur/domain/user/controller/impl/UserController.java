@@ -1,7 +1,7 @@
-package com.ssafy.unblur.domain.user.controller;
+package com.ssafy.unblur.domain.user.controller.impl;
 
-import com.ssafy.unblur.common.exception.BaseException;
 import com.ssafy.unblur.common.response.BaseResponse;
+import com.ssafy.unblur.domain.user.controller.UserApiDocs;
 import com.ssafy.unblur.domain.user.dto.UserProfileResponseDto;
 import com.ssafy.unblur.domain.user.dto.UserProfileUpdateRequestDto;
 import com.ssafy.unblur.domain.user.dto.UserSurveyResponseDto;

@@ -1,8 +1,9 @@
-package com.ssafy.unblur.domain.auth.controller;
+package com.ssafy.unblur.domain.auth.controller.impl;
 
 import com.ssafy.unblur.common.response.BaseResponse;
 import com.ssafy.unblur.common.security.jwt.JWTUtil;
 import com.ssafy.unblur.common.util.SecurityUtil;
+import com.ssafy.unblur.domain.auth.controller.AuthApiDocs;
 import com.ssafy.unblur.domain.auth.dto.*;
 import com.ssafy.unblur.domain.auth.model.User;
 import com.ssafy.unblur.domain.auth.service.AuthService;
