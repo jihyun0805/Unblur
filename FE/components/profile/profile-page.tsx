@@ -17,6 +17,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { StepProgress } from "@/components/auth/register/step-progress"
 import { RadioGroupField } from "@/components/auth/register/radio-group-field"
 import { CheckboxGroupField } from "@/components/auth/register/checkbox-group-field"
+import { getMySurvey, updateMyProfile, updateMySurvey } from "@/lib/api/user"
 
 const MBTI_TYPES = [
   "INTJ", "INTP", "ENTJ", "ENTP",
@@ -140,6 +141,24 @@ export function ProfilePage() {
   }, [user])
 
   useEffect(() => {
+    const fetchSurvey = async () => {
+      if (!user) return
+      try {
+        const fetchedSurvey = await getMySurvey()
+        setSurveyData((prev) => ({
+          ...prev,
+          ...fetchedSurvey,
+          interests: user.surveyData?.interests || prev.interests || [],
+        }))
+      } catch (error) {
+        console.error("설문조사 조회 실패:", error)
+      }
+    }
+
+    fetchSurvey()
+  }, [user])
+
+  useEffect(() => {
     if (!showDeleteConfirm) {
       setDeletePassword("")
     }
@@ -177,33 +196,39 @@ export function ProfilePage() {
     }
 
     setIsLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 500))
+    try {
+      // birthDate 포맷팅 및 데이터 변환
+      const birthDate = basicData.birthYear && basicData.birthMonth && basicData.birthDay
+        ? `${basicData.birthYear}-${basicData.birthMonth.padStart(2, '0')}-${basicData.birthDay.padStart(2, '0')}`
+        : undefined
 
-    // birthDate 포맷팅 및 데이터 변환
-    const birthDate = basicData.birthYear && basicData.birthMonth && basicData.birthDay
-      ? `${basicData.birthYear}-${basicData.birthMonth.padStart(2, '0')}-${basicData.birthDay.padStart(2, '0')}`
-      : undefined
+      const updatedUser = await updateMyProfile({
+        nickname: basicData.nickname,
+        intro: basicData.bio,
+        mbti: basicData.mbti,
+        birthDate,
+        gender: basicData.gender as "male" | "female",
+        region: basicData.region,
+        interestTags: basicData.interests,
+      })
 
-    updateUser({
-      nickname: basicData.nickname,
-      bio: basicData.bio,
-      mbti: basicData.mbti,
-      birthDate,
-      gender: basicData.gender as "male" | "female",
-      region: basicData.region,
-      surveyData: {
-        ...user?.surveyData,
-        interests: basicData.interests,
-      },
-    })
-    setIsLoading(false)
-    setEditingBasic(false)
-    setNicknameAvailable(null)
+      updateUser(updatedUser)
+      setEditingBasic(false)
+      setNicknameAvailable(null)
 
-    toast({
-      title: "프로필 수정 완료",
-      description: "기본 정보가 성공적으로 업데이트되었습니다.",
-    })
+      toast({
+        title: "프로필 수정 완료",
+        description: "기본 정보가 성공적으로 업데이트되었습니다.",
+      })
+    } catch (error) {
+      toast({
+        title: "프로필 수정 실패",
+        description: error instanceof Error ? error.message : "잠시 후 다시 시도해주세요.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const resetBasicEdit = () => {
@@ -252,17 +277,30 @@ export function ProfilePage() {
     }
 
     setIsLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 500))
+    try {
+      const updatedSurvey = await updateMySurvey(surveyData)
+      updateUser({
+        surveyData: {
+          ...updatedSurvey,
+          interests: surveyData.interests,
+        },
+      })
+      setSurveyStep(1)
+      setEditingSurvey(false)
 
-    updateUser({ surveyData })
-    setIsLoading(false)
-    setSurveyStep(1)
-    setEditingSurvey(false)
-
-    toast({
-      title: "설문조사 수정 완료",
-      description: "설문 응답이 성공적으로 업데이트되었습니다.",
-    })
+      toast({
+        title: "설문조사 수정 완료",
+        description: "설문 응답이 성공적으로 업데이트되었습니다.",
+      })
+    } catch (error) {
+      toast({
+        title: "설문조사 수정 실패",
+        description: error instanceof Error ? error.message : "잠시 후 다시 시도해주세요.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const resetSurveyEdit = () => {
@@ -320,12 +358,8 @@ export function ProfilePage() {
     setShowDeleteConfirm(false)
   }
 
-  const getTemperatureColor = (temp: number) => {
-    if (temp >= 40) return "text-red-500"
-    if (temp >= 38) return "text-orange-500"
-    if (temp >= 36) return "text-green-500"
-    if (temp >= 34) return "text-blue-500"
-    return "text-blue-700"
+  const getTemperatureColor = (clarity: number) => {
+    return "text-primary"
   }
 
   const selectedInterestLabels = SURVEY_QUESTIONS.interests.options
@@ -353,7 +387,7 @@ export function ProfilePage() {
                 <div className="flex-1">
                   <h2 className="text-xl font-bold">{user?.nickname}</h2>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className={`text-sm font-medium ${getTemperatureColor(user?.temperature || 36.5)}`}>
+                    <span className={`text-sm font-medium ${getTemperatureColor(user?.temperature ?? 50)}`}>
                       {Math.round(user?.temperature || 0)}%
                     </span>
                     <span className="text-xs text-muted-foreground">선명도</span>
