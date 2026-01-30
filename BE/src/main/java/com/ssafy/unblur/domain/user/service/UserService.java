@@ -14,6 +14,7 @@ import com.ssafy.unblur.domain.user.dto.UserProfileResponseDto;
 import com.ssafy.unblur.domain.user.dto.UserProfileUpdateRequestDto;
 import com.ssafy.unblur.domain.user.dto.UserSurveyResponseDto;
 import com.ssafy.unblur.domain.user.dto.UserSurveyUpdateRequestDto;
+import com.ssafy.unblur.domain.user.dto.LoveDnaUpdateRequest;
 import com.ssafy.unblur.domain.user.repository.UserBlockRepository;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
@@ -95,6 +96,18 @@ public class UserService {
         }
 
         return UserSurveyResponseDto.from(user);
+    }
+
+    /**
+     * 사용자의 연애 성향 유형 정보를 수정하는 메서드
+     */
+    @Transactional
+    public UserProfileResponseDto updateLoveDna(LoveDnaUpdateRequest dto) {
+        User user = getLoginUserAndCheckActive();
+
+        user.updateLoveDna(dto.getLoveDna());
+
+        return UserProfileResponseDto.from(user);
     }
 
     /**

@@ -38,6 +38,9 @@ public class UserProfileResponseDto {
     @Schema(description = "MBTI 유형", example = "ENFJ", nullable = true)
     private String mbti;
 
+    @Schema(description = "연애 성향 유형", example = "EFPD", nullable = true)
+    private String loveDna;
+
     @Schema(description = "한 줄 소개 (자기소개)", example = "반갑습니다!", nullable = true)
     private String intro;
 
@@ -60,6 +63,7 @@ public class UserProfileResponseDto {
                 .gender(user.getGender().name())
                 .region(user.getRegion() != null ? user.getRegion().name() : null)
                 .mbti(user.getMbti() != null ? user.getMbti().name() : null)
+                .loveDna(user.getLoveDna() != null ? user.getLoveDna().name() : null)
                 .intro(user.getIntro())
                 .detailedInfo(user.getDetailedInfo())
                 .interestTags(user.getInterestTags())

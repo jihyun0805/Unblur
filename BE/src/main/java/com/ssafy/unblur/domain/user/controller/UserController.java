@@ -6,6 +6,7 @@ import com.ssafy.unblur.domain.user.dto.UserProfileResponseDto;
 import com.ssafy.unblur.domain.user.dto.UserProfileUpdateRequestDto;
 import com.ssafy.unblur.domain.user.dto.UserSurveyResponseDto;
 import com.ssafy.unblur.domain.user.dto.UserSurveyUpdateRequestDto;
+import com.ssafy.unblur.domain.user.dto.LoveDnaUpdateRequest;
 import com.ssafy.unblur.domain.user.service.UserService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
@@ -65,6 +66,15 @@ public class UserController implements UserApiDocs {
         UserSurveyResponseDto updatedSurvey = userService.updateMySurvey(dto);
         return ResponseEntity.ok(
                 BaseResponse.onSuccess("설문조사 수정 성공", updatedSurvey)
+        );
+    }
+
+    @Override
+    @PatchMapping("/me/love-dna")
+    public ResponseEntity<BaseResponse<UserProfileResponseDto>> updateLoveDna(@RequestBody LoveDnaUpdateRequest request) {
+        UserProfileResponseDto updatedProfile = userService.updateLoveDna(request);
+        return ResponseEntity.ok(
+                BaseResponse.onSuccess("연애 성향 유형 수정 성공", updatedProfile)
         );
     }
 

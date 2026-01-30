@@ -100,6 +100,13 @@ public class User {
     private Mbti mbti;
 
     /**
+     * Love DNA 유형.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "love_dna", length = 4)
+    private LoveDna loveDna;
+
+    /**
      * 프로필 이미지 URL.
      */
     @Column(name = "profile_image_url", length = 500)
@@ -211,6 +218,7 @@ public class User {
         this.interestsVector = null;
         this.region = null;
         this.mbti = null;
+        this.loveDna = null;
         this.lastActiveAt = null;
     }
 
@@ -267,5 +275,9 @@ public class User {
 
     public void updateInterestsVector(float[] vector) {
         this.interestsVector = vector;
+    }
+
+    public void updateLoveDna(LoveDna loveDna) {
+        this.loveDna = loveDna;
     }
 }
