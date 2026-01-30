@@ -4,6 +4,7 @@ import com.ssafy.unblur.common.exception.BaseException;
 import com.ssafy.unblur.common.exception.ErrorCode;
 import com.ssafy.unblur.common.service.SseService;
 import com.ssafy.unblur.common.service.event.SseEventType;
+import com.ssafy.unblur.common.util.TransactionUtils;
 import com.ssafy.unblur.domain.auth.model.Gender;
 import com.ssafy.unblur.domain.auth.model.User;
 import com.ssafy.unblur.domain.auth.repository.UserRepository;
@@ -246,8 +247,10 @@ public class MatchServiceImpl implements MatchService {
         OneOnOneMatchedResponse requesterResponse = buildOneOnOneMatchedResponse(item, conference, userId);
         OneOnOneMatchedResponse recipientResponse = buildOneOnOneMatchedResponse(item, conference, item.getRequesterUserId());
 
-        eventPublisher.publish(item.getRequesterUserId(), SseEventType.ONE_ON_ONE_ACCEPTED, requesterResponse);
-        eventPublisher.publish(userId, SseEventType.ONE_ON_ONE_ACCEPTED, recipientResponse);
+        TransactionUtils.runAfterCommit(() -> {
+            eventPublisher.publish(item.getRequesterUserId(), SseEventType.ONE_ON_ONE_ACCEPTED, requesterResponse);
+            eventPublisher.publish(userId, SseEventType.ONE_ON_ONE_ACCEPTED, recipientResponse);
+        });
 
         return recipientResponse;
     }

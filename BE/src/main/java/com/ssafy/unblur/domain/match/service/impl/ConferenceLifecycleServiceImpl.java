@@ -11,9 +11,12 @@ import com.ssafy.unblur.domain.match.repository.ConferenceRoundRepository;
 import com.ssafy.unblur.domain.match.service.ConferenceLifecycleService;
 import com.ssafy.unblur.domain.match.service.RoundTimerService;
 import com.ssafy.unblur.domain.rtc.service.KurentoRoomService;
+import com.ssafy.unblur.common.util.TransactionUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -82,38 +85,38 @@ public class ConferenceLifecycleServiceImpl implements ConferenceLifecycleServic
     @Override
     @Transactional
     public void onJoin(UUID conferenceId, UUID userId) {
-        // 세션과 사용자 존재 확인
-        Conference conference = conferenceRepository.findById(conferenceId)
-                .orElseThrow(() -> new BaseException(ErrorCode.MATCH_REQUEST_NOT_FOUND));
-
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
-
-        // 이미 참여 기록이 있으면 재입장 처리 (네트워크 끊김 후 재연결)
-        Optional<ConferenceParticipant> existingParticipant = participantRepository.findByConference_IdAndUser_Id(conferenceId, userId);
-        if (existingParticipant.isPresent()) {
-            ConferenceParticipant participant = existingParticipant.get();
-
-            // leftAt이 설정되어 있으면 초기화 (재연결)
-            if (participant.getLeftAt() != null) {
-                participant.rejoin();
-            }
-
-            return;
-        }
-
-        // 신규 입장
-        ConferenceParticipant participant = ConferenceParticipant.builder()
-                .conference(conference)
-                .user(user)
-                .joinedAt(LocalDateTime.now(clock))
-                .build();
-
-        participantRepository.save(participant);
-
-        lifecycleLock.lock();
+        boolean unlockManually = lockUntilTxCompletion();
 
         try {
+            // 세션과 사용자 존재 확인
+            Conference conference = conferenceRepository.findById(conferenceId)
+                    .orElseThrow(() -> new BaseException(ErrorCode.MATCH_REQUEST_NOT_FOUND));
+
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
+
+            // 이미 참여 기록이 있으면 재입장 처리 (네트워크 끊김 후 재연결)
+            Optional<ConferenceParticipant> existingParticipant = participantRepository.findByConference_IdAndUser_Id(conferenceId, userId);
+            if (existingParticipant.isPresent()) {
+                ConferenceParticipant participant = existingParticipant.get();
+
+                // leftAt이 설정되어 있으면 초기화 (재연결)
+                if (participant.getLeftAt() != null) {
+                    participant.rejoin();
+                }
+
+                return;
+            }
+
+            // 신규 입장
+            ConferenceParticipant participant = ConferenceParticipant.builder()
+                    .conference(conference)
+                    .user(user)
+                    .joinedAt(LocalDateTime.now(clock))
+                    .build();
+
+            participantRepository.save(participant);
+
             // 두 명이 모두 입장한 경우 세션을 활성화하고 1라운드 생성
             if (conference.getStatus() == ConferenceStatus.WAITING) {
                 long activeCount = participantRepository.countByConference_IdAndLeftAtIsNull(conferenceId);
@@ -137,15 +140,18 @@ public class ConferenceLifecycleServiceImpl implements ConferenceLifecycleServic
                             .map(p -> p.getUser().getId())
                             .toList();
 
-                    // 1라운드 녹음 시작
-                    kurentoRoomService.startRecording(conferenceId, 1);
-
-                    roundTimerService.startRoundTimer(conferenceId, 1, participantIds);
+                    TransactionUtils.runAfterCommit(() -> {
+                        // 1라운드 녹음 시작
+                        kurentoRoomService.startRecording(conferenceId, 1);
+                        roundTimerService.startRoundTimer(conferenceId, 1, participantIds);
+                    });
                 }
             }
 
         } finally {
-            lifecycleLock.unlock();
+            if (unlockManually) {
+                lifecycleLock.unlock();
+            }
         }
     }
 
@@ -160,21 +166,21 @@ public class ConferenceLifecycleServiceImpl implements ConferenceLifecycleServic
     @Override
     @Transactional
     public void onLeave(UUID conferenceId, UUID userId) {
-        ConferenceParticipant participant = participantRepository.findByConference_IdAndUser_Id(conferenceId, userId)
-                .orElse(null);
-
-        if (participant == null) {
-            return;
-        }
-
-        // 퇴장 시각 기록
-        if (participant.getLeftAt() == null) {
-            participant.markLeft(LocalDateTime.now(clock));
-        }
-
-        lifecycleLock.lock();
+        boolean unlockManually = lockUntilTxCompletion();
 
         try {
+            ConferenceParticipant participant = participantRepository.findByConference_IdAndUser_Id(conferenceId, userId)
+                    .orElse(null);
+
+            if (participant == null) {
+                return;
+            }
+
+            // 퇴장 시각 기록
+            if (participant.getLeftAt() == null) {
+                participant.markLeft(LocalDateTime.now(clock));
+            }
+
             // 남아 있는 참여자가 없으면 세션/라운드 종료
             long activeCount = participantRepository.countByConference_IdAndLeftAtIsNull(conferenceId);
 
@@ -190,13 +196,37 @@ public class ConferenceLifecycleServiceImpl implements ConferenceLifecycleServic
                     roundRepository.findFirstByConference_IdAndStatus(conferenceId, ConferenceRoundStatus.ACTIVE)
                             .ifPresent(round -> round.complete(now));
 
-                    // 타이머 및 투표 상태 정리
-                    roundTimerService.cleanup(conferenceId);
+                    TransactionUtils.runAfterCommit(() -> roundTimerService.cleanup(conferenceId));
                 }
             }
 
         } finally {
-            lifecycleLock.unlock();
+            if (unlockManually) {
+                lifecycleLock.unlock();
+            }
         }
+    }
+
+    /**
+     * 트랜잭션이 완료될 때까지 락을 유지하는 헬퍼 메서드
+     *
+     * @return 트랜잭션이 없어서 즉시 락을 해제해야 하면 true, 트랜잭션이 있어서 afterCompletion에서 락을 해제하도록 했으면 false
+     */
+    private boolean lockUntilTxCompletion() {
+        lifecycleLock.lock();
+
+        if (TransactionSynchronizationManager.isActualTransactionActive() && TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+
+                @Override
+                public void afterCompletion(int status) {
+                    lifecycleLock.unlock();
+                }
+            });
+
+            return false;
+        }
+
+        return true;
     }
 }
