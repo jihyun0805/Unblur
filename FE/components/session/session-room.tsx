@@ -213,6 +213,7 @@ export function SessionRoom({
       toast({
         title: `${ROUND_NAMES[currentRound + 1]} 시작!`,
         description: currentRound + 1 === 3 ? "최종 라운드입니다. 제한 없이 대화하세요!" : "대화를 계속해보세요.",
+        duration: 3000,
       })
     } else if (partnerWantsContinue) {
       // 상대방은 계속하고 싶은데 내가 나가려고 함 -> 재확인 모달
@@ -238,6 +239,7 @@ export function SessionRoom({
     toast({
       title: `${ROUND_NAMES[currentRound + 1]} 시작!`,
       description: "대화를 계속해보세요!",
+      duration: 3000,
     })
   }
 
