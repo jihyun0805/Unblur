@@ -1,4 +1,4 @@
-import { apiFetch, setAuthToken, resolveApiUrl } from "@/lib/api"
+import { apiFetch, setAuthToken, resolveApiUrl, getAuthToken } from "@/lib/api"
 
 /**
  * 한글 지역명을 영문 코드로 변환
@@ -303,13 +303,15 @@ export async function reissueToken(): Promise<LoginResponse> {
 
 /**
  * 로그아웃 API
+ * 백엔드 /api/v1/auth/logout 은 authenticated() 이므로 Authorization 헤더 필요.
  */
 export async function logout(): Promise<void> {
+  const token = getAuthToken()
+  const headers: Record<string, string> = { "Content-Type": "application/json" }
+  if (token) headers["Authorization"] = `Bearer ${token}`
   const response = await fetch(resolveApiUrl("/api/v1/auth/logout"), {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers,
     credentials: "include",
   })
 

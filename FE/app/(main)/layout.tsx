@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
+import { useMatchSse } from "@/contexts/match-sse-context"
 import { useToast } from "@/hooks/use-toast"
 import { BackgroundLayout } from "@/components/common/background-layout"
 import { MainLayout } from "@/components/common/main-layout"
@@ -11,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 
 export default function MainRouteLayout({ children }: { children: React.ReactNode }) {
   const { user, logout, isLoading } = useAuth()
+  const { disconnect } = useMatchSse()
   const pathname = usePathname()
   const router = useRouter()
   const { toast } = useToast()
@@ -27,14 +29,15 @@ export default function MainRouteLayout({ children }: { children: React.ReactNod
   const isSessionOrMbti = pathname?.startsWith("/session") || pathname?.startsWith("/test")
   const handleLogout = async () => {
     try {
+      disconnect({ skipServerNotify: true })
       await logout()
       setShowLogoutConfirm(false)
       toast({ title: "로그아웃 완료", description: "다음에 또 만나요!" })
       router.replace("/")
     } catch (error) {
       console.error("로그아웃 실패:", error)
-      toast({ 
-        title: "로그아웃 실패", 
+      toast({
+        title: "로그아웃 실패",
         description: "로그아웃 중 오류가 발생했습니다.",
         variant: "destructive",
       })

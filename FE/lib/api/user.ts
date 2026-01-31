@@ -90,6 +90,7 @@ const mapProfileToUser = (profile: UserProfileResponseDto): User => {
   }
 
   return {
+    id: profile.id,
     email: profile.email,
     nickname: profile.nickname,
     age: profile.age ?? 0,

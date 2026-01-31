@@ -3,12 +3,22 @@
 import { useParams, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { SessionRoom } from "@/components/session/session-room"
+import { useMatchSse } from "@/contexts/match-sse-context"
 
 export default function SessionRoutePage() {
   const params = useParams()
   const router = useRouter()
   const id = typeof params.id === "string" ? params.id : params.id?.[0] ?? ""
   const [showConfirmLeave, setShowConfirmLeave] = useState(false)
+  const { disconnect, reconnect } = useMatchSse()
+
+  // 세션 입장 시 SSE 끊기(서버에 스트림 종료 알림), 퇴장 시 재연결
+  useEffect(() => {
+    void disconnect()
+    return () => {
+      reconnect()
+    }
+  }, [disconnect, reconnect])
 
   // 브라우저 뒤로가기 이벤트 처리
   useEffect(() => {
