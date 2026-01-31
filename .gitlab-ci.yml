@@ -7,7 +7,6 @@ variables:
   DOCKER_DRIVER: overlay2
   BE_IMAGE: rovin000/s14p11a705-be
   FE_IMAGE: rovin000/s14p11a705-fe
-  IMAGE_TAG: "master-${CI_COMMIT_SHORT_SHA}"
 
 default:
   image: docker:24.0.9
@@ -20,8 +19,7 @@ build_be:
     - if: '$CI_COMMIT_BRANCH == "master"'
   script:
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-    - docker build -t "$BE_IMAGE:$IMAGE_TAG" -t "$BE_IMAGE:latest" BE
-    - docker push "$BE_IMAGE:$IMAGE_TAG"
+    - docker build -t "$BE_IMAGE:latest" BE
     - docker push "$BE_IMAGE:latest"
 
 build_fe:
@@ -30,8 +28,7 @@ build_fe:
     - if: '$CI_COMMIT_BRANCH == "master"'
   script:
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-    - docker build -t "$FE_IMAGE:$IMAGE_TAG" -t "$FE_IMAGE:latest" FE
-    - docker push "$FE_IMAGE:$IMAGE_TAG"
+    - docker build -t "$FE_IMAGE:latest" FE
     - docker push "$FE_IMAGE:latest"
 
 deploy_master:
@@ -54,7 +51,7 @@ deploy_master:
   script:
     - |
       ssh "$DEPLOY_USER@$DEPLOY_HOST" \
-      "export BE_IMAGE=$BE_IMAGE FE_IMAGE=$FE_IMAGE IMAGE_TAG=$IMAGE_TAG; \
+      "export BE_IMAGE=$BE_IMAGE FE_IMAGE=$FE_IMAGE; \
        docker login -u $DOCKERHUB_USERNAME -p $DOCKERHUB_TOKEN; \
        docker compose -f /opt/unblur/infra/docker-compose.yml pull be fe; \
        docker compose -f /opt/unblur/infra/docker-compose.yml up -d be fe; \
