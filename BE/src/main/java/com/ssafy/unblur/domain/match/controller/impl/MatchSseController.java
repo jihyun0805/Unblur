@@ -1,11 +1,15 @@
 package com.ssafy.unblur.domain.match.controller.impl;
 
 import com.ssafy.unblur.common.security.auth.CustomUserDetails;
+import com.ssafy.unblur.common.response.BaseResponse;
 import com.ssafy.unblur.domain.match.controller.MatchSseDocs;
 import com.ssafy.unblur.common.service.SseService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -21,14 +25,18 @@ public class MatchSseController implements MatchSseDocs {
 
     private final SseService sseService;
 
-    /**
-     * 빠른 매칭 상태를 구독하는 메서드
-     *
-     * @param userDetails 인증 사용자 정보
-     * @return SSE emitter
-     */
+    @Override
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter connect(@AuthenticationPrincipal CustomUserDetails userDetails) {
         return sseService.connect(userDetails.getUserId());
+    }
+
+    @Override
+    @DeleteMapping("/stream")
+    public ResponseEntity<BaseResponse<Void>> disconnect(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        sseService.disconnect(userDetails.getUserId());
+        return ResponseEntity.status(HttpStatus.NO_CONTENT)
+                .body(BaseResponse.onNoContent("매칭 상태 스트림 연결이 해제되었습니다.")
+                );
     }
 }
