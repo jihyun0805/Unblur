@@ -25,6 +25,7 @@ export interface SurveyData {
 }
 
 export interface User {
+  id: string
   email: string
   nickname: string
   age: number

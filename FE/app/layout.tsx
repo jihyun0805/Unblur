@@ -4,16 +4,18 @@ import { Geist } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 import { AuthProvider } from "@/contexts/auth-context"
+import { ChatProvider } from "@/contexts/chat-context"
+import { MatchSseProvider } from "@/contexts/match-sse-context"
+import { MatchRequestToaster } from "@/components/matching/match-request-toaster"
 import { Toaster } from "@/components/ui/toaster"
 import { ConsoleErrorFilter } from "@/components/debug/console-error-filter"
 
-const _geist = Geist({ subsets: ["latin"] })
+const geist = Geist({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "Unblur",
   description:
     "블러 처리된 화면에서 시작하는 특별한 소개팅. 시간이 지날수록 서로를 알아가며, 진정한 대화를 나눠보세요.",
-    generator: 'v0.app'
 }
 
 export default function RootLayout({
@@ -23,11 +25,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
-      <body className="font-sans antialiased">
+      <body className={`${geist.className} antialiased`}>
         <AuthProvider>
-          <ConsoleErrorFilter />
-          {children}
-          <Toaster />
+          <MatchSseProvider>
+            <ChatProvider>
+              {children}
+              <Toaster />
+            </ChatProvider>
+            <MatchRequestToaster />
+          </MatchSseProvider>
         </AuthProvider>
         <Analytics />
       </body>
