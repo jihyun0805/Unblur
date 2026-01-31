@@ -1,10 +1,14 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { X, Users } from "lucide-react"
 import { CameraTestModal } from "./camera-test-modal"
+import { useMatchSse } from "@/contexts/match-sse-context"
+import { useToast } from "@/hooks/use-toast"
+import * as matchApi from "@/lib/api/match"
+import type { QuickMatchResultPayload } from "@/contexts/match-sse-context"
 
 interface MatchingModalProps {
   open: boolean
@@ -15,35 +19,92 @@ interface MatchingModalProps {
 export function MatchingModal({ open, onOpenChange, onMatchFound }: MatchingModalProps) {
   const [step, setStep] = useState<"camera" | "matching">("camera")
   const [matchingTime, setMatchingTime] = useState(0)
+  const [requestId, setRequestId] = useState<string | null>(null)
+  const { subscribe, disconnect } = useMatchSse()
+  const { toast } = useToast()
+  const onMatchFoundRef = useRef(onMatchFound)
+  onMatchFoundRef.current = onMatchFound
 
+  // 빠른 매칭 시작 + SSE 구독
+  useEffect(() => {
+    if (step !== "matching" || !open) return
+
+    let cancelled = false
+    matchApi
+      .startQuickMatch()
+      .then((res) => {
+        if (cancelled) return
+        setRequestId(res.requestId)
+      })
+      .catch((err) => {
+        if (cancelled) return
+        toast({
+          title: "매칭 시작 실패",
+          description: err instanceof Error ? err.message : "잠시 후 다시 시도해주세요.",
+          variant: "destructive",
+        })
+        setStep("camera")
+      })
+
+    const unsubMatched = subscribe("quick-match-matched", (data) => {
+      const payload = data as QuickMatchResultPayload
+      if (!payload?.conferenceId) return
+      disconnect()
+      onMatchFoundRef.current(payload.conferenceId)
+      onOpenChange(false)
+    })
+    const unsubTimeout = subscribe("quick-match-timeout", () => {
+      toast({
+        title: "매칭 시간 초과",
+        description: "다시 시도해주세요.",
+        variant: "destructive",
+      })
+      setStep("camera")
+      setRequestId(null)
+    })
+    const unsubCanceled = subscribe("quick-match-canceled", () => {
+      setStep("camera")
+      setRequestId(null)
+    })
+
+    return () => {
+      cancelled = true
+      unsubMatched()
+      unsubTimeout()
+      unsubCanceled()
+    }
+  }, [step, open, subscribe, disconnect, onOpenChange, toast])
+
+  // 매칭 중 타이머
   useEffect(() => {
     let interval: NodeJS.Timeout
     if (step === "matching") {
       interval = setInterval(() => {
         setMatchingTime((prev) => prev + 1)
       }, 1000)
-
-      const matchTimeout = setTimeout(
-        () => {
-          onMatchFound(`session_${Date.now()}`)
-        },
-        Math.random() * 100 + 100,
-      )
-
-      return () => {
-        clearInterval(interval)
-        clearTimeout(matchTimeout)
-      }
+      return () => clearInterval(interval)
     }
-    return () => clearInterval(interval)
-  }, [step, onMatchFound])
+  }, [step])
 
   const handleCameraReady = () => {
     setStep("matching")
     setMatchingTime(0)
+    setRequestId(null)
   }
 
-  const handleCancelMatching = () => {
+  const handleCancelMatching = async () => {
+    if (requestId) {
+      try {
+        await matchApi.cancelQuickMatch(requestId)
+      } catch (err) {
+        toast({
+          title: "취소 실패",
+          description: err instanceof Error ? err.message : "매칭 취소에 실패했습니다.",
+          variant: "destructive",
+        })
+      }
+    }
+    setRequestId(null)
     setStep("camera")
     setMatchingTime(0)
   }
@@ -54,14 +115,25 @@ export function MatchingModal({ open, onOpenChange, onMatchFound }: MatchingModa
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
   }
 
+  // 모달 닫을 때 진행 중인 빠른 매칭 취소
+  const handleOpenChange = (isOpen: boolean) => {
+    if (!isOpen && requestId) {
+      matchApi.cancelQuickMatch(requestId).catch(() => {})
+      setRequestId(null)
+    }
+    if (!isOpen) {
+      setStep("camera")
+      setMatchingTime(0)
+    }
+    onOpenChange(isOpen)
+  }
+
   if (step === "camera") {
     return (
       <CameraTestModal
         open={open}
         onOpenChange={(isOpen) => {
-          if (!isOpen) {
-            setStep("camera")
-          }
+          if (!isOpen) setStep("camera")
           onOpenChange(isOpen)
         }}
         onReady={handleCameraReady}
@@ -72,13 +144,7 @@ export function MatchingModal({ open, onOpenChange, onMatchFound }: MatchingModa
   return (
     <Dialog
       open={open}
-      onOpenChange={(open) => {
-        if (!open) {
-          setStep("camera")
-          setMatchingTime(0)
-        }
-        onOpenChange(open)
-      }}
+      onOpenChange={handleOpenChange}
     >
       <DialogContent className="sm:max-w-md bg-background">
         <DialogTitle className="sr-only">빠른 매칭</DialogTitle>

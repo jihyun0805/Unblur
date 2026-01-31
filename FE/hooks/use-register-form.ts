@@ -67,6 +67,7 @@ const initialFormData: RegisterFormData = {
 export function useRegisterForm() {
   const [formData, setFormData] = useState<RegisterFormData>(initialFormData)
   const [showPassword, setShowPassword] = useState(false)
+  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [emailAvailable, setEmailAvailable] = useState<boolean | null>(null)
   const [checkingEmail, setCheckingEmail] = useState(false)
@@ -96,6 +97,7 @@ export function useRegisterForm() {
     setEmailAvailable(null)
     setNicknameAvailable(null)
     setShowPassword(false)
+    setShowPasswordConfirm(false)
   }
 
   const validatePassword = (password: string) => {
@@ -227,6 +229,8 @@ export function useRegisterForm() {
     resetForm,
     showPassword,
     setShowPassword,
+    showPasswordConfirm,
+    setShowPasswordConfirm,
     isLoading,
     emailAvailable,
     checkingEmail,

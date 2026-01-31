@@ -39,6 +39,7 @@ export function ProfilePage() {
   const [deletePassword, setDeletePassword] = useState("")
   const [nicknameAvailable, setNicknameAvailable] = useState<boolean | null>(null)
   const [checkingNickname, setCheckingNickname] = useState(false)
+  const [showNicknameLimit, setShowNicknameLimit] = useState(false)
   const [editingBasic, setEditingBasic] = useState(false)
   const [editingSurvey, setEditingSurvey] = useState(false)
   const [surveyStep, setSurveyStep] = useState(1)
@@ -55,6 +56,11 @@ export function ProfilePage() {
     }
   }
   const initialBirth = parseBirthDate(user?.birthDate)
+  const initialBirthInput = initialBirth.year && initialBirth.month && initialBirth.day
+    ? `${initialBirth.year.slice(-2)}${initialBirth.month.padStart(2, "0")}${initialBirth.day.padStart(2, "0")}`
+    : ""
+  const [birthInput, setBirthInput] = useState(initialBirthInput)
+  const [birthError, setBirthError] = useState("")
 
   const [basicData, setBasicData] = useState({
     nickname: user?.nickname || "",
@@ -118,6 +124,12 @@ export function ProfilePage() {
         region: user.region || "",
         interests: user.surveyData?.interests || [],
       })
+      setBirthInput(
+        birth.year && birth.month && birth.day
+          ? `${birth.year.slice(-2)}${birth.month.padStart(2, "0")}${birth.day.padStart(2, "0")}`
+          : ""
+      )
+      setBirthError("")
       if (user.surveyData) {
         setSurveyData({
           dateStyle: user.surveyData.dateStyle || "",
@@ -180,6 +192,14 @@ export function ProfilePage() {
       })
       return
     }
+    if (basicData.nickname.trim().length > 10) {
+      toast({
+        title: "닉네임 오류",
+        description: "닉네임은 최대 10자까지 입력할 수 있습니다.",
+        variant: "destructive",
+      })
+      return
+    }
 
     if (basicData.nickname === (user?.nickname || "")) {
       setNicknameAvailable(true)
@@ -192,7 +212,119 @@ export function ProfilePage() {
     setCheckingNickname(false)
   }
 
+  const normalizeBirthValue = (value: string) => value.replace(/\D/g, "").slice(0, 6)
+
+  const getFullYear = (twoDigitYear: number) => {
+    const currentYear = new Date().getFullYear()
+    const cutoff = currentYear % 100
+    return twoDigitYear <= cutoff ? 2000 + twoDigitYear : 1900 + twoDigitYear
+  }
+
+  const parseBirthInput = (input: string) => {
+    const yy = Number.parseInt(input.slice(0, 2), 10)
+    const mm = Number.parseInt(input.slice(2, 4), 10)
+    const dd = Number.parseInt(input.slice(4, 6), 10)
+    if (Number.isNaN(yy) || Number.isNaN(mm) || Number.isNaN(dd)) {
+      return null
+    }
+    const year = getFullYear(yy)
+    return { year, month: mm, day: dd }
+  }
+
+  const getBirthError = (input: string, allowPartial: boolean) => {
+    if (!input) {
+      return allowPartial ? "" : "생년월일 6자리를 입력해주세요."
+    }
+
+    if (input.length < 6) {
+      return "생년월일 6자리를 입력해주세요."
+    }
+
+    const month = Number.parseInt(input.slice(2, 4), 10)
+    if (Number.isNaN(month) || month < 1 || month > 12) {
+      return "월은 1부터 12 사이여야 합니다."
+    }
+
+    const day = Number.parseInt(input.slice(4, 6), 10)
+    if (Number.isNaN(day) || day < 1 || day > 31) {
+      return "일은 1부터 31 사이여야 합니다."
+    }
+
+    const parsed = parseBirthInput(input)
+    if (!parsed || parsed.year < 1900) {
+      return "생년은 1900년 이후로 입력해주세요."
+    }
+
+    const date = new Date(parsed.year, parsed.month - 1, parsed.day)
+    if (date.getFullYear() !== parsed.year || date.getMonth() !== parsed.month - 1 || date.getDate() !== parsed.day) {
+      return "유효한 날짜를 입력해주세요."
+    }
+
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    if (date > today) {
+      return "미래 날짜는 입력할 수 없습니다."
+    }
+
+    return ""
+  }
+
+  const handleBirthChange = (value: string) => {
+    const nextValue = normalizeBirthValue(value)
+    setBirthInput(nextValue)
+    const error = getBirthError(nextValue, true)
+    setBirthError(error)
+
+    if (nextValue.length === 6 && !error) {
+      const parsed = parseBirthInput(nextValue)
+      if (parsed) {
+        setBasicData((prev) => ({
+          ...prev,
+          birthYear: parsed.year.toString(),
+          birthMonth: parsed.month.toString(),
+          birthDay: parsed.day.toString(),
+        }))
+      }
+    } else {
+      setBasicData((prev) => ({
+        ...prev,
+        birthYear: "",
+        birthMonth: "",
+        birthDay: "",
+      }))
+    }
+  }
+
   const handleSaveBasic = async () => {
+    if (basicData.nickname.trim().length < 2) {
+      toast({
+        title: "닉네임 오류",
+        description: "닉네임은 2자 이상이어야 합니다.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (basicData.nickname.trim().length > 10) {
+      toast({
+        title: "닉네임 오류",
+        description: "닉네임은 최대 10자까지 입력할 수 있습니다.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    const birthErrorMessage = getBirthError(birthInput, false)
+    if (birthErrorMessage) {
+      setBirthError(birthErrorMessage)
+      toast({
+        title: "생년월일 오류",
+        description: birthErrorMessage,
+        variant: "destructive",
+      })
+      return
+    }
+
     if (basicData.nickname !== (user?.nickname || "") && nicknameAvailable !== true) {
       toast({
         title: "닉네임 확인 필요",
@@ -251,8 +383,15 @@ export function ProfilePage() {
       region: user?.region || "",
       interests: user?.surveyData?.interests || [],
     })
+    setBirthInput(
+      birth.year && birth.month && birth.day
+        ? `${birth.year.slice(-2)}${birth.month.padStart(2, "0")}${birth.day.padStart(2, "0")}`
+        : ""
+    )
+    setBirthError("")
     setNicknameAvailable(null)
     setCheckingNickname(false)
+    setShowNicknameLimit(false)
     setEditingBasic(false)
   }
 
@@ -524,8 +663,16 @@ export function ProfilePage() {
                   id="nickname"
                   value={basicData.nickname}
                   onChange={(e) => {
-                    setBasicData({ ...basicData, nickname: e.target.value })
-                    setNicknameAvailable(null)
+                    const newValue = e.target.value
+                    if (newValue.length <= 10) {
+                      setBasicData({ ...basicData, nickname: newValue })
+                      setNicknameAvailable(null)
+                      if (showNicknameLimit) {
+                        setShowNicknameLimit(false)
+                      }
+                      return
+                    }
+                    setShowNicknameLimit(true)
                   }}
                   className="flex-1 border-2 border-gray-200"
                 />
@@ -538,49 +685,23 @@ export function ProfilePage() {
                   {nicknameAvailable ? "사용 가능한 닉네임입니다." : "이미 사용 중인 닉네임입니다."}
                 </p>
               )}
+              {showNicknameLimit ? <p className="text-sm text-destructive">닉네임은 최대 10자까지 입력할 수 있습니다.</p> : null}
             </div>
 
             {/* 생년월일 */}
             <div className="space-y-2">
               <Label>생년월일</Label>
-              <div className="grid grid-cols-3 gap-2">
-                <Select value={basicData.birthYear} onValueChange={(value) => setBasicData({ ...basicData, birthYear: value })}>
-                  <SelectTrigger className="border-2 border-gray-200">
-                    <SelectValue placeholder="년" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 30 }, (_, i) => new Date().getFullYear() - 20 - i).map((year) => (
-                      <SelectItem key={year} value={year.toString()}>
-                        {year}년
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={basicData.birthMonth} onValueChange={(value) => setBasicData({ ...basicData, birthMonth: value })}>
-                  <SelectTrigger className="border-2 border-gray-200">
-                    <SelectValue placeholder="월" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
-                      <SelectItem key={month} value={month.toString()}>
-                        {month}월
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={basicData.birthDay} onValueChange={(value) => setBasicData({ ...basicData, birthDay: value })}>
-                  <SelectTrigger className="border-2 border-gray-200">
-                    <SelectValue placeholder="일" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
-                      <SelectItem key={day} value={day.toString()}>
-                        {day}일
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <Input
+                id="birth_str_edit"
+                type="text"
+                inputMode="numeric"
+                placeholder="생년월일 6자리 (예: 980101)"
+                value={birthInput}
+                maxLength={6}
+                onChange={(e) => handleBirthChange(e.target.value)}
+                className="border-2 border-gray-200"
+              />
+              {birthError ? <p className="text-sm text-destructive">{birthError}</p> : null}
             </div>
 
             {/* 성별 */}

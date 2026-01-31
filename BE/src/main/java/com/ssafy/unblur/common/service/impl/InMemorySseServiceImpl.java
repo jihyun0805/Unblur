@@ -35,9 +35,10 @@ public class InMemorySseServiceImpl implements SseService {
         SseEmitter emitter = new SseEmitter(0L);
         emitters.put(userId, emitter);
 
-        emitter.onCompletion(() -> emitters.remove(userId));
-        emitter.onTimeout(() -> emitters.remove(userId));
-        emitter.onError(error -> emitters.remove(userId));
+        // 연결 종료 시 저장소에서 제거 (동일 사용자 재연결로 새 emitter 생성 시 새 emitter 유지)
+        emitter.onCompletion(() -> emitters.remove(userId, emitter));
+        emitter.onTimeout(() -> emitters.remove(userId, emitter));
+        emitter.onError(error -> emitters.remove(userId, emitter));
 
         return emitter;
     }
@@ -64,7 +65,7 @@ public class InMemorySseServiceImpl implements SseService {
             emitter.send(SseEmitter.event().name(name).data(data));
 
         } catch (IOException ex) {
-            emitters.remove(userId);
+            emitters.remove(userId, emitter);
         }
     }
 
@@ -76,5 +77,13 @@ public class InMemorySseServiceImpl implements SseService {
     @Override
     public boolean isUserConnected(UUID userId) {
         return emitters.containsKey(userId);
+    }
+
+    @Override
+    public void disconnect(UUID userId) {
+        SseEmitter emitter = emitters.remove(userId);
+        if (emitter != null) {
+            emitter.complete();
+        }
     }
 }

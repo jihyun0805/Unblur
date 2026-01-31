@@ -30,6 +30,8 @@ export function RegisterModal({ open, onOpenChange, onSwitchToLogin }: RegisterM
     resetForm,
     showPassword,
     setShowPassword,
+    showPasswordConfirm,
+    setShowPasswordConfirm,
     isLoading,
     emailAvailable,
     checkingEmail,
@@ -264,6 +266,8 @@ export function RegisterModal({ open, onOpenChange, onSwitchToLogin }: RegisterM
             updateFormData={updateFormData}
             showPassword={showPassword}
             setShowPassword={setShowPassword}
+            showPasswordConfirm={showPasswordConfirm}
+            setShowPasswordConfirm={setShowPasswordConfirm}
             emailAvailable={emailAvailable}
             checkingEmail={checkingEmail}
             nicknameAvailable={nicknameAvailable}

@@ -3,16 +3,19 @@
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
-import { Mic, MicOff, PhoneOff, MessageCircle, Gamepad2, BookOpen, Send, Clock, X, Lightbulb, AlertCircle } from "lucide-react"
+import { Mic, MicOff, PhoneOff, MessageCircle, Gamepad2, BookOpen, Clock, X, Lightbulb, AlertCircle, Home } from "lucide-react"
 import { BalanceGameOverlay } from "@/components/session/balance-game-overlay"
 import { RoundVoteModal } from "@/components/session/round-vote-modal"
 import { RatingModal } from "@/components/session/rating-modal"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { ConfirmLeaveModal } from "@/components/session/confirm-leave-modal"
 import { EndCallConfirmModal } from "@/components/session/end-call-confirm-modal"
 import { QuestionBankModal, getRoundQuestions } from "@/components/session/question-bank-modal"
+import { useAuth } from "@/contexts/auth-context"
 import { useWebRTC } from "@/hooks/use-webrtc"
+import { useChat } from "@/hooks/use-chat"
+import { ChatPanel } from "@/components/session/chat-panel"
 
 interface SessionRoomProps {
   sessionId: string
@@ -22,7 +25,7 @@ interface SessionRoomProps {
   onExternalCancelLeave?: () => void
 }
 
-const ROUND_TIMES = [10, 10, 5, Number.POSITIVE_INFINITY] // seconds
+const ROUND_TIMES = [600, 600, 600, Number.POSITIVE_INFINITY] // seconds (1라운드: 5분 = 300초)
 const BLUR_LEVELS = [20, 10, 5, 0] // px
 const ROUND_NAMES = ["1라운드", "2라운드", "3라운드", "최종 라운드"]
 const BLUR_LABELS = ["블라인드", "강한 블러", "약간 블러", "완전 공개"]
@@ -45,14 +48,42 @@ export function SessionRoom({
   const [showQuestionBank, setShowQuestionBank] = useState(false)
   const [pendingLeave, setPendingLeave] = useState(false)
   const [pendingExternalLeave, setPendingExternalLeave] = useState(false)
-  const [messages, setMessages] = useState<{ id: string; sender: string; text: string }[]>([])
-  const [newMessage, setNewMessage] = useState("")
   const [showIceBreaker, setShowIceBreaker] = useState(false)
   const [currentIceBreaker, setCurrentIceBreaker] = useState("")
   const [silenceTimer, setSilenceTimer] = useState(0)
+  const [showSessionEndedModal, setShowSessionEndedModal] = useState(false)
   const { toast } = useToast()
-  const chatEndRef = useRef<HTMLDivElement>(null)
+  const { user } = useAuth()
   const lastIceBreakerRef = useRef("")
+
+  const {
+    messages: chatMessages,
+    isLoading: chatLoading,
+    isSending: chatSending,
+    sendMessage: chatSendMessage,
+    markAsRead: chatMarkAsRead,
+    unreadCount: chatUnreadCount,
+  } = useChat({
+    conferenceId: sessionId,
+    enabled: true,
+    autoLoadMessages: true,
+    panelOpen: showChat,
+  })
+
+  // 채팅 패널을 열 때 읽음 처리
+  useEffect(() => {
+    if (showChat) chatMarkAsRead()
+  }, [showChat, chatMarkAsRead])
+
+  // 상대방 끊김 시 모달 3초 표시 후 홈으로 이동
+  useEffect(() => {
+    if (!showSessionEndedModal) return
+    const t = setTimeout(() => {
+      setShowSessionEndedModal(false)
+      onLeave()
+    }, 3000)
+    return () => clearTimeout(t)
+  }, [showSessionEndedModal, onLeave])
 
   // WebRTC 비디오 refs
   const localVideoRef = useRef<HTMLVideoElement | null>(null)
@@ -71,10 +102,14 @@ export function SessionRoom({
     isVideoEnabled,
   } = useWebRTC({
     sessionId,
+    userId: user?.id ?? "",
     localVideoRef,
     remoteVideoRef,
-    enabled: true,
-    useMock: true, // 백엔드 미구현 시 mock 사용
+    enabled: !!sessionId && !!user?.id,
+    useMock: false,
+    onDisconnected: () => {
+      setShowSessionEndedModal(true)
+    },
   })
 
   // 로컬 스트림을 비디오 요소에 설정
@@ -84,23 +119,13 @@ export function SessionRoom({
     }
   }, [localStream])
 
-  // 원격 스트림을 비디오 요소에 설정
+  // 원격 스트림을 비디오 요소에 설정 및 재생
   useEffect(() => {
     if (remoteStream && remoteVideoRef.current) {
       remoteVideoRef.current.srcObject = remoteStream
+      remoteVideoRef.current.play().catch(() => {})
     }
   }, [remoteStream])
-
-  // WebRTC 에러 처리 및 사용자 피드백
-  useEffect(() => {
-    if (webrtcError) {
-      toast({
-        title: "연결 오류",
-        description: webrtcError,
-        variant: "destructive",
-      })
-    }
-  }, [webrtcError, toast])
 
   // 연결 상태 변경 시 피드백
   useEffect(() => {
@@ -167,10 +192,6 @@ export function SessionRoom({
     return () => clearInterval(interval)
   }, [showIceBreaker, currentRound])
 
-  // Auto scroll chat
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages])
 
   const formatTime = (seconds: number) => {
     if (seconds === Number.POSITIVE_INFINITY) return "∞"
@@ -179,31 +200,6 @@ export function SessionRoom({
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
   }
 
-  const handleSendMessage = () => {
-    if (!newMessage.trim()) return
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: Date.now().toString(),
-        sender: "me",
-        text: newMessage,
-      },
-    ])
-    setNewMessage("")
-    setSilenceTimer(0)
-
-    // Simulate partner response
-    setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: (Date.now() + 1).toString(),
-          sender: "partner",
-          text: "네, 맞아요! 저도 그렇게 생각해요 :)",
-        },
-      ])
-    }, 2000)
-  }
 
   const handleVoteResult = (continued: boolean, partnerWantsContinue: boolean) => {
     setShowVote(false)
@@ -306,90 +302,44 @@ export function SessionRoom({
             </Tooltip>
           </div>
           <div className="flex items-center gap-2">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowGame(true)}
-                  className="text-white hover:bg-white/20"
-                >
-                  <Gamepad2 className="w-5 h-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent
-                side="bottom"
-                sideOffset={8}
-                align="center"
-                showArrow={false}
-                className="bg-white text-foreground text-xs font-medium rounded-md px-3 py-1.5"
-              >
-                밸런스 게임
-              </TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowQuestionBank(true)}
-                  className="text-white hover:bg-white/20"
-                >
-                  <BookOpen className="w-5 h-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent
-                side="bottom"
-                sideOffset={8}
-                align="center"
-                showArrow={false}
-                className="bg-white text-foreground text-xs font-medium rounded-md px-3 py-1.5"
-              >
-                질문 사전
-              </TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowChat(!showChat)}
-                  className="text-white hover:bg-white/20"
-                >
-                  <MessageCircle className="w-5 h-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent
-                side="bottom"
-                sideOffset={8}
-                align="center"
-                showArrow={false}
-                className="bg-white text-foreground text-xs font-medium rounded-md px-3 py-1.5"
-              >
-                채팅
-              </TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleLeave}
-                  className="text-white hover:bg-red-500/20"
-                >
-                  <PhoneOff className="w-5 h-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent
-                side="bottom"
-                sideOffset={8}
-                align="center"
-                showArrow={false}
-                className="bg-white text-foreground text-xs font-medium rounded-md px-3 py-1.5"
-              >
-                나가기
-              </TooltipContent>
-            </Tooltip>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowGame(true)}
+              className="text-white hover:bg-white/20"
+            >
+              <Gamepad2 className="w-5 h-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowQuestionBank(true)}
+              className="text-white hover:bg-white/20"
+            >
+              <BookOpen className="w-5 h-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowChat(!showChat)}
+              className="text-white hover:bg-white/20 relative"
+            >
+              <MessageCircle className="w-5 h-5" />
+              {!showChat && chatUnreadCount > 0 && (
+                <span
+                  className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-red-500"
+                  aria-label="읽지 않은 채팅 있음"
+                />
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLeave}
+              className="text-white hover:bg-red-500/20"
+            >
+              <PhoneOff className="w-5 h-5" />
+            </Button>
           </div>
         </div>
       </header>
@@ -528,50 +478,15 @@ export function SessionRoom({
           }`}
         >
           {showChat && (
-            <div className="h-full flex flex-col">
-              <div className="p-4 border-b border-border flex items-center justify-between flex-shrink-0">
-                <h3 className="font-semibold">채팅</h3>
-                <button
-                  onClick={() => setShowChat(false)}
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                {messages.map((msg) => (
-                  <div key={msg.id} className={`flex ${msg.sender === "me" ? "justify-end" : "justify-start"}`}>
-                    <div
-                      className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm ${
-                        msg.sender === "me" ? "bg-primary text-primary-foreground" : "bg-card"
-                      }`}
-                    >
-                      {msg.text}
-                    </div>
-                  </div>
-                ))}
-                <div ref={chatEndRef} />
-              </div>
-              <div className="p-4 border-t border-border flex-shrink-0">
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault()
-                    handleSendMessage()
-                  }}
-                  className="flex gap-2"
-                >
-                  <Input
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    placeholder="메시지를 입력하세요..."
-                    className="bg-input"
-                  />
-                  <Button type="submit" size="icon" className="bg-primary text-primary-foreground">
-                    <Send className="w-4 h-4" />
-                  </Button>
-                </form>
-              </div>
-            </div>
+            <ChatPanel
+              messages={chatMessages}
+              isLoading={chatLoading}
+              isSending={chatSending}
+              sendMessage={chatSendMessage}
+              markAsRead={chatMarkAsRead}
+              onClose={() => setShowChat(false)}
+              showCloseButton={true}
+            />
           )}
         </div>
       </div>
@@ -627,6 +542,24 @@ export function SessionRoom({
         round={currentRound}
         onClose={() => setShowQuestionBank(false)}
       />
+
+      <Dialog open={showSessionEndedModal}>
+        <DialogContent
+          className="sm:max-w-sm rounded-2xl border-0 bg-background/95 shadow-2xl backdrop-blur-sm px-8"
+          showCloseButton={false}
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
+          <DialogTitle className="sr-only">세션 종료</DialogTitle>
+          <div className="py-10 text-center">
+            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+              <Home className="h-8 w-8 text-primary" />
+            </div>
+            <p className="text-xl font-semibold tracking-tight text-foreground">세션이 종료되었습니다.</p>
+            <p className="mt-3 text-sm text-muted-foreground leading-relaxed">홈화면으로 이동합니다.</p>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <RatingModal open={showRating} onComplete={handleRatingComplete} partnerNickname="상대방" />
     </div>

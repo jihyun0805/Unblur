@@ -1,62 +1,129 @@
-// WebRTC 시그널링 메시지 타입 정의
+// WebRTC 시그널링 메시지 타입 (BE Kurento 프로토콜에 맞춤)
 export type SignalingMessage =
   | { type: "offer"; sdp: RTCSessionDescriptionInit; sessionId: string }
   | { type: "answer"; sdp: RTCSessionDescriptionInit; sessionId: string }
   | { type: "ice-candidate"; candidate: RTCIceCandidateInit; sessionId: string }
   | { type: "error"; message: string; sessionId: string }
-  | { type: "join"; sessionId: string }
-  | { type: "leave"; sessionId: string }
+  | { type: "joined"; conferenceId: string; userId: string; sessionId: string }
   | { type: "connected"; sessionId: string }
   | { type: "disconnected"; sessionId: string }
 
 export type SignalingMessageHandler = (message: SignalingMessage) => void
 
 export interface WebRTCSignalingClient {
-  connect(sessionId: string): Promise<void>
+  connect(conferenceId: string, userId: string): Promise<void>
   disconnect(): void
-  sendOffer(sdp: RTCSessionDescriptionInit, sessionId: string): void
-  sendAnswer(sdp: RTCSessionDescriptionInit, sessionId: string): void
-  sendIceCandidate(candidate: RTCIceCandidateInit, sessionId: string): void
+  sendOffer(sdp: RTCSessionDescriptionInit, conferenceId: string, userId: string): void
+  sendAnswer(sdp: RTCSessionDescriptionInit, conferenceId: string, userId: string): void
+  sendIceCandidate(candidate: RTCIceCandidateInit, conferenceId: string, userId: string): void
   onMessage(handler: SignalingMessageHandler): () => void
   isConnected(): boolean
 }
 
-// WebSocket 기반 시그널링 클라이언트
+// BE RTC 서버 원시 메시지
+interface ServerMessage {
+  type: string
+  userId?: string
+  conferenceId?: string
+  sdpAnswer?: string
+  candidate?: { candidate: string; sdpMid: string; sdpMLineIndex: number }
+  message?: string
+}
+
+function normalizeWsUrl(input: string): string {
+  const trimmed = input.trim()
+  if (trimmed.startsWith("ws://") || trimmed.startsWith("wss://")) return trimmed
+  if (trimmed.startsWith("https://")) return trimmed.replace("https://", "wss://")
+  if (trimmed.startsWith("http://")) return trimmed.replace("http://", "ws://")
+  return `ws://${trimmed}`
+}
+
 export class WebSocketSignalingClient implements WebRTCSignalingClient {
   private ws: WebSocket | null = null
   private messageHandlers: Set<SignalingMessageHandler> = new Set()
-  private sessionId: string | null = null
+  private conferenceId: string | null = null
+  private userId: string | null = null
   private reconnectAttempts = 0
   private maxReconnectAttempts = 5
   private reconnectDelay = 1000
-  private reconnectTimer: NodeJS.Timeout | null = null
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null
+  private skipReconnect = false
 
   constructor(private wsUrl: string) {}
 
-  async connect(sessionId: string): Promise<void> {
-    if (this.ws?.readyState === WebSocket.OPEN && this.sessionId === sessionId) {
+  async connect(conferenceId: string, userId: string): Promise<void> {
+    if (this.ws?.readyState === WebSocket.OPEN && this.conferenceId === conferenceId && this.userId === userId) {
       return
     }
 
-    this.sessionId = sessionId
     this.disconnect()
+    this.conferenceId = conferenceId
+    this.userId = userId
 
     return new Promise((resolve, reject) => {
       try {
-        const url = `${this.wsUrl}?sessionId=${sessionId}`
+        const url = `${normalizeWsUrl(this.wsUrl)}?sessionId=${encodeURIComponent(conferenceId)}`
         this.ws = new WebSocket(url)
+
+        const maxJoinRetries = 3
+        const joinRetryDelayMs = 2000
+        let joinRetryCount = 0
+        let joinRetryTimer: ReturnType<typeof setTimeout> | null = null
+
+        const sendJoin = () => {
+          if (this.ws?.readyState !== WebSocket.OPEN || !this.conferenceId || !this.userId) return
+          this.send({ type: "join", conferenceId: this.conferenceId, userId: this.userId })
+        }
+
+        const clearJoinRetry = () => {
+          if (joinRetryTimer != null) {
+            clearTimeout(joinRetryTimer)
+            joinRetryTimer = null
+          }
+        }
+
+        const handleJoined = () => {
+          clearJoinRetry()
+          this.ws?.removeEventListener?.("message", onMessage)
+          resolve()
+        }
+
+        const onMessage = (event: MessageEvent) => {
+          try {
+            const raw: ServerMessage = JSON.parse(event.data)
+            if (raw.type === "joined") handleJoined()
+            if (raw.type === "error" && process.env.NODE_ENV === "development") {
+              console.warn("[WebRTC] Server error:", raw.message)
+            }
+          } catch {
+            /* ignore */
+          }
+        }
+
+        const scheduleJoinRetry = () => {
+          if (joinRetryCount >= maxJoinRetries) return
+          joinRetryTimer = setTimeout(() => {
+            joinRetryCount++
+            sendJoin()
+            scheduleJoinRetry()
+          }, joinRetryDelayMs)
+        }
+
+        this.ws.addEventListener("message", onMessage)
 
         this.ws.onopen = () => {
           console.log("[WebRTC] WebSocket connected")
+          this.skipReconnect = false
           this.reconnectAttempts = 0
-          this.send({ type: "join", sessionId })
-          resolve()
+          sendJoin()
+          scheduleJoinRetry()
         }
 
         this.ws.onmessage = (event) => {
           try {
-            const message: SignalingMessage = JSON.parse(event.data)
-            this.handleMessage(message)
+            const raw: ServerMessage = JSON.parse(event.data)
+            const normalized = this.normalizeServerMessage(raw)
+            if (normalized) this.handleMessage(normalized)
           } catch (error) {
             console.error("[WebRTC] Failed to parse message:", error)
           }
@@ -68,9 +135,10 @@ export class WebSocketSignalingClient implements WebRTCSignalingClient {
         }
 
         this.ws.onclose = () => {
+          clearJoinRetry()
           console.log("[WebRTC] WebSocket closed")
           this.ws = null
-          this.attemptReconnect(sessionId)
+          if (!this.skipReconnect) this.attemptReconnect(conferenceId, userId)
         }
       } catch (error) {
         reject(error)
@@ -78,42 +146,54 @@ export class WebSocketSignalingClient implements WebRTCSignalingClient {
     })
   }
 
-  private attemptReconnect(sessionId: string) {
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error("[WebRTC] Max reconnect attempts reached")
-      return
+  private normalizeServerMessage(raw: ServerMessage): SignalingMessage | null {
+    const sessionId = this.conferenceId ?? ""
+    if (raw.type === "joined") {
+      return { type: "joined", conferenceId: raw.conferenceId ?? "", userId: raw.userId ?? "", sessionId }
     }
+    if (raw.type === "answer" && raw.sdpAnswer != null) {
+      return { type: "answer", sdp: { type: "answer", sdp: raw.sdpAnswer }, sessionId }
+    }
+    if (raw.type === "candidate" && raw.candidate) {
+      return { type: "ice-candidate", candidate: raw.candidate as RTCIceCandidateInit, sessionId }
+    }
+    if (raw.type === "error") {
+      return { type: "error", message: raw.message ?? "Unknown error", sessionId }
+    }
+    if (raw.type === "left") {
+      return { type: "disconnected", sessionId }
+    }
+    return null
+  }
 
+  private attemptReconnect(conferenceId: string, userId: string) {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) return
     this.reconnectAttempts++
     const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1)
-
-    console.log(`[WebRTC] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`)
-
     this.reconnectTimer = setTimeout(() => {
-      this.connect(sessionId).catch((error) => {
-        console.error("[WebRTC] Reconnect failed:", error)
-      })
+      this.connect(conferenceId, userId).catch((err) => console.error("[WebRTC] Reconnect failed:", err))
     }, delay)
   }
 
   disconnect(): void {
+    this.skipReconnect = true
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer)
       this.reconnectTimer = null
     }
-
+    if (this.ws?.readyState === WebSocket.OPEN && this.conferenceId && this.userId) {
+      this.send({ type: "leave", conferenceId: this.conferenceId, userId: this.userId })
+    }
     if (this.ws) {
-      if (this.sessionId) {
-        this.send({ type: "leave", sessionId: this.sessionId })
-      }
       this.ws.close()
       this.ws = null
     }
-    this.sessionId = null
+    this.conferenceId = null
+    this.userId = null
     this.reconnectAttempts = 0
   }
 
-  private send(message: SignalingMessage): void {
+  private send(message: Record<string, unknown>): void {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(message))
     } else {
@@ -121,16 +201,25 @@ export class WebSocketSignalingClient implements WebRTCSignalingClient {
     }
   }
 
-  sendOffer(sdp: RTCSessionDescriptionInit, sessionId: string): void {
-    this.send({ type: "offer", sdp, sessionId })
+  sendOffer(sdp: RTCSessionDescriptionInit, conferenceId: string, userId: string): void {
+    this.send({ type: "offer", conferenceId, userId, sdpOffer: sdp.sdp })
   }
 
-  sendAnswer(sdp: RTCSessionDescriptionInit, sessionId: string): void {
-    this.send({ type: "answer", sdp, sessionId })
+  sendAnswer(sdp: RTCSessionDescriptionInit, conferenceId: string, userId: string): void {
+    this.send({ type: "answer", conferenceId, userId, sdpAnswer: sdp.sdp })
   }
 
-  sendIceCandidate(candidate: RTCIceCandidateInit, sessionId: string): void {
-    this.send({ type: "ice-candidate", candidate, sessionId })
+  sendIceCandidate(candidate: RTCIceCandidateInit, conferenceId: string, userId: string): void {
+    this.send({
+      type: "candidate",
+      conferenceId,
+      userId,
+      candidate: {
+        candidate: candidate.candidate,
+        sdpMid: candidate.sdpMid ?? undefined,
+        sdpMLineIndex: candidate.sdpMLineIndex ?? 0,
+      },
+    })
   }
 
   onMessage(handler: SignalingMessageHandler): () => void {
@@ -155,52 +244,52 @@ export class WebSocketSignalingClient implements WebRTCSignalingClient {
   }
 }
 
-// Mock 시그널링 클라이언트 (백엔드 미구현 시 사용)
 export class MockSignalingClient implements WebRTCSignalingClient {
   private messageHandlers: Set<SignalingMessageHandler> = new Set()
   private connected = false
+  private mockConferenceId: string | null = null
+  private mockUserId: string | null = null
 
-  async connect(sessionId: string): Promise<void> {
-    console.log("[WebRTC] Mock signaling client connected (sessionId:", sessionId, ")")
+  async connect(conferenceId: string, userId: string): Promise<void> {
+    console.log("[WebRTC] Mock signaling connected", { conferenceId, userId })
     this.connected = true
-
-    // 시뮬레이션: 연결 성공 메시지
+    this.mockConferenceId = conferenceId
+    this.mockUserId = userId
     setTimeout(() => {
-      this.handleMessage({ type: "connected", sessionId })
+      this.handleMessage({ type: "connected", sessionId: conferenceId })
     }, 100)
+    return Promise.resolve()
   }
 
   disconnect(): void {
-    console.log("[WebRTC] Mock signaling client disconnected")
     this.connected = false
+    this.mockConferenceId = null
+    this.mockUserId = null
   }
 
-  sendOffer(sdp: RTCSessionDescriptionInit, sessionId: string): void {
-    console.log("[WebRTC] Mock: Offer sent", { sdp, sessionId })
-    // Mock에서는 실제로 전송하지 않음
+  sendOffer(sdp: RTCSessionDescriptionInit, conferenceId: string, userId: string): void {
+    console.log("[WebRTC] Mock: Offer sent", { conferenceId, userId })
   }
 
-  sendAnswer(sdp: RTCSessionDescriptionInit, sessionId: string): void {
-    console.log("[WebRTC] Mock: Answer sent", { sdp, sessionId })
+  sendAnswer(sdp: RTCSessionDescriptionInit, conferenceId: string, userId: string): void {
+    console.log("[WebRTC] Mock: Answer sent", { conferenceId, userId })
   }
 
-  sendIceCandidate(candidate: RTCIceCandidateInit, sessionId: string): void {
-    console.log("[WebRTC] Mock: ICE candidate sent", { candidate, sessionId })
+  sendIceCandidate(candidate: RTCIceCandidateInit, conferenceId: string, userId: string): void {
+    console.log("[WebRTC] Mock: ICE candidate sent", { conferenceId, userId })
   }
 
   onMessage(handler: SignalingMessageHandler): () => void {
     this.messageHandlers.add(handler)
-    return () => {
-      this.messageHandlers.delete(handler)
-    }
+    return () => this.messageHandlers.delete(handler)
   }
 
   private handleMessage(message: SignalingMessage): void {
-    this.messageHandlers.forEach((handler) => {
+    this.messageHandlers.forEach((h) => {
       try {
-        handler(message)
-      } catch (error) {
-        console.error("[WebRTC] Error in mock message handler:", error)
+        h(message)
+      } catch (e) {
+        console.error("[WebRTC] Mock handler error:", e)
       }
     })
   }
@@ -210,13 +299,8 @@ export class MockSignalingClient implements WebRTCSignalingClient {
   }
 }
 
-// 시그널링 클라이언트 팩토리
 export function createSignalingClient(wsUrl?: string, useMock = false): WebRTCSignalingClient {
-  if (useMock || !wsUrl) {
-    return new MockSignalingClient()
-  }
-
-  // 환경 변수에서 WebSocket URL 가져오기
-  const url = wsUrl || process.env.NEXT_PUBLIC_WS_RTC_URL || "ws://localhost:8080/ws/rtc"
-  return new WebSocketSignalingClient(url)
+  if (useMock) return new MockSignalingClient()
+  const raw = wsUrl ?? process.env.NEXT_PUBLIC_WS_RTC_URL ?? "http://localhost:8080/ws/rtc"
+  return new WebSocketSignalingClient(normalizeWsUrl(raw))
 }

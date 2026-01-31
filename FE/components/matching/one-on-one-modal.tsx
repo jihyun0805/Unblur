@@ -1,12 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Send } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { UserProfileModal, UserProfileData } from "@/components/common/user-profile-modal"
+import * as matchApi from "@/lib/api/match"
+import type { OnlineUserDto } from "@/lib/api/match"
 
 export interface MatchedUser {
   id: string
@@ -18,42 +20,71 @@ export interface MatchedUser {
   profile?: UserProfileData
 }
 
+function mapOnlineUserToMatched(dto: OnlineUserDto): MatchedUser {
+  return {
+    id: dto.id,
+    nickname: dto.nickname,
+    isOnline: true,
+    clarity: dto.clarityScore ?? 0,
+    profile: {
+      nickname: dto.nickname,
+      temperature: dto.clarityScore ?? 0,
+      age: dto.age,
+      gender: dto.gender?.toLowerCase() === "female" ? "female" : "male",
+      region: dto.region ?? "",
+      mbti: dto.mbti ?? undefined,
+      bio: dto.intro ?? undefined,
+      interests: dto.interestTags ?? [],
+    },
+  }
+}
+
 interface OneOnOneModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onRequestChat: (userId: string) => void
-  /** 이전 매칭 이력 목록 */
-  matchedUsers?: MatchedUser[]
-  /** 데이터 로딩 중 여부 */
-  isLoading?: boolean
 }
 
-// TODO: 실제 API 연동 시 제거
-const MOCK_MATCHED_USERS: MatchedUser[] = [
-  { id: "1", nickname: "민지", isOnline: true, clarity: 85, profile: { nickname: "민지", temperature: 85, age: 25, gender: "female", region: "서울", mbti: "ENFP", bio: "반가워요!", interests: ["travel", "music"] } },
-  { id: "2", nickname: "준혁", isOnline: false, clarity: 60, profile: { nickname: "준혁", temperature: 60, age: 28, gender: "male", region: "부산", mbti: "ISTJ", bio: "안녕하세요", interests: ["game", "movie"] } },
-  { id: "3", nickname: "서연", isOnline: true, clarity: 100, profile: { nickname: "서연", temperature: 100, age: 24, gender: "female", region: "대전", mbti: "INFJ", bio: "좋은 만남 기대해요", interests: ["book", "cafe"] } },
-  { id: "4", nickname: "동현", isOnline: false, clarity: 45, profile: { nickname: "동현", temperature: 45, age: 30, gender: "male", region: "인천", mbti: "ENTP", bio: "개발자입니다", interests: ["game", "travel"] } },
-  { id: "5", nickname: "유진", isOnline: true, clarity: 72, profile: { nickname: "유진", temperature: 72, age: 26, gender: "female", region: "서울", mbti: "ESFJ", bio: "운동 좋아해요", interests: ["exercise", "music"] } },
-]
-
-export function OneOnOneModal({ 
-  open, 
-  onOpenChange, 
-  onRequestChat,
-  matchedUsers = MOCK_MATCHED_USERS,
-  isLoading = false,
-}: OneOnOneModalProps) {
+export function OneOnOneModal({ open, onOpenChange, onRequestChat }: OneOnOneModalProps) {
   const { toast } = useToast()
+  const [matchedUsers, setMatchedUsers] = useState<MatchedUser[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    setIsLoading(true)
+    matchApi
+      .getOnlineUsers(10)
+      .then((res) => setMatchedUsers((res.onlineUsers ?? []).map(mapOnlineUserToMatched)))
+      .catch(() => {
+        toast({
+          title: "목록 조회 실패",
+          description: "온라인 사용자를 불러오지 못했습니다.",
+          variant: "destructive",
+        })
+        setMatchedUsers([])
+      })
+      .finally(() => setIsLoading(false))
+  }, [open, toast])
+
   const onlineUsers = matchedUsers.filter((user) => user.isOnline)
 
-  const handleRequestChat = (userId: string, nickname: string) => {
-    toast({
-      title: "1:1 매칭 요청",
-      description: "상대방에게 매칭 요청을 보냈습니다.",
-    })
-    onRequestChat(userId)
-    onOpenChange(false)
+  const handleRequestChat = async (userId: string, nickname: string) => {
+    try {
+      await matchApi.startOneOnOneMatch(userId)
+      toast({
+        title: "1:1 매칭 요청",
+        description: `${nickname}님에게 매칭 요청을 보냈습니다. 수락 시 세션방으로 이동합니다.`,
+      })
+      onRequestChat(userId)
+      onOpenChange(false)
+    } catch (err) {
+      toast({
+        title: "요청 실패",
+        description: err instanceof Error ? err.message : "매칭 요청에 실패했습니다.",
+        variant: "destructive",
+      })
+    }
   }
 
   return (

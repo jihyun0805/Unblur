@@ -18,6 +18,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.context.RequestAttributeSecurityContextRepository;
 
 @Configuration
 @EnableWebSecurity
@@ -28,6 +29,10 @@ public class SecurityConfig {
     private final CustomAuthenticationEntryPoint authenticationEntryPoint;
     private final CustomAccessDeniedHandler accessDeniedHandler;
     private final InternalTokenFilter internalTokenFilter;
+
+    /** ASYNC 디스패치(SSE 이벤트 전송 등)에서 SecurityContext 복원용 요청 스코프 리포지토리 */
+    private final RequestAttributeSecurityContextRepository requestRepo =
+            new RequestAttributeSecurityContextRepository();
 
     @Bean // 비밀번호 암호화
     public BCryptPasswordEncoder passwordEncoder() {
@@ -48,6 +53,9 @@ public class SecurityConfig {
                 .httpBasic(AbstractHttpConfigurer::disable) // 브라우저 팝업창 형태의 기본 인증 방식을 사용하지 않고, 요청 헤더의 토큰을 사용할 것이므로 비활성화
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .securityContext(context -> context
+                        .securityContextRepository(requestRepo)
+                        .requireExplicitSave(false))
                 .exceptionHandling(handler -> handler
                         .authenticationEntryPoint(authenticationEntryPoint)
                         .accessDeniedHandler(accessDeniedHandler))
@@ -72,7 +80,7 @@ public class SecurityConfig {
                         ).permitAll()
                         .requestMatchers("/api/internal/**").permitAll()
                         // 인증된 사용자만 접근 가능
-                        .requestMatchers("api/v1/auth/logout", "api/v1/users/withdraw").authenticated()
+                        .requestMatchers("/api/v1/auth/logout", "/api/v1/users/withdraw").authenticated()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(internalTokenFilter, UsernamePasswordAuthenticationFilter.class)

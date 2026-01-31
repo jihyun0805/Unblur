@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { MatchingModal } from "@/components/matching/matching-modal"
 import { OneOnOneModal } from "@/components/matching/one-on-one-modal"
-import { CameraTestModal } from "@/components/matching/camera-test-modal"
 import { Zap, UserPlus } from "lucide-react"
 import { stopAllStreams } from "@/lib/media-streams"
 
@@ -18,8 +17,6 @@ export function HomePage() {
   const { toast } = useToast()
   const [showMatching, setShowMatching] = useState(false)
   const [showOneOnOne, setShowOneOnOne] = useState(false)
-  const [showCameraTest, setShowCameraTest] = useState(false)
-  const [pendingSessionId, setPendingSessionId] = useState<string | null>(null)
 
   useEffect(() => {
     stopAllStreams()
@@ -30,26 +27,9 @@ export function HomePage() {
     router.push(`/session/${sessionId}`)
   }
 
-  const handleRequestChat = (userId: string) => {
-    setTimeout(() => {
-      const { dismiss } = toast({
-        title: "1:1 매칭 수락!",
-        description: "상대방이 매칭 요청을 수락했습니다. 매칭방으로 이동하시겠습니까?",
-        duration: Number.POSITIVE_INFINITY,
-        action: (
-          <Button
-            size="sm"
-            onClick={() => {
-              dismiss()
-              setPendingSessionId(userId)
-              setShowCameraTest(true)
-            }}
-          >
-            입장하기
-          </Button>
-        ),
-      })
-    }, 5000)
+  /** 1:1 요청은 OneOnOneModal에서 API 호출 후 처리. 수락 시 MatchRequestToaster가 세션으로 이동시킴. */
+  const handleRequestChat = (_userId: string) => {
+    // 모달에서 이미 요청 전송·토스트 처리함. 추가 동작 없음.
   }
 
   const getTemperatureColor = (clarity: number) => {
@@ -152,17 +132,6 @@ export function HomePage() {
 
       <MatchingModal open={showMatching} onOpenChange={setShowMatching} onMatchFound={handleMatchFound} />
       <OneOnOneModal open={showOneOnOne} onOpenChange={setShowOneOnOne} onRequestChat={handleRequestChat} />
-      <CameraTestModal
-        open={showCameraTest}
-        onOpenChange={setShowCameraTest}
-        onReady={() => {
-          if (pendingSessionId) {
-            router.push(`/session/${pendingSessionId}`)
-            setPendingSessionId(null)
-          }
-          setShowCameraTest(false)
-        }}
-      />
     </>
   )
 }
