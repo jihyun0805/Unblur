@@ -4,6 +4,7 @@ import com.ssafy.unblur.domain.match.model.MatchQueueItem;
 import com.ssafy.unblur.domain.match.model.MatchQueueStatus;
 import com.ssafy.unblur.domain.match.model.MatchType;
 import com.ssafy.unblur.domain.match.service.MatchQueueService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -16,6 +17,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * <p>
  * 단일 인스턴스 환경과 재시작 시 데이터 유실을 감안한 구현체이다.
  */
+@Slf4j
 @Component
 public class InMemoryMatchQueueService implements MatchQueueService {
 
@@ -48,9 +50,12 @@ public class InMemoryMatchQueueService implements MatchQueueService {
             // 동일 사용자의 이전 요청이 남아있는지 확인
             if (previousId != null && !previousId.equals(item.getRequestId())) {
                 items.remove(previousId); // 동일 사용자 이전 요청이 남아있으면 정합성을 위해 정리
+                log.warn("이전 매칭 요청 제거. userId={}, matchType={}, previousRequestId={}", item.getRequesterUserId(), item.getMatchType(), previousId);
             }
 
             items.put(item.getRequestId(), item);
+            log.info("매칭 대기열 저장. requestId={}, userId={}, matchType={}, status={}", item.getRequestId(), item.getRequesterUserId(), item.getMatchType(), item.getStatus());
+
             return item;
 
         } finally {
@@ -108,8 +113,13 @@ public class InMemoryMatchQueueService implements MatchQueueService {
         lock.lock();
 
         try {
+            int before = items.size();
             items.values().removeIf(item -> shouldRemove(item, cutoff));
             userIndexes.entrySet().removeIf(entry -> !items.containsKey(entry.getValue()));
+            int after = items.size();
+            if (before != after) {
+                log.info("매칭 대기열 정리 완료. removed={}, remaining={}", (before - after), after);
+            }
 
         } finally {
             lock.unlock();

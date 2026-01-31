@@ -1,7 +1,8 @@
 package com.ssafy.unblur.common.service.impl;
 
-import com.ssafy.unblur.common.service.event.SseEventType;
 import com.ssafy.unblur.common.service.SseService;
+import com.ssafy.unblur.common.service.event.SseEventType;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -16,6 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>
  * 단일 인스턴스 환경을 가정한 인메모리 저장 방식이다
  */
+@Slf4j
 @Service
 public class InMemorySseServiceImpl implements SseService {
 
@@ -30,15 +32,26 @@ public class InMemorySseServiceImpl implements SseService {
         SseEmitter existingEmitter = emitters.remove(userId);
         if (existingEmitter != null) {
             existingEmitter.complete();
+            log.info("SSE 기존 연결 종료. userId={}", userId);
         }
 
         SseEmitter emitter = new SseEmitter(0L);
         emitters.put(userId, emitter);
+        log.info("SSE 연결 생성. userId={}, total={}", userId, emitters.size());
 
         // 연결 종료 시 저장소에서 제거 (동일 사용자 재연결로 새 emitter 생성 시 새 emitter 유지)
-        emitter.onCompletion(() -> emitters.remove(userId, emitter));
-        emitter.onTimeout(() -> emitters.remove(userId, emitter));
-        emitter.onError(error -> emitters.remove(userId, emitter));
+        emitter.onCompletion(() -> {
+            emitters.remove(userId, emitter);
+            log.info("SSE 연결 종료(completion). userId={}, total={}", userId, emitters.size());
+        });
+        emitter.onTimeout(() -> {
+            emitters.remove(userId, emitter);
+            log.warn("SSE 연결 종료(timeout). userId={}, total={}", userId, emitters.size());
+        });
+        emitter.onError(error -> {
+            emitters.remove(userId, emitter);
+            log.warn("SSE 연결 오류. userId={}, error={}", userId, error.toString());
+        });
 
         return emitter;
     }
@@ -58,14 +71,17 @@ public class InMemorySseServiceImpl implements SseService {
     private void send(UUID userId, String name, Object data) {
         SseEmitter emitter = emitters.get(userId);
         if (emitter == null) {
+            log.warn("SSE 전송 실패: 연결 없음. userId={}, event={}", userId, name);
             return;
         }
 
         try {
             emitter.send(SseEmitter.event().name(name).data(data));
+            log.debug("SSE 전송 성공. userId={}, event={}", userId, name);
 
         } catch (IOException ex) {
             emitters.remove(userId, emitter);
+            log.warn("SSE 전송 실패: 예외 발생. userId={}, event={}, error={}", userId, name, ex.toString());
         }
     }
 
@@ -84,6 +100,7 @@ public class InMemorySseServiceImpl implements SseService {
         SseEmitter emitter = emitters.remove(userId);
         if (emitter != null) {
             emitter.complete();
+            log.info("SSE 연결 종료(disconnect). userId={}, total={}", userId, emitters.size());
         }
     }
 }
