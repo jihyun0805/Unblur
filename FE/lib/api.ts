@@ -1,16 +1,33 @@
 import { reissueToken } from "./api/auth"
 
 const AUTH_TOKEN_KEY = "auth_token"
+const AUTH_REMEMBER_KEY = "auth_remember"
 const USER_KEY = "user"
 
-export const getAuthToken = () => localStorage.getItem(AUTH_TOKEN_KEY)
+let memoryToken: string | null = null
 
-export const setAuthToken = (token: string) => {
-  localStorage.setItem(AUTH_TOKEN_KEY, token)
+export const getAuthToken = () => {
+  if (memoryToken) return memoryToken
+  const remember = localStorage.getItem(AUTH_REMEMBER_KEY) === "1"
+  return remember ? localStorage.getItem(AUTH_TOKEN_KEY) : null
+}
+
+export const setAuthToken = (token: string, options?: { remember?: boolean }) => {
+  memoryToken = token
+  const remember = options?.remember ?? localStorage.getItem(AUTH_REMEMBER_KEY) === "1"
+  if (remember) {
+    localStorage.setItem(AUTH_TOKEN_KEY, token)
+    localStorage.setItem(AUTH_REMEMBER_KEY, "1")
+  } else {
+    localStorage.removeItem(AUTH_TOKEN_KEY)
+    localStorage.removeItem(AUTH_REMEMBER_KEY)
+  }
 }
 
 export const clearAuthToken = () => {
+  memoryToken = null
   localStorage.removeItem(AUTH_TOKEN_KEY)
+  localStorage.removeItem(AUTH_REMEMBER_KEY)
   localStorage.removeItem(USER_KEY)
 }
 

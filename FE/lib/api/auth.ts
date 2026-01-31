@@ -138,7 +138,7 @@ export interface SignupResponse {
  * @param password 비밀번호
  * @returns 로그인 성공 여부 및 토큰
  */
-export async function login(email: string, password: string): Promise<LoginResponse> {
+export async function login(email: string, password: string, remember = false): Promise<LoginResponse> {
   const response = await fetch(resolveApiUrl("/api/v1/auth/login"), {
     method: "POST",
     headers: {
@@ -171,7 +171,7 @@ export async function login(email: string, password: string): Promise<LoginRespo
   const accessToken = token || baseResponse.data.accessToken
   
   if (accessToken) {
-    setAuthToken(accessToken)
+    setAuthToken(accessToken, { remember })
   }
 
   return baseResponse.data
