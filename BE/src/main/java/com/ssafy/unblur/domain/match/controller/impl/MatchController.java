@@ -12,10 +12,12 @@ import com.ssafy.unblur.domain.match.dto.response.OnlineUserListResponse;
 import com.ssafy.unblur.domain.match.service.MatchService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/match")
 @RequiredArgsConstructor
@@ -29,6 +31,8 @@ public class MatchController implements MatchApiDocs {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @Valid @RequestBody FastMatchingRequest request
     ) {
+        log.info("API 빠른 매칭 요청. userId={}", userDetails.getUserId());
+
         MatchingQueueResponse response = matchService.startQuickMatch(userDetails.getUserId(), request);
         return ResponseEntity.ok(
                 BaseResponse.onSuccess("빠른 매칭 요청이 성공적으로 처리되었습니다.", response)
@@ -41,6 +45,8 @@ public class MatchController implements MatchApiDocs {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @Valid @RequestBody OneOnOneMatchRequest request
     ) {
+        log.info("API 1:1 매칭 요청. userId={}, targetUserId={}", userDetails.getUserId(), request.targetUserId());
+
         OneOnOneMatchResponse response = matchService.startOneOnOneMatch(
                 userDetails.getUserId(), request
         );
@@ -54,6 +60,8 @@ public class MatchController implements MatchApiDocs {
     public ResponseEntity<BaseResponse<MatchingQueueResponse>> getQueueStatus(
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
+        log.debug("API 대기열 상태 조회. userId={}", userDetails.getUserId());
+
         MatchingQueueResponse response = matchService.getQueueStatus(userDetails.getUserId());
         return ResponseEntity.ok(
                 BaseResponse.onSuccess("매칭 대기열 상태 조회가 성공적으로 처리되었습니다.", response)
@@ -66,6 +74,8 @@ public class MatchController implements MatchApiDocs {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable("request_id") String requestId
     ) {
+        log.info("API 빠른 매칭 취소. userId={}, requestId={}", userDetails.getUserId(), requestId);
+
         matchService.cancelQuickMatch(userDetails.getUserId(), requestId);
         return ResponseEntity.ok(
                 BaseResponse.onSuccess("빠른 매칭 요청이 성공적으로 취소되었습니다.", null)
@@ -78,6 +88,8 @@ public class MatchController implements MatchApiDocs {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable("request_id") String requestId
     ) {
+        log.info("API 1:1 매칭 수락. userId={}, requestId={}", userDetails.getUserId(), requestId);
+
         OneOnOneMatchedResponse response = matchService.acceptOneOnOneMatch(
                 userDetails.getUserId(), requestId
         );
@@ -92,6 +104,8 @@ public class MatchController implements MatchApiDocs {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable("request_id") String requestId
     ) {
+        log.info("API 1:1 매칭 거절. userId={}, requestId={}", userDetails.getUserId(), requestId);
+
         OneOnOneMatchResponse response = matchService.declineOneOnOneMatch(
                 userDetails.getUserId(), requestId
         );
@@ -105,6 +119,8 @@ public class MatchController implements MatchApiDocs {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam(defaultValue = "3") int limit
     ) {
+        log.debug("API 온라인 사용자 목록 조회. userId={}, limit={}", userDetails.getUserId(), limit);
+
         OnlineUserListResponse response = matchService.getRandomOnlineUsers(userDetails.getUserId(), limit);
         return ResponseEntity.ok(
                 BaseResponse.onSuccess("온라인 사용자 목록 조회 성공", response)

@@ -44,9 +44,11 @@ public class MatchEventPublisherImpl implements MatchEventPublisher {
     @Override
     public void publish(UUID userId, EventType type, Object data) {
         if (type instanceof SseEventType sseType) {
+            log.info("매칭 이벤트 전송(SSE). userId={}, event={}", userId, sseType.eventName());
             sseService.publish(userId, sseType, data);
 
         } else if (type instanceof WsEventType) {
+            log.info("매칭 이벤트 전송(WS). userId={}, event={}", userId, type.eventName());
             sendWebSocketMessage(userId, data);
 
         } else {
@@ -63,7 +65,10 @@ public class MatchEventPublisherImpl implements MatchEventPublisher {
     private void sendWebSocketMessage(UUID userId, Object data) {
         sessionStore.findSessionIdByUser(userId)
                 .flatMap(sessionStore::find)
-                .ifPresent(session -> sendMessage(session, data));
+                .ifPresentOrElse(
+                        session -> sendMessage(session, data),
+                        () -> log.warn("WebSocket 세션 없음. userId={}", userId)
+                );
     }
 
     /**
@@ -81,6 +86,8 @@ public class MatchEventPublisherImpl implements MatchEventPublisher {
             synchronized (session) {
                 session.sendMessage(new TextMessage(objectMapper.writeValueAsString(message)));
             }
+
+            log.debug("WebSocket 전송 성공. sessionId={}", session.getId());
 
         } catch (IOException e) {
             log.error("WebSocket 메시지 전송 실패: {}", e.getMessage());
