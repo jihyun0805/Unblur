@@ -52,6 +52,12 @@ public class SecurityConfig {
                         .authenticationEntryPoint(authenticationEntryPoint)
                         .accessDeniedHandler(accessDeniedHandler))
                 .authorizeHttpRequests(auth -> auth
+                        // Actuator (Prometheus scrape용)
+                        .requestMatchers(
+                                "/actuator/health/**",
+                                "/actuator/info/**",
+                                "/actuator/prometheus"
+                        ).permitAll()
                         // Swagger 관련 경로
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                         // WebSocket/SockJS 핸드셰이크 허용(인증은 STOMP CONNECT에서 처리)

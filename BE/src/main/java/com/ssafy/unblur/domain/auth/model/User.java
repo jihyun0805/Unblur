@@ -280,4 +280,10 @@ public class User {
     public void updateLoveDna(LoveDna loveDna) {
         this.loveDna = loveDna;
     }
+
+    public void applyClarityDelta(int delta) {
+        int base = this.clarityScore != null ? this.clarityScore : 50;
+        int updated = base + delta;
+        this.clarityScore = Math.min(100, Math.max(0, updated));
+    }
 }
