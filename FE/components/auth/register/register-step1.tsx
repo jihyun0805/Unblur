@@ -13,6 +13,8 @@ interface RegisterStep1Props {
   updateFormData: ReturnType<typeof useRegisterForm>["updateFormData"]
   showPassword: boolean
   setShowPassword: ReturnType<typeof useRegisterForm>["setShowPassword"]
+  showPasswordConfirm: boolean
+  setShowPasswordConfirm: ReturnType<typeof useRegisterForm>["setShowPasswordConfirm"]
   emailAvailable: boolean | null
   checkingEmail: boolean
   nicknameAvailable: boolean | null
@@ -31,6 +33,8 @@ export function RegisterStep1({
   updateFormData,
   showPassword,
   setShowPassword,
+  showPasswordConfirm,
+  setShowPasswordConfirm,
   emailAvailable,
   checkingEmail,
   nicknameAvailable,
@@ -133,7 +137,7 @@ export function RegisterStep1({
             onClick={() => setShowPassword(!showPassword)}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
           >
-            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            {showPassword ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
           </button>
         </div>
         {formData.password && (
@@ -166,7 +170,7 @@ export function RegisterStep1({
         <div className="relative">
           <Input
             id="password-confirm"
-            type={showPassword ? "text" : "password"}
+            type={showPasswordConfirm ? "text" : "password"}
             placeholder="비밀번호를 다시 입력하세요"
             value={formData.passwordConfirm}
             onChange={(e) => updateFormData({ passwordConfirm: normalizePassword(e.target.value) })}
@@ -174,10 +178,10 @@ export function RegisterStep1({
           />
           <button
             type="button"
-            onClick={() => setShowPassword(!showPassword)}
+            onClick={() => setShowPasswordConfirm(!showPasswordConfirm)}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
           >
-            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            {showPasswordConfirm ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
           </button>
         </div>
         {formData.passwordConfirm && formData.password !== formData.passwordConfirm && (

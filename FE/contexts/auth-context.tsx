@@ -92,7 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string, rememberMe = false): Promise<boolean> => {
     try {
-      await authApi.login(email, password)
+      await authApi.login(email, password, rememberMe)
       
       // 로그인 성공 후 사용자 정보 조회
       try {
