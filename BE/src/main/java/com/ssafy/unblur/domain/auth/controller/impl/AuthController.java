@@ -2,6 +2,7 @@ package com.ssafy.unblur.domain.auth.controller.impl;
 
 import com.ssafy.unblur.common.response.BaseResponse;
 import com.ssafy.unblur.common.security.jwt.JWTUtil;
+import com.ssafy.unblur.common.service.SseService;
 import com.ssafy.unblur.common.util.SecurityUtil;
 import com.ssafy.unblur.domain.auth.controller.AuthApiDocs;
 import com.ssafy.unblur.domain.auth.dto.request.LoginRequestDto;
@@ -29,6 +30,7 @@ public class AuthController implements AuthApiDocs {
     private final AuthService authService;
     private final JWTUtil jwtUtil;
     private final RefreshTokenService refreshTokenService;
+    private final SseService sseService;
 
 
     @Override
@@ -106,6 +108,7 @@ public class AuthController implements AuthApiDocs {
         SecurityUtil.getCurrentUserEmail().ifPresent(email -> {
             authService.findUserByEmail(email).ifPresent(user -> {
                 refreshTokenService.deleteTokenByUser(user);
+                sseService.disconnect(user.getId());
             });
         });
 

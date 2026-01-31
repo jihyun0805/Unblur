@@ -36,6 +36,10 @@ public class BaseResponse<T> {
         return new BaseResponse<>(true, 200, message, data, null);
     }
 
+    public static <T> BaseResponse<T> onNoContent(String message) {
+        return new BaseResponse<>(true, 204, message, null, null);
+    }
+
     public static <T> BaseResponse<T> onCreate(String message, T data) {
         return new BaseResponse<>(true, 201, message, data, null);
     }

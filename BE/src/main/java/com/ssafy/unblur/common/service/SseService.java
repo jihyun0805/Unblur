@@ -42,4 +42,11 @@ public interface SseService {
      */
     boolean isUserConnected(UUID userId);
 
+    /**
+     * SSE 연결을 명시적으로 해제하는 메서드
+     *
+     * @param userId 사용자 ID
+     */
+    void disconnect(UUID userId);
+
 }

@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -72,6 +73,59 @@ public interface MatchSseDocs {
             )
     )
     SseEmitter connect(
+            @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails
+    );
+
+    /**
+     * 매칭 상태 스트림 연결을 해제하는 API
+     */
+    @Operation(
+            summary = "매칭 상태 스트림 연결 해제",
+            description = "SSE 연결을 명시적으로 종료합니다."
+    )
+    @ApiResponse(
+            responseCode = "204",
+            description = "SSE 연결 해제 성공",
+            content = @Content(
+                    schema = @Schema(implementation = BaseResponse.class),
+                    examples = @ExampleObject(value = """
+                            {
+                              "isSuccess": true,
+                              "statusCode": 204,
+                              "message": "매칭 상태 스트림 연결이 해제되었습니다.",
+                              "data": null
+                            }""")
+            )
+    )
+    @ApiResponse(
+            responseCode = "401",
+            description = "로그인이 필요합니다.",
+            content = @Content(
+                    schema = @Schema(implementation = BaseResponse.class),
+                    examples = @ExampleObject(value = """
+                            {
+                              "isSuccess": false,
+                              "statusCode": 401,
+                              "message": "로그인이 필요합니다.",
+                              "errorCode": "AUTH-007"
+                            }""")
+            )
+    )
+    @ApiResponse(
+            responseCode = "403",
+            description = "접근 권한이 없습니다.",
+            content = @Content(
+                    schema = @Schema(implementation = BaseResponse.class),
+                    examples = @ExampleObject(value = """
+                            {
+                              "isSuccess": false,
+                              "statusCode": 403,
+                              "message": "접근 권한이 없습니다.",
+                              "errorCode": "AUTH-008"
+                            }""")
+            )
+    )
+    ResponseEntity<BaseResponse<Void>> disconnect(
             @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails
     );
 }
