@@ -4,12 +4,15 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.unblur.common.exception.BaseException;
 import com.ssafy.unblur.common.exception.ErrorCode;
-import com.ssafy.unblur.domain.rtc.dto.event.SignalingMessages;
-import com.ssafy.unblur.domain.rtc.model.UserSession;
+import com.ssafy.unblur.common.service.event.WsEventType;
 import com.ssafy.unblur.domain.match.model.VoteChoice;
 import com.ssafy.unblur.domain.match.service.ConferenceLifecycleService;
+import com.ssafy.unblur.domain.match.service.MatchEventPublisher;
 import com.ssafy.unblur.domain.match.service.RoundVoteService;
+import com.ssafy.unblur.domain.rtc.dto.event.SignalingMessages;
+import com.ssafy.unblur.domain.rtc.model.UserSession;
 import com.ssafy.unblur.domain.rtc.service.KurentoRoomService;
+import com.ssafy.unblur.domain.rtc.service.RtcParticipantStore;
 import com.ssafy.unblur.domain.rtc.service.RtcSessionStore;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +25,7 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -47,6 +51,11 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
     private final ConferenceLifecycleService conferenceLifecycleService;
 
     /**
+     * 매치 이벤트 발행자 (WebSocket 메시지 전송)
+     */
+    private final MatchEventPublisher matchEventPublisher;
+
+    /**
      * 라운드 투표 처리 서비스
      */
     private final RoundVoteService roundVoteService;
@@ -55,6 +64,11 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
      * WebSocket 세션 저장소
      */
     private final RtcSessionStore sessionStore;
+
+    /**
+     * RTC 참가자 저장소
+     */
+    private final RtcParticipantStore participantStore;
 
     /**
      * 시그널링 메시지 파싱/직렬화를 위한 JSON 매퍼
@@ -133,8 +147,12 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
         // 룸 퇴장 처리
         sessionStore.getConferenceId(sessionId).ifPresent(conferenceId ->
                 sessionStore.getUserId(sessionId).ifPresent(userId -> {
+                    // 남아 있는 참가자에게 left 이벤트 브로드캐스트
+                    notifyLeft(conferenceId, userId);
+
                     // 회의 생명주기 서비스에 퇴장 알림 (DB 기록)
                     conferenceLifecycleService.onLeave(conferenceId, userId);
+
                     // Kurento 룸 서비스에 퇴장 요청 (WebRTC 정리)
                     kurentoRoomService.leave(conferenceId, userId);
                 })
@@ -189,13 +207,29 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        // Kurento 룸 서비스에 입장 요청 (WebRTC 설정)
-        UserSession userSession = kurentoRoomService.join(conferenceId, userId);
         sessionStore.bindUser(session.getId(), userId);
         sessionStore.bindConference(session.getId(), conferenceId);
 
-        // 회의 생명주기 서비스에 입장 알림 (DB 기록 + 라운드 시작)
-        conferenceLifecycleService.onJoin(conferenceId, userId);
+        UserSession userSession;
+        try {
+            // Kurento 룸 서비스에 입장 요청 (WebRTC 설정)
+            userSession = kurentoRoomService.join(conferenceId, userId);
+
+            // 회의 생명주기 서비스에 입장 알림 (DB 기록 + 라운드 시작)
+            conferenceLifecycleService.onJoin(conferenceId, userId);
+
+        } catch (RuntimeException e) {
+            // join 실패 시 세션 매핑/RTC 정리
+            try {
+                kurentoRoomService.leave(conferenceId, userId);
+
+            } catch (Exception exception) {
+                // 무시
+            }
+
+            sessionStore.remove(session.getId());
+            throw e;
+        }
 
         // ICE Candidate 이벤트 리스너 등록
         userSession.webRtcEndpoint().addIceCandidateFoundListener(event ->
@@ -337,6 +371,9 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
+        // 남아 있는 참가자에게 left 이벤트 브로드캐스트
+        notifyLeft(conferenceId, userId);
+
         // 회의 생명주기 서비스에 퇴장 알림 (DB 기록)
         conferenceLifecycleService.onLeave(conferenceId, userId);
 
@@ -349,6 +386,32 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
                 .build();
 
         send(session, leftMessage);
+
+        // 중복 전송 방지를 위해 세션 매핑 제거
+        sessionStore.remove(session.getId());
+    }
+
+    /**
+     * 남아 있는 참가자에게 left 이벤트를 브로드캐스트하는 메서드
+     */
+    private void notifyLeft(UUID conferenceId, UUID userId) {
+        // 참가자 목록 조회
+        List<UUID> participants = participantStore.getParticipantIds(conferenceId);
+        if (participants.isEmpty()) {
+            return;
+        }
+
+        // left 메시지 생성
+        SignalingMessages.Left leftMessage = SignalingMessages.Left.builder()
+                .userId(userId.toString())
+                .build();
+
+        // 참가자에게 left 이벤트 발송
+        for (UUID participantId : participants) {
+            if (!participantId.equals(userId)) {
+                matchEventPublisher.publish(participantId, WsEventType.LEFT, leftMessage);
+            }
+        }
     }
 
     /**
