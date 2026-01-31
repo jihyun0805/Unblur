@@ -17,7 +17,7 @@ server:
 
 kurento:
   ws:
-    uri: ws://${TURN_PUBLIC_IP:localhost}:8888/kurento
+    uri: ${KURENTO_WS_URI:ws://localhost:8888/kurento}
 
 rtc:
   websocket:
