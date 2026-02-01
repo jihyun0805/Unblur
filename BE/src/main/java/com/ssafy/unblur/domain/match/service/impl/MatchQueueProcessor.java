@@ -12,10 +12,12 @@ import com.ssafy.unblur.domain.match.model.*;
 import com.ssafy.unblur.common.service.event.SseEventType;
 import com.ssafy.unblur.common.util.TransactionUtils;
 import com.ssafy.unblur.domain.match.repository.ConferenceRepository;
+import com.ssafy.unblur.domain.auth.model.Gender;
 import com.ssafy.unblur.domain.match.repository.MatchCandidateRepository;
 import com.ssafy.unblur.domain.match.repository.MatchCandidateRepository.MatchCandidate;
 import com.ssafy.unblur.domain.match.service.MatchEventPublisher;
 import com.ssafy.unblur.domain.match.service.MatchQueueService;
+import com.ssafy.unblur.domain.survey.service.SurveySimilarityCalculator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -64,6 +66,11 @@ public class MatchQueueProcessor {
      * 매칭 정책 설정값
      */
     private final MatchPolicy policy;
+
+    /**
+     * Hard Matching 점수 계산기
+     */
+    private final SurveySimilarityCalculator surveySimilarityCalculator;
 
     /**
      * 매칭 이벤트 전송기
@@ -275,8 +282,8 @@ public class MatchQueueProcessor {
             return false;
         }
 
-        // 요청 필터를 도메인 전용 필터로 변환
-        MatchFilters filters = MatchFilters.from(item.getFilters());
+        // 요청 필터를 도메인 전용 필터로 변환 (성별 이성 강제 적용)
+        MatchFilters filters = applyOppositeGender(MatchFilters.from(item.getFilters()), user);
         LocalDate now = LocalDate.now(clock);
         LocalDate maxBirthDate = filters.ageMin() != null ? now.minusYears(filters.ageMin()) : null;
         LocalDate minBirthDate = filters.ageMax() != null ? now.minusYears(filters.ageMax()) : null;
@@ -288,7 +295,6 @@ public class MatchQueueProcessor {
                 candidateIds,
                 filters.gender() != null ? filters.gender().name() : null,
                 filters.region() != null ? filters.region().name() : null,
-                filters.loveDna() != null ? filters.loveDna().name() : null,
                 maxBirthDate,
                 minBirthDate,
                 limit
@@ -313,18 +319,23 @@ public class MatchQueueProcessor {
                 continue;
             }
 
-            // 상대 필터 기준으로 현재 사용자를 검증
-            if (!matchesFilters(user, MatchFilters.from(targetItem.getFilters()), now)) {
+            // 상대 필터 기준으로 현재 사용자를 검증 (성별 이성 강제 적용)
+            if (!matchesFilters(user, applyOppositeGender(MatchFilters.from(targetItem.getFilters()), targetUser), now)) {
                 continue;
             }
 
-            // 양방향 유사도 모두 임계치 통과해야 확정
-            double reverseSimilarity = VectorUtils.cosineSimilarity(targetUser.getInterestsVector(), user.getInterestsVector());
-            if (candidate.similarity() == null) {
-                continue;
-            }
+            // 양방향 임베딩 유사도 계산
+            double forwardEmbedding = candidate.similarity() != null ? candidate.similarity() : 0.0;
+            double reverseEmbedding = VectorUtils.cosineSimilarity(targetUser.getInterestsVector(), user.getInterestsVector());
+            double embeddingSimilarity = Math.min(forwardEmbedding, reverseEmbedding);
 
-            if (threshold >= 0 && (candidate.similarity() < threshold || reverseSimilarity < threshold)) {
+            // Hard Matching 점수 계산
+            double hardMatchScore = surveySimilarityCalculator.calculate(user.getDetailedInfo(), targetUser.getDetailedInfo());
+
+            // 종합 유사도 산출
+            double finalScore = (embeddingSimilarity * policy.embeddingWeight()) + (hardMatchScore * policy.hardMatchWeight());
+
+            if (threshold >= 0 && finalScore < threshold) {
                 continue;
             }
 
@@ -333,7 +344,7 @@ public class MatchQueueProcessor {
             LocalDateTime matchedAt = LocalDateTime.now(clock);
             item.markMatched(matchedAt);
             targetItem.markMatched(matchedAt);
-            publishMatchedEvent(item, targetItem, conference, matchedAt);
+            publishMatchedEvent(item, targetItem, conference, matchedAt, finalScore);
             return true;
         }
 
@@ -373,7 +384,7 @@ public class MatchQueueProcessor {
             LocalDateTime matchedAt = LocalDateTime.now(clock);
             bestPair.left().markMatched(matchedAt);
             bestPair.right().markMatched(matchedAt);
-            publishMatchedEvent(bestPair.left(), bestPair.right(), conference, matchedAt);
+            publishMatchedEvent(bestPair.left(), bestPair.right(), conference, matchedAt, bestPair.similarityScore());
 
             batch.remove(bestPair.left());
             batch.remove(bestPair.right());
@@ -407,24 +418,35 @@ public class MatchQueueProcessor {
                     continue;
                 }
 
-                // 서로의 필터 기준으로 양방향 검증
-                if (!matchesFilters(leftUser, MatchFilters.from(right.getFilters()), now)) {
+                // 서로의 필터 기준으로 양방향 검증 (성별 이성 강제 적용)
+                if (!matchesFilters(leftUser, applyOppositeGender(MatchFilters.from(right.getFilters()), rightUser), now)) {
                     continue;
                 }
 
-                if (!matchesFilters(rightUser, MatchFilters.from(left.getFilters()), now)) {
+                if (!matchesFilters(rightUser, applyOppositeGender(MatchFilters.from(left.getFilters()), leftUser), now)) {
                     continue;
                 }
 
-                double similarity = VectorUtils.cosineSimilarity(leftUser.getInterestsVector(), rightUser.getInterestsVector());
-                if (similarity < threshold) {
+                // 양방향 임베딩 유사도 계산
+                double embeddingSimilarity = Math.min(
+                        VectorUtils.cosineSimilarity(leftUser.getInterestsVector(), rightUser.getInterestsVector()),
+                        VectorUtils.cosineSimilarity(rightUser.getInterestsVector(), leftUser.getInterestsVector())
+                );
+
+                // Hard Matching 점수 계산
+                double hardMatchScore = surveySimilarityCalculator.calculate(leftUser.getDetailedInfo(), rightUser.getDetailedInfo());
+
+                // 종합 유사도 산출
+                double finalScore = (embeddingSimilarity * policy.embeddingWeight()) + (hardMatchScore * policy.hardMatchWeight());
+
+                if (finalScore < threshold) {
                     continue;
                 }
 
                 // 가장 높은 유사도 쌍을 선택
-                if (similarity > bestSimilarity) {
-                    bestSimilarity = similarity;
-                    bestPair = new MatchPair(left, right);
+                if (finalScore > bestSimilarity) {
+                    bestSimilarity = finalScore;
+                    bestPair = new MatchPair(left, right, finalScore);
                 }
             }
         }
@@ -463,10 +485,6 @@ public class MatchQueueProcessor {
         }
 
         if (filters.region() != null && target.getRegion() != filters.region()) {
-            return false;
-        }
-
-        if (filters.loveDna() != null && target.getLoveDna() != filters.loveDna()) {
             return false;
         }
 
@@ -533,11 +551,13 @@ public class MatchQueueProcessor {
     /**
      * 매칭 완료 이벤트를 전송하는 메서드
      *
-     * @param left      첫 번째 사용자 항목
-     * @param right     두 번째 사용자 항목
-     * @param matchedAt 매칭 완료 시각
+     * @param left            첫 번째 사용자 항목
+     * @param right           두 번째 사용자 항목
+     * @param conference      생성된 컨퍼런스
+     * @param matchedAt       매칭 완료 시각
+     * @param similarityScore 종합 유사도 점수 (0.0 ~ 1.0)
      */
-    private void publishMatchedEvent(MatchQueueItem left, MatchQueueItem right, Conference conference, LocalDateTime matchedAt) {
+    private void publishMatchedEvent(MatchQueueItem left, MatchQueueItem right, Conference conference, LocalDateTime matchedAt, double similarityScore) {
         String conferenceId = conference.getId() != null ? conference.getId().toString() : null;
 
         QuickMatchResultEvent leftEvent = QuickMatchResultEvent.builder()
@@ -547,6 +567,7 @@ public class MatchQueueProcessor {
                 .matchedUserId(right.getRequesterUserId().toString())
                 .conferenceId(conferenceId)
                 .matchedAt(matchedAt)
+                .similarityScore(similarityScore)
                 .build();
 
         QuickMatchResultEvent rightEvent = QuickMatchResultEvent.builder()
@@ -556,6 +577,7 @@ public class MatchQueueProcessor {
                 .matchedUserId(left.getRequesterUserId().toString())
                 .conferenceId(conferenceId)
                 .matchedAt(matchedAt)
+                .similarityScore(similarityScore)
                 .build();
 
         TransactionUtils.runAfterCommit(() -> {
@@ -579,11 +601,31 @@ public class MatchQueueProcessor {
     }
 
     /**
+     * 필터에 성별이 없으면 요청자의 반대 성별을 자동 설정하는 메서드
+     *
+     * @param filters 원본 필터
+     * @param user    요청자
+     * @return 성별이 보장된 필터
+     */
+    private MatchFilters applyOppositeGender(MatchFilters filters, User user) {
+        if (filters.gender() != null) {
+            return filters;
+        }
+
+        if (user.getGender() == null) {
+            return filters;
+        }
+
+        Gender opposite = user.getGender() == Gender.MALE ? Gender.FEMALE : Gender.MALE;
+        return new MatchFilters(filters.ageMin(), filters.ageMax(), opposite, filters.region());
+    }
+
+    /**
      * 배치 매칭에 사용하는 후보 쌍
      *
      * @param left  왼쪽 후보
      * @param right 오른쪽 후보
      */
-    private record MatchPair(MatchQueueItem left, MatchQueueItem right) {
+    private record MatchPair(MatchQueueItem left, MatchQueueItem right, double similarityScore) {
     }
 }
