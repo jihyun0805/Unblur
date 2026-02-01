@@ -121,8 +121,8 @@ public class ChatMessageService {
     private LocalDateTime resolvePartnerLastReadAt(UUID conferenceId, UUID userId) {
         return conferenceParticipantRepository.findByConferenceId(conferenceId).stream()
                 .filter(cp -> cp.getUser() != null && !cp.getUser().getId().equals(userId))
-                .map(ConferenceParticipant::getLastReadAt)
                 .findFirst()
+                .map(ConferenceParticipant::getLastReadAt)
                 .orElse(null);
     }
 

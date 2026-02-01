@@ -27,6 +27,9 @@ public class CustomAccessDeniedHandler implements AccessDeniedHandler {
                        HttpServletResponse response,
                        AccessDeniedException accessDeniedException) throws IOException, ServletException {
 
+        if (response.isCommitted()) {
+            return;
+        }
         BaseResponse error = BaseResponse.onFailure(ErrorCode.ACCESS_DENIED);
         response.setStatus(ErrorCode.ACCESS_DENIED.getHttpStatus().value());
         response.setCharacterEncoding("UTF-8");

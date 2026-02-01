@@ -10,13 +10,13 @@ import com.ssafy.unblur.domain.match.dto.event.QuickMatchStageEvent;
 import com.ssafy.unblur.domain.match.model.*;
 import com.ssafy.unblur.common.service.event.SseEventType;
 import com.ssafy.unblur.common.util.TransactionUtils;
-import com.ssafy.unblur.domain.match.repository.ConferenceParticipantRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRepository;
 import com.ssafy.unblur.domain.match.repository.MatchableUserRepository;
 import com.ssafy.unblur.domain.match.service.MatchEventPublisher;
 import com.ssafy.unblur.domain.match.service.MatchQueueService;
 import com.ssafy.unblur.domain.survey.service.SurveySimilarityCalculator;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +30,7 @@ import java.util.stream.Collectors;
  * <p>
  * 단일 큐를 시간 기준으로 훑으며 완화/타임아웃/배치 매칭을 처리하며 동시 충돌을 막기 위해 내부 락으로 보호한다.
  */
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class MatchQueueProcessor {
@@ -58,11 +59,6 @@ public class MatchQueueProcessor {
      * 매칭 완료 시 컨퍼런스 저장 레포지토리
      */
     private final ConferenceRepository conferenceRepository;
-
-    /**
-     * 세션 참여자 저장 레포지토리
-     */
-    private final ConferenceParticipantRepository participantRepository;
 
     /**
      * 매칭 정책 설정값
@@ -100,6 +96,7 @@ public class MatchQueueProcessor {
         matchLock.lock();
 
         try {
+            log.info("즉시 매칭 시도. userId={}, requestId={}, threshold={}, topK={}", user.getId(), item.getRequestId(), policy.immediateSimilarityThreshold(), policy.immediateTopK());
             return tryMatch(item, user, policy.immediateSimilarityThreshold());
 
         } finally {
@@ -117,11 +114,15 @@ public class MatchQueueProcessor {
         matchLock.lock();
 
         try {
+            log.debug("매칭 대기열 처리 시작");
+
             // 타임아웃 -> 완화 매칭 -> 배치 매칭 순으로 처리
             processTimeouts();
             processRelaxedMatches();
             processBatchMatches();
             purgeFinished();
+
+            log.debug("매칭 대기열 처리 완료");
 
         } finally {
             matchLock.unlock();
@@ -153,6 +154,8 @@ public class MatchQueueProcessor {
 
                 // 사용자 정보를 찾지 못하면 타임아웃 처리
                 if (user == null) {
+                    log.warn("타임아웃 처리: 사용자 없음. requestId={}, userId={}", item.getRequestId(), item.getRequesterUserId());
+
                     item.markTimeout();
                     publishTimeoutEvent(item);
                     continue;
@@ -161,6 +164,8 @@ public class MatchQueueProcessor {
                 // 타임아웃 시점에는 임계치 없이 최종 후보를 시도
                 boolean matched = tryMatch(item, user, NO_THRESHOLD);
                 if (!matched) {
+                    log.info("타임아웃 매칭 실패. requestId={}, userId={}", item.getRequestId(), item.getRequesterUserId());
+
                     item.markTimeout();
                     publishTimeoutEvent(item);
                 }
@@ -181,6 +186,7 @@ public class MatchQueueProcessor {
                 .occurredAt(LocalDateTime.now(clock))
                 .build();
 
+        log.info("타임아웃 이벤트 전송. requestId={}, userId={}", item.getRequestId(), item.getRequesterUserId());
         eventPublisher.publish(item.getRequesterUserId(), SseEventType.QUICK_TIMEOUT, event);
     }
 
@@ -202,6 +208,7 @@ public class MatchQueueProcessor {
                         .orElse(null);
 
                 if (user == null) {
+                    log.warn("완화 매칭 스킵: 사용자 없음. requestId={}, userId={}", item.getRequestId(), item.getRequesterUserId());
                     continue;
                 }
 
@@ -228,6 +235,7 @@ public class MatchQueueProcessor {
 
         // 최소 인원이 모이지 않으면 배치 미실행
         if (candidates.size() < policy.batchMinSize()) {
+            log.debug("배치 매칭 스킵: 인원 부족. candidates={}, minSize={}", candidates.size(), policy.batchMinSize());
             return;
         }
 
@@ -237,6 +245,7 @@ public class MatchQueueProcessor {
         List<MatchQueueItem> batch = new ArrayList<>(candidates.subList(0, batchSize));
 
         // 그리디 방식으로 배치 매칭 수행
+        log.info("배치 매칭 실행. batchSize={}, threshold={}", batch.size(), policy.immediateSimilarityThreshold());
         matchBatch(batch, policy.immediateSimilarityThreshold());
     }
 
@@ -263,6 +272,7 @@ public class MatchQueueProcessor {
                 .toList();
 
         if (candidateIds.isEmpty()) {
+            log.debug("매칭 후보 없음. userId={}, requestId={}", user.getId(), item.getRequestId());
             return false;
         }
 
@@ -342,6 +352,7 @@ public class MatchQueueProcessor {
 
             // 매칭 가능한 쌍이 없으면 종료
             if (bestPair == null) {
+                log.info("배치 매칭 종료: 매칭 쌍 없음. remaining={}", batch.size());
                 return;
             }
 
@@ -457,20 +468,8 @@ public class MatchQueueProcessor {
                 .build();
 
         Conference savedConference = conferenceRepository.save(conference);
-
-        // 참여자 정보 생성
-        ConferenceParticipant requesterParticipant = ConferenceParticipant.builder()
-                .conference(savedConference)
-                .user(requester)
-                .build();
-
-        ConferenceParticipant recipientParticipant = ConferenceParticipant.builder()
-                .conference(savedConference)
-                .user(recipient)
-                .build();
-
-        participantRepository.save(requesterParticipant);
-        participantRepository.save(recipientParticipant);
+        log.info("매칭 컨퍼런스 생성. conferenceId={}, requesterId={}, recipientId={}",
+                savedConference.getId(), requester.getId(), recipient.getId());
 
         return savedConference;
     }
@@ -489,6 +488,7 @@ public class MatchQueueProcessor {
                 .occurredAt(now)
                 .build();
 
+        log.info("완화 단계 이벤트 전송. requestId={}, userId={}", item.getRequestId(), item.getRequesterUserId());
         eventPublisher.publish(item.getRequesterUserId(), SseEventType.QUICK_RELAXED, event);
     }
 
@@ -526,6 +526,8 @@ public class MatchQueueProcessor {
             eventPublisher.publish(left.getRequesterUserId(), SseEventType.QUICK_MATCHED, leftEvent);
             eventPublisher.publish(right.getRequesterUserId(), SseEventType.QUICK_MATCHED, rightEvent);
         });
+
+        log.info("빠른 매칭 완료 이벤트 예약. conferenceId={}, leftUserId={}, rightUserId={}", conferenceId, left.getRequesterUserId(), right.getRequesterUserId());
     }
 
     /**

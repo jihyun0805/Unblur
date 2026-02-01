@@ -17,11 +17,11 @@ server:
 
 kurento:
   ws:
-    uri: ws://localhost:8888/kurento
+    uri: ${KURENTO_WS_URI:ws://localhost:8888/kurento}
 
 rtc:
   websocket:
-    url: ws://localhost:8080/ws/rtc
+    url: ${RTC_WS_URL:ws://localhost:8080/ws/rtc}
 
 management:
   endpoints:

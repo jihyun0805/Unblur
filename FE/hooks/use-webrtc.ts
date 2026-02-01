@@ -27,12 +27,29 @@ export interface UseWebRTCReturn {
   isVideoEnabled: boolean
 }
 
+// const ICE_SERVERS: RTCConfiguration = {
+//   iceServers: [
+//     { urls: ["stun:i14a705.p.ssafy.io:8000"] },
+//
+//     // TURN
+//     {
+//       urls: ["turn:i14a705.p.ssafy.io:8000?transport=tcp"],
+//       username: "A705",
+//       credential: "wQ9pX3!Zt7b#V2mN4sC8"
+//     }
+//   ]
+// }
+
 const ICE_SERVERS: RTCConfiguration = {
-  iceServers: [
-    { urls: "stun:stun.l.google.com:19302" },
-    { urls: "stun:stun1.l.google.com:19302" },
-  ],
-}
+    iceServers: [
+        {
+            urls: ["turn:i14a705.p.ssafy.io:8000?transport=tcp"],
+            username: "A705",
+            credential: "wQ9pX3!Zt7b#V2mN4sC8",
+        },
+    ],
+    iceTransportPolicy: "relay", // TURN만 쓰게 강제(테스트용)
+};
 
 export function useWebRTC({
   sessionId,
