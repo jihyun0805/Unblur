@@ -1,28 +1,52 @@
 "use client"
 
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Calendar, Clock, MessageCircle, User, MoreVertical } from "lucide-react"
+import { Calendar, Clock, Layers, MessageCircle, User, MoreVertical } from "lucide-react"
 import type { HistoryItem } from "@/lib/history-types"
-import { getRoundProgress } from "./utils"
 
 interface HistoryItemCardProps {
   item: HistoryItem
   onProfileClick: (item: HistoryItem) => void
   onChatClick: (item: HistoryItem) => void
-  onBlock: (id: string) => void
-  onUnblock: (id: string) => void
+  onBlock: (item: HistoryItem) => void
+  onUnblock: (item: HistoryItem) => void
   isBlocked: boolean
 }
 
 export function HistoryItemCard({ item, onProfileClick, onChatClick, onBlock, onUnblock, isBlocked }: HistoryItemCardProps) {
+  const [isBlockConfirmOpen, setIsBlockConfirmOpen] = useState(false)
+
+  const handleUnblock = () => {
+    onUnblock(item)
+  }
+
+  const handleBlockConfirm = () => {
+    setIsBlockConfirmOpen(true)
+  }
+
   return (
-    <div className="p-4 rounded-xl bg-card flex items-center gap-3 sm:gap-4">
+    <div
+      className={`p-4 rounded-xl flex items-center gap-3 sm:gap-4 ${
+        isBlocked ? "bg-muted/40 opacity-70" : "bg-card"
+      }`}
+    >
       <div className="flex flex-col items-center justify-center flex-shrink-0">
         <div className="relative w-12 h-12">
           <div className="w-full h-full rounded-full bg-muted flex items-center justify-center overflow-hidden border border-border">
@@ -41,6 +65,11 @@ export function HistoryItemCard({ item, onProfileClick, onChatClick, onBlock, on
           >
             {item.partnerNickname}
           </button>
+          <span
+            className={`text-xs ${item.isOnline ? "text-green-600" : "text-muted-foreground"}`}
+          >
+            {item.isOnline ? "온라인" : "오프라인"}
+          </span>
           {isBlocked && (
             <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">차단됨</span>
           )}
@@ -53,6 +82,10 @@ export function HistoryItemCard({ item, onProfileClick, onChatClick, onBlock, on
           <span className="flex items-center gap-1">
             <Clock className="w-3 h-3" />
             {item.duration}
+          </span>
+          <span className="flex items-center gap-1">
+            <Layers className="w-3 h-3" />
+            {item.rounds}라운드
           </span>
         </div>
       </div>
@@ -73,14 +106,60 @@ export function HistoryItemCard({ item, onProfileClick, onChatClick, onBlock, on
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              variant="destructive"
-              onClick={() => (isBlocked ? onUnblock(item.id) : onBlock(item.id))}
-            >
-              {isBlocked ? "차단해제" : "차단하기"}
-            </DropdownMenuItem>
+            {isBlocked ? (
+              <DropdownMenuItem
+                className="cursor-pointer"
+                onMouseDown={(event) => {
+                  event.preventDefault()
+                  handleUnblock()
+                }}
+                onSelect={(event) => {
+                  event.preventDefault()
+                  handleUnblock()
+                }}
+              >
+                차단해제
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem
+                variant="destructive"
+                className="cursor-pointer"
+                onMouseDown={(event) => {
+                  event.preventDefault()
+                  handleBlockConfirm()
+                }}
+                onSelect={(event) => {
+                  event.preventDefault()
+                  handleBlockConfirm()
+                }}
+              >
+                차단하기
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
+
+        <AlertDialog open={isBlockConfirmOpen} onOpenChange={setIsBlockConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>정말 차단하시겠어요?</AlertDialogTitle>
+              <AlertDialogDescription>
+                차단하면 이 사용자의 메시지를 받을 수 없어요. 언제든 차단 해제할 수 있습니다.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>취소</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  onBlock(item)
+                  setIsBlockConfirmOpen(false)
+                }}
+              >
+                차단하기
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   )
