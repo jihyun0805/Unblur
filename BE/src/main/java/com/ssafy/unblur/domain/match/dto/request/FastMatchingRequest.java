@@ -12,7 +12,7 @@ import java.util.Map;
 @Schema(description = "빠른 매칭 요청")
 public record FastMatchingRequest(
 
-        @Schema(description = "추가 필터 (지원 키: ageMin, ageMax, gender, region, loveDna)")
+        @Schema(description = "추가 필터 (지원 키: ageMin, ageMax, gender, region)")
     Map<String, Object> filters
 ) {
 }
