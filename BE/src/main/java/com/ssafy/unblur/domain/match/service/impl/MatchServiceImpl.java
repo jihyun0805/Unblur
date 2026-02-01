@@ -19,7 +19,6 @@ import com.ssafy.unblur.domain.match.dto.response.OneOnOneMatchedResponse;
 import com.ssafy.unblur.domain.match.dto.response.OnlineUserDto;
 import com.ssafy.unblur.domain.match.dto.response.OnlineUserListResponse;
 import com.ssafy.unblur.domain.match.model.*;
-import com.ssafy.unblur.domain.match.repository.ConferenceParticipantRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRepository;
 import com.ssafy.unblur.domain.match.service.MatchEventPublisher;
 import com.ssafy.unblur.domain.match.service.MatchQueueService;
@@ -83,11 +82,6 @@ public class MatchServiceImpl implements MatchService {
      * 컨퍼런스 저장 레포지토리
      */
     private final ConferenceRepository conferenceRepository;
-
-    /**
-     * 세션 참여자 저장 레포지토리
-     */
-    private final ConferenceParticipantRepository participantRepository;
 
     @Override
     @Transactional
@@ -271,13 +265,18 @@ public class MatchServiceImpl implements MatchService {
         item.markMatched(matchedAt);
 
         // 컨퍼런스 생성
-        Conference conference = createConference(requester, recipient);
-        log.info("1:1 매칭 성사. requestId={}, conferenceId={}, requesterId={}, recipientId={}",
-                requestId, conference.getId(), requester.getId(), recipient.getId());
+        Conference conference = Conference.builder()
+                .status(ConferenceStatus.WAITING)
+                .currentRound(0)
+                .build();
+
+        Conference savedConference = conferenceRepository.save(conference);
+
+        log.info("1:1 매칭 성사. requestId={}, conferenceId={}, requesterId={}, recipientId={}", requestId, savedConference.getId(), requester.getId(), recipient.getId());
 
         // 양쪽에 매칭 완료 이벤트 전송 (각자에게 상대방 ID 전달)
-        OneOnOneMatchedResponse requesterResponse = buildOneOnOneMatchedResponse(item, conference, userId);
-        OneOnOneMatchedResponse recipientResponse = buildOneOnOneMatchedResponse(item, conference, item.getRequesterUserId());
+        OneOnOneMatchedResponse requesterResponse = buildOneOnOneMatchedResponse(item, savedConference, userId);
+        OneOnOneMatchedResponse recipientResponse = buildOneOnOneMatchedResponse(item, savedConference, item.getRequesterUserId());
 
         TransactionUtils.runAfterCommit(() -> {
             eventPublisher.publish(item.getRequesterUserId(), SseEventType.ONE_ON_ONE_ACCEPTED, requesterResponse);
@@ -444,37 +443,5 @@ public class MatchServiceImpl implements MatchService {
                 .matchedAt(item.getMatchedAt())
                 .build();
     }
-
-    /**
-     * 컨퍼런스와 참여자를 생성하는 메서드
-     *
-     * @param requester 요청자 사용자
-     * @param recipient 수신자 사용자
-     * @return 생성된 컨퍼런스
-     */
-    private Conference createConference(User requester, User recipient) {
-        Conference conference = Conference.builder()
-                .status(ConferenceStatus.WAITING)
-                .currentRound(0)
-                .build();
-
-        Conference savedConference = conferenceRepository.save(conference);
-
-        ConferenceParticipant requesterParticipant = ConferenceParticipant.builder()
-                .conference(savedConference)
-                .user(requester)
-                .build();
-
-        ConferenceParticipant recipientParticipant = ConferenceParticipant.builder()
-                .conference(savedConference)
-                .user(recipient)
-                .build();
-
-        participantRepository.save(requesterParticipant);
-        participantRepository.save(recipientParticipant);
-
-        return savedConference;
-    }
-
 
 }
