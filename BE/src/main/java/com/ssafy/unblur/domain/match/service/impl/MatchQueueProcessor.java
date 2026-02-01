@@ -11,7 +11,6 @@ import com.ssafy.unblur.domain.match.dto.event.QuickMatchStageEvent;
 import com.ssafy.unblur.domain.match.model.*;
 import com.ssafy.unblur.common.service.event.SseEventType;
 import com.ssafy.unblur.common.util.TransactionUtils;
-import com.ssafy.unblur.domain.match.repository.ConferenceParticipantRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRepository;
 import com.ssafy.unblur.domain.match.repository.MatchCandidateRepository;
 import com.ssafy.unblur.domain.match.repository.MatchCandidateRepository.MatchCandidate;
@@ -60,11 +59,6 @@ public class MatchQueueProcessor {
      * 매칭 완료 시 컨퍼런스 저장 레포지토리
      */
     private final ConferenceRepository conferenceRepository;
-
-    /**
-     * 세션 참여자 저장 레포지토리
-     */
-    private final ConferenceParticipantRepository participantRepository;
 
     /**
      * 매칭 정책 설정값
@@ -514,20 +508,6 @@ public class MatchQueueProcessor {
         Conference savedConference = conferenceRepository.save(conference);
         log.info("매칭 컨퍼런스 생성. conferenceId={}, requesterId={}, recipientId={}",
                 savedConference.getId(), requester.getId(), recipient.getId());
-
-        // 참여자 정보 생성
-        ConferenceParticipant requesterParticipant = ConferenceParticipant.builder()
-                .conference(savedConference)
-                .user(requester)
-                .build();
-
-        ConferenceParticipant recipientParticipant = ConferenceParticipant.builder()
-                .conference(savedConference)
-                .user(recipient)
-                .build();
-
-        participantRepository.save(requesterParticipant);
-        participantRepository.save(recipientParticipant);
 
         return savedConference;
     }
