@@ -12,6 +12,7 @@ interface UserProfileResponseDto {
   gender: "MALE" | "FEMALE" | null
   region: string | null
   mbti: string | null
+  loveDna: string | null
   intro: string | null
   detailedInfo: Array<Record<string, unknown>> | null
   interestTags: string[] | null
@@ -99,6 +100,7 @@ const mapProfileToUser = (profile: UserProfileResponseDto): User => {
     birthDate: profile.birthDate || undefined,
     bio: profile.intro || undefined,
     mbti: profile.mbti || undefined,
+    loveDna: profile.loveDna || undefined,
     temperature: profile.clarityScore ?? 0,
     surveyData,
   }
@@ -167,6 +169,23 @@ export async function updateMyProfile(input: UpdateMyProfileInput): Promise<User
   const baseResponse: BaseResponse<UserProfileResponseDto> = await response.json()
   if (!baseResponse.isSuccess || !baseResponse.data) {
     throw new Error(baseResponse.message || baseResponse.errorCode || "프로필 수정에 실패했습니다.")
+  }
+
+  return mapProfileToUser(baseResponse.data)
+}
+
+export async function updateLoveDna(loveDna: string): Promise<User> {
+  const response = await apiFetch("/api/v1/users/me/love-dna", {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ loveDna }),
+  })
+
+  const baseResponse: BaseResponse<UserProfileResponseDto> = await response.json()
+  if (!baseResponse.isSuccess || !baseResponse.data) {
+    throw new Error(baseResponse.message || baseResponse.errorCode || "연애 성향 유형 저장에 실패했습니다.")
   }
 
   return mapProfileToUser(baseResponse.data)

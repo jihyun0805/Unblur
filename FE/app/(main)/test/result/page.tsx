@@ -19,6 +19,7 @@ const getResultLabel = (type: string) => {
 const getImagePath = (code: string) => `/test/results/${code}.PNG`
 const formatSentences = (text: string) => text.replace(/(\.)\s*/g, "$1\n")
 const getMatchTags = (code: string) => RESULT_CONTENT[code]?.tags || ""
+const isValidCode = (code: string) => code && code.length === 4 && code !== "-"
 
 const mockProfiles: Array<{
   id: string
@@ -475,9 +476,9 @@ export default function MbtiResultPage() {
   useEffect(() => {
     if (typeof window === "undefined") return
     const stored = localStorage.getItem("loveTestResult") || sessionStorage.getItem("loveTestResult")
-    const type = stored || ""
+    const type = stored || user?.loveDna || ""
     setResult(getResultLabel(type))
-  }, [])
+  }, [user?.loveDna])
 
   const resultContent = RESULT_CONTENT[result] || RESULT_CONTENT.DEFAULT
   const oppositeGender = user?.gender === "male" ? "female" : user?.gender === "female" ? "male" : undefined
@@ -615,12 +616,18 @@ export default function MbtiResultPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="rounded-xl border bg-card/90 backdrop-blur shadow-lg p-3 text-center">
                 <div className="text-sm font-semibold mb-2">잘 맞는 유형</div>
-                <img
-                  src={getImagePath(resultContent.bestMatch.code)}
-                  alt={`${resultContent.bestMatch.code} 이미지`}
-                  className="w-full h-28 rounded-lg object-contain cursor-pointer bg-card"
-                  onClick={() => handleOpenDetail("best")}
-                />
+                {isValidCode(resultContent.bestMatch.code) ? (
+                  <img
+                    src={getImagePath(resultContent.bestMatch.code)}
+                    alt={`${resultContent.bestMatch.code} 이미지`}
+                    className="w-full h-28 rounded-lg object-contain cursor-pointer bg-card"
+                    onClick={() => handleOpenDetail("best")}
+                  />
+                ) : (
+                  <div className="w-full h-28 rounded-lg bg-muted flex items-center justify-center text-xs text-muted-foreground">
+                    이미지 없음
+                  </div>
+                )}
                 <div className="text-xs text-muted-foreground mt-2">{resultContent.bestMatch.name}</div>
                 {getMatchTags(resultContent.bestMatch.code) && (
                   <div className="text-[10px] text-muted-foreground mt-1">
@@ -633,12 +640,18 @@ export default function MbtiResultPage() {
               </div>
               <div className="rounded-xl border bg-card/90 backdrop-blur shadow-lg p-3 text-center">
                 <div className="text-sm font-semibold mb-2">다른 유형</div>
-                <img
-                  src={getImagePath(resultContent.worstMatch.code)}
-                  alt={`${resultContent.worstMatch.code} 이미지`}
-                  className="w-full h-28 rounded-lg object-contain cursor-pointer bg-card"
-                  onClick={() => handleOpenDetail("worst")}
-                />
+                {isValidCode(resultContent.worstMatch.code) ? (
+                  <img
+                    src={getImagePath(resultContent.worstMatch.code)}
+                    alt={`${resultContent.worstMatch.code} 이미지`}
+                    className="w-full h-28 rounded-lg object-contain cursor-pointer bg-card"
+                    onClick={() => handleOpenDetail("worst")}
+                  />
+                ) : (
+                  <div className="w-full h-28 rounded-lg bg-muted flex items-center justify-center text-xs text-muted-foreground">
+                    이미지 없음
+                  </div>
+                )}
                 <div className="text-xs text-muted-foreground mt-2">{resultContent.worstMatch.name}</div>
                 {getMatchTags(resultContent.worstMatch.code) && (
                   <div className="text-[10px] text-muted-foreground mt-1">

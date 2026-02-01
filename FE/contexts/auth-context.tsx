@@ -34,6 +34,7 @@ export interface User {
   birthDate?: string
   bio?: string
   mbti?: string
+  loveDna?: string
   temperature: number
   surveyData?: SurveyData
 }
