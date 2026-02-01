@@ -29,11 +29,11 @@ export interface UseWebRTCReturn {
 
 const ICE_SERVERS: RTCConfiguration = {
   iceServers: [
-    { urls: ["stun:i14a705.p.ssafy.io:20000"] },
+    { urls: ["stun:i14a705.p.ssafy.io:8000"] },
 
     // TURN (UDP)
     {
-      urls: ["turn:i14a705.p.ssafy.io:20000?transport=udp"],
+      urls: ["turn:i14a705.p.ssafy.io:8000?transport=udp"],
       username: "A705",
       credential: "wQ9pX3!Zt7b#V2mN4sC8"
     }
