@@ -100,13 +100,21 @@ public class MatchServiceImpl implements MatchService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
 
+        // 필터에 성별이 없으면 이성 강제 적용
+        Map<String, Object> filters = request.filters() != null
+                ? new HashMap<>(request.filters()) : new HashMap<>();
+        if (!filters.containsKey("gender") && user.getGender() != null) {
+            Gender opposite = user.getGender() == Gender.MALE ? Gender.FEMALE : Gender.MALE;
+            filters.put("gender", opposite.name());
+        }
+
         // 대기열 항목 생성 및 등록
         MatchQueueItem item = MatchQueueItem.builder()
                 .requestId(UUID.randomUUID())
                 .requesterUserId(userId)
                 .matchType(MatchType.QUICK)
                 .createdAt(LocalDateTime.now(clock))
-                .filters(request.filters())
+                .filters(filters)
                 .build();
 
         matchQueueService.save(item);
