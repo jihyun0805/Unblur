@@ -12,4 +12,5 @@ export interface HistoryItem {
   bio?: string
   mbti?: string
   interests?: string[]
+  isOnline: boolean
 }

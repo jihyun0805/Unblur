@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Calendar, Clock, MessageCircle, Heart, MoreVertical } from "lucide-react"
+import { Calendar, Clock, MessageCircle, User, MoreVertical } from "lucide-react"
 import type { HistoryItem } from "@/lib/history-types"
 import { getRoundProgress } from "./utils"
 
@@ -25,13 +25,12 @@ export function HistoryItemCard({ item, onProfileClick, onChatClick, onBlock, on
     <div className="p-4 rounded-xl bg-card flex items-center gap-3 sm:gap-4">
       <div className="flex flex-col items-center justify-center flex-shrink-0">
         <div className="relative w-12 h-12">
-          <Heart className="w-12 h-12 text-gray-300" />
-          <div
-            className="absolute inset-0 overflow-hidden"
-            style={{ clipPath: `inset(${100 - getRoundProgress(item.rounds)}% 0 0 0)` }}
-          >
-            <Heart className="w-12 h-12 text-red-500 fill-red-500" />
+          <div className="w-full h-full rounded-full bg-muted flex items-center justify-center overflow-hidden border border-border">
+            <User className="w-6 h-6 text-muted-foreground" />
           </div>
+          {item.isOnline && (
+            <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-background rounded-full" />
+          )}
         </div>
       </div>
       <div className="flex-1 min-w-0">
