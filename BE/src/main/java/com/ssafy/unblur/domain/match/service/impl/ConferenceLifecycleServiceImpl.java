@@ -95,7 +95,7 @@ public class ConferenceLifecycleServiceImpl implements ConferenceLifecycleServic
             User user = userRepository.findById(userId)
                     .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
 
-            // 이미 참여 기록이 있으면 재입장 처리 (네트워크 끊김 후 재연결)
+            // 기존 참여 기록이 있으면 재입장 처리, 없으면 신규 생성
             Optional<ConferenceParticipant> existingParticipant = participantRepository.findByConference_IdAndUser_Id(conferenceId, userId);
             if (existingParticipant.isPresent()) {
                 ConferenceParticipant participant = existingParticipant.get();
@@ -105,17 +105,16 @@ public class ConferenceLifecycleServiceImpl implements ConferenceLifecycleServic
                     participant.rejoin();
                 }
 
-                return;
+            } else {
+                // 신규 입장
+                ConferenceParticipant participant = ConferenceParticipant.builder()
+                        .conference(conference)
+                        .user(user)
+                        .joinedAt(LocalDateTime.now(clock))
+                        .build();
+
+                participantRepository.save(participant);
             }
-
-            // 신규 입장
-            ConferenceParticipant participant = ConferenceParticipant.builder()
-                    .conference(conference)
-                    .user(user)
-                    .joinedAt(LocalDateTime.now(clock))
-                    .build();
-
-            participantRepository.save(participant);
 
             // 두 명이 모두 입장한 경우 세션을 활성화하고 1라운드 생성
             if (conference.getStatus() == ConferenceStatus.WAITING) {
