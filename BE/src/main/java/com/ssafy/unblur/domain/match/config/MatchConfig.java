@@ -109,7 +109,11 @@ public class MatchConfig {
             /** 예상 대기 시간 계산용 평균 대기 초 */
             int averageWaitSeconds,
             /** 완료/취소 항목 정리 유지 시간 */
-            java.time.Duration cleanupRetention
+            java.time.Duration cleanupRetention,
+            /** 성향(임베딩) 가중치 */
+            double embeddingWeight,
+            /** 조건(Hard Matching) 가중치 */
+            double hardMatchWeight
     ) {
 
         /**
@@ -127,6 +131,8 @@ public class MatchConfig {
          *   <tr><td>완화 매칭 유사도 임계치(코사인)</td><td>0.5</td></tr>
          *   <tr><td>예상 대기 시간 계산용 평균 대기 초</td><td>60</td></tr>
          *   <tr><td>완료/취소 항목 정리 유지 시간</td><td>10분</td></tr>
+         *   <tr><td>성향(임베딩) 가중치</td><td>0.4</td></tr>
+         *   <tr><td>조건(Hard Matching) 가중치</td><td>0.6</td></tr>
          * </table>
          *
          * @return 기본 매칭 정책
@@ -142,7 +148,9 @@ public class MatchConfig {
                     0.7,
                     0.5,
                     60,
-                    Duration.ofMinutes(10)
+                    Duration.ofMinutes(10),
+                    0.4,
+                    0.6
             );
         }
     }

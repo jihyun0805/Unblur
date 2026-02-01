@@ -28,6 +28,9 @@ public record QuickMatchResultEvent(
         String conferenceId,
 
         @Schema(description = "매칭 완료 시각", example = "2026-01-26T14:30:00")
-        LocalDateTime matchedAt
+        LocalDateTime matchedAt,
+
+        @Schema(description = "가치관 일치도 (0.0 ~ 1.0)", example = "0.75")
+        Double similarityScore
 ) {
 }
