@@ -4,11 +4,10 @@ import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useToast } from "@/hooks/use-toast"
-import { Mic, MicOff, PhoneOff, MessageCircle, Gamepad2, BookOpen, Clock, X, Lightbulb, AlertCircle, Home } from "lucide-react"
+import { Mic, MicOff, PhoneOff, MessageCircle, Gamepad2, BookOpen, Clock, X, Lightbulb, AlertCircle } from "lucide-react"
 import { BalanceGameOverlay } from "@/components/session/balance-game-overlay"
 import { RoundVoteModal } from "@/components/session/round-vote-modal"
 import { RatingModal } from "@/components/session/rating-modal"
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { ConfirmLeaveModal } from "@/components/session/confirm-leave-modal"
 import { EndCallConfirmModal } from "@/components/session/end-call-confirm-modal"
 import { QuestionBankModal, getRoundQuestions } from "@/components/session/question-bank-modal"
@@ -49,10 +48,10 @@ export function SessionRoom({
   const [showQuestionBank, setShowQuestionBank] = useState(false)
   const [pendingLeave, setPendingLeave] = useState(false)
   const [pendingExternalLeave, setPendingExternalLeave] = useState(false)
+  const disconnectRatingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [showIceBreaker, setShowIceBreaker] = useState(false)
   const [currentIceBreaker, setCurrentIceBreaker] = useState("")
   const [silenceTimer, setSilenceTimer] = useState(0)
-  const [showSessionEndedModal, setShowSessionEndedModal] = useState(false)
   const { toast } = useToast()
   const { user } = useAuth()
   const lastIceBreakerRef = useRef("")
@@ -82,7 +81,19 @@ export function SessionRoom({
     enabled: !!sessionId && !!user?.id,
     useMock: false,
     onDisconnected: () => {
-      setShowSessionEndedModal(true)
+      setShowVote(false)
+      setShowConfirmLeave(false)
+      setPendingLeave(false)
+      toast({
+        title: "상대방과의 연결이 종료되었습니다.",
+        description: "평가를 진행해 주세요.",
+      })
+      if (disconnectRatingTimerRef.current) {
+        clearTimeout(disconnectRatingTimerRef.current)
+      }
+      disconnectRatingTimerRef.current = setTimeout(() => {
+        setShowRating(true)
+      }, 2000)
     },
     onRoundTimeUp: (payload) => {
       setCurrentRound(Math.max(0, payload.roundNumber - 1))
@@ -133,25 +144,6 @@ export function SessionRoom({
     if (showChat) chatMarkAsRead()
   }, [showChat, chatMarkAsRead])
 
-  // 상대방 끊김 시 모달 3초 표시 후 홈으로 이동
-  useEffect(() => {
-    if (!showSessionEndedModal) return
-    const t = setTimeout(() => {
-      setShowSessionEndedModal(false)
-      if (typeof window !== "undefined") {
-        sessionStorage.setItem(
-          "pendingToast",
-          JSON.stringify({
-            title: "대화가 마무리되었어요",
-            description: "좋은 인연이었길 바라요. 다음 만남도 응원합니다!",
-          }),
-        )
-      }
-      onLeave()
-    }, 3000)
-    return () => clearTimeout(t)
-  }, [showSessionEndedModal, onLeave])
-
   // 로컬 스트림을 비디오 요소에 설정
   useEffect(() => {
     if (localStream && localVideoRef.current) {
@@ -187,6 +179,14 @@ export function SessionRoom({
 
     window.addEventListener('beforeunload', handleBeforeUnload)
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (disconnectRatingTimerRef.current) {
+        clearTimeout(disconnectRatingTimerRef.current)
+      }
+    }
   }, [])
 
   // 타이머: 두 명 모두 입장 후 round-started 수신 시에만 카운트다운 (라운드 종료·투표는 BE round-time-up으로만)
@@ -605,24 +605,6 @@ export function SessionRoom({
         round={currentRound}
         onClose={() => setShowQuestionBank(false)}
       />
-
-      <Dialog open={showSessionEndedModal}>
-        <DialogContent
-          className="sm:max-w-sm rounded-2xl border-0 bg-background/95 shadow-2xl backdrop-blur-sm px-8"
-          showCloseButton={false}
-          onPointerDownOutside={(e) => e.preventDefault()}
-          onEscapeKeyDown={(e) => e.preventDefault()}
-        >
-          <DialogTitle className="sr-only">세션 종료</DialogTitle>
-          <div className="py-10 text-center">
-            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-              <Home className="h-8 w-8 text-primary" />
-            </div>
-            <p className="text-xl font-semibold tracking-tight text-foreground">세션이 종료되었습니다.</p>
-            <p className="mt-3 text-sm text-muted-foreground leading-relaxed">홈화면으로 이동합니다.</p>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       <RatingModal open={showRating} onComplete={handleRatingComplete} partnerNickname="상대방" />
     </div>
