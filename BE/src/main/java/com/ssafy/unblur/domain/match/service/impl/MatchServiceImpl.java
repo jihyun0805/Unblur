@@ -99,12 +99,15 @@ public class MatchServiceImpl implements MatchService {
                 .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
 
         // 대기열 항목 생성 및 등록
+        Map<String, Object> filters = request.filters() != null
+                ? new HashMap<>(request.filters()) : new HashMap<>();
+
         MatchQueueItem item = MatchQueueItem.builder()
                 .requestId(UUID.randomUUID())
                 .requesterUserId(userId)
                 .matchType(MatchType.QUICK)
                 .createdAt(LocalDateTime.now(clock))
-                .filters(request.filters())
+                .filters(filters)
                 .build();
 
         matchQueueService.save(item);

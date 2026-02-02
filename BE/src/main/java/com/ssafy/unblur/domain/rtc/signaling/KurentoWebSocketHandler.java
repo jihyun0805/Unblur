@@ -9,6 +9,7 @@ import com.ssafy.unblur.domain.match.model.VoteChoice;
 import com.ssafy.unblur.domain.match.service.ConferenceLifecycleService;
 import com.ssafy.unblur.domain.match.service.MatchEventPublisher;
 import com.ssafy.unblur.domain.match.service.RoundVoteService;
+import com.ssafy.unblur.domain.match.service.BalanceGameService;
 import com.ssafy.unblur.domain.rtc.dto.event.SignalingMessages;
 import com.ssafy.unblur.domain.rtc.model.UserSession;
 import com.ssafy.unblur.domain.rtc.service.KurentoRoomService;
@@ -61,6 +62,11 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
     private final RoundVoteService roundVoteService;
 
     /**
+     * 밸런스 게임 처리 서비스
+     */
+    private final BalanceGameService balanceGameService;
+
+    /**
      * WebSocket 세션 저장소
      */
     private final RtcSessionStore sessionStore;
@@ -98,6 +104,9 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
                 case "join" -> handleJoin(session, payload);
                 case "offer" -> handleOffer(session, payload);
                 case "candidate" -> handleCandidate(session, payload);
+                case "balance-invite" -> handleBalanceInvite(session, payload);
+                case "balance-response" -> handleBalanceResponse(session, payload);
+                case "balance-select" -> handleBalanceSelect(session, payload);
                 case "vote" -> handleVote(session, payload);
                 case "leave" -> handleLeave(session, payload);
                 default -> {
@@ -305,6 +314,89 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
 
         // Kurento 룸 서비스에 ICE Candidate 전달
         kurentoRoomService.addIceCandidate(conferenceId, userId, new IceCandidate(candidate, sdpMid, sdpMLineIndex));
+    }
+
+    /**
+     * 밸런스 게임 초대 요청하는 메서드
+     *
+     * @param session WebSocket 세션
+     * @param payload 요청 페이로드
+     * @throws IOException 전송 중 오류
+     */
+    private void handleBalanceInvite(WebSocketSession session, JsonNode payload) throws IOException {
+        // 방 ID 및 사용자 ID 추출
+        UUID conferenceId = parseUuid(session, payload, "conferenceId");
+        UUID userId = parseUuid(session, payload, "userId");
+        if (conferenceId == null || userId == null) {
+            return;
+        }
+
+        // 밸런스 게임 초대 처리
+        balanceGameService.invite(conferenceId, userId);
+    }
+
+    /**
+     * 밸런스 게임 초대 응답 처리하는 메서드
+     *
+     * @param session WebSocket 세션
+     * @param payload 요청 페이로드
+     * @throws IOException 전송 중 오류
+     */
+    private void handleBalanceResponse(WebSocketSession session, JsonNode payload) throws IOException {
+        // 방 ID 및 사용자 ID 추출
+        UUID conferenceId = parseUuid(session, payload, "conferenceId");
+        UUID userId = parseUuid(session, payload, "userId");
+        if (conferenceId == null || userId == null) {
+            return;
+        }
+
+        // 응답 값 추출 및 검증
+        JsonNode acceptedNode = payload.get("accepted");
+        if (acceptedNode == null || acceptedNode.isNull()) {
+            // 에러 메시지 생성
+            SignalingMessages.Error errorMessage = SignalingMessages.Error.builder()
+                    .message("응답 여부(accepted)가 필요합니다.")
+                    .build();
+
+            // 응답 메시지 전송
+            send(session, errorMessage);
+            return;
+        }
+
+        // 밸런스 게임 응답 처리
+        balanceGameService.respond(conferenceId, userId, acceptedNode.asBoolean());
+    }
+
+    /**
+     * 밸런스 게임 선택하는 메서드
+     *
+     * @param session WebSocket 세션
+     * @param payload 요청 페이로드
+     * @throws IOException 전송 중 오류
+     */
+    private void handleBalanceSelect(WebSocketSession session, JsonNode payload) throws IOException {
+        // 방 ID 및 사용자 ID 추출
+        UUID conferenceId = parseUuid(session, payload, "conferenceId");
+        UUID userId = parseUuid(session, payload, "userId");
+        if (conferenceId == null || userId == null) {
+            return;
+        }
+
+        // 선택 값 추출 및 검증
+        JsonNode choiceNode = payload.get("choice");
+        if (choiceNode == null || choiceNode.isNull()) {
+            // 에러 메시지 생성
+            SignalingMessages.Error errorMessage = SignalingMessages.Error.builder()
+                    .message("선택 값(choice)이 필요합니다.")
+                    .build();
+
+            // 응답 메시지 전송
+            send(session, errorMessage);
+            return;
+        }
+
+        // 밸런스 게임 선택 처리
+        balanceGameService.select(conferenceId, userId, choiceNode.asText());
     }
 
     /**

@@ -2,19 +2,17 @@ package com.ssafy.unblur.domain.user.service;
 
 import com.ssafy.unblur.common.exception.BaseException;
 import com.ssafy.unblur.common.exception.ErrorCode;
-import com.ssafy.unblur.domain.survey.service.EmbeddingService;
-import com.ssafy.unblur.domain.survey.service.SurveyTextConverter;
 import com.ssafy.unblur.common.util.SecurityUtil;
 import com.ssafy.unblur.domain.auth.model.User;
 import com.ssafy.unblur.domain.auth.model.UserBlock;
 import com.ssafy.unblur.domain.auth.repository.UserRepository;
 import com.ssafy.unblur.domain.auth.service.AuthService;
 import com.ssafy.unblur.domain.auth.service.RefreshTokenService;
-import com.ssafy.unblur.domain.user.dto.response.UserProfileResponseDto;
-import com.ssafy.unblur.domain.user.dto.request.UserProfileUpdateRequestDto;
-import com.ssafy.unblur.domain.user.dto.response.UserSurveyResponseDto;
-import com.ssafy.unblur.domain.user.dto.request.UserSurveyUpdateRequestDto;
 import com.ssafy.unblur.domain.user.dto.LoveDnaUpdateRequest;
+import com.ssafy.unblur.domain.user.dto.request.UserProfileUpdateRequestDto;
+import com.ssafy.unblur.domain.user.dto.request.UserSurveyUpdateRequestDto;
+import com.ssafy.unblur.domain.user.dto.response.UserProfileResponseDto;
+import com.ssafy.unblur.domain.user.dto.response.UserSurveyResponseDto;
 import com.ssafy.unblur.domain.user.repository.UserBlockRepository;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
@@ -31,8 +29,6 @@ public class UserService {
     private final RefreshTokenService refreshTokenService;
     private final UserBlockRepository userBlockRepository;
     private final UserRepository userRepository;
-    private final SurveyTextConverter surveyTextConverter;
-    private final EmbeddingService embeddingService;
 
     /**
      * 회원 탈퇴를 진행합니다.
@@ -86,14 +82,6 @@ public class UserService {
         User user = getLoginUserAndCheckActive();
 
         user.updateSurvey(dto);
-
-        String surveyText = surveyTextConverter.convert(dto.detailedInfo());
-        if (surveyText != null) {
-            float[] vector = embeddingService.embed(surveyText);
-            if (vector != null) {
-                user.updateInterestsVector(vector);
-            }
-        }
 
         return UserSurveyResponseDto.from(user);
     }

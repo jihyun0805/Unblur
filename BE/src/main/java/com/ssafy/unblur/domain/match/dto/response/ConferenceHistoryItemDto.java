@@ -12,9 +12,11 @@ public record ConferenceHistoryItemDto(
         LocalDate createdDate,
         long durationMinutes,
         long unreadCount,
-        String partnerName,
-        String partnerProfileImageUrl,
-        Integer partnerClarityScore,
-        Boolean partnerOnline
+        UUID userId,
+        String nickname,
+        String profileImageUrl,
+        Integer clarityScore,
+        Boolean isOnline,
+        Boolean isBlocked
 ) {
 }
