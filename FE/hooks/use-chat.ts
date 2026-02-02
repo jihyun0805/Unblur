@@ -10,6 +10,8 @@ interface UseChatOptions {
   conferenceId: string
   enabled?: boolean // WebSocket 구독 활성화 여부
   autoLoadMessages?: boolean // 자동으로 메시지 로드 여부
+  /** true일 때만 채팅 API 호출(회의 입장 완료 후). 미설정 시 true로 동작 */
+  canLoadMessages?: boolean
   pageSize?: number // 페이지 크기
   /** 채팅 패널이 열려 있으면 true. 열린 상태에서 상대 메시지 수신 시 즉시 읽음 처리 */
   panelOpen?: boolean
@@ -42,6 +44,7 @@ export function useChat({
   conferenceId,
   enabled = true,
   autoLoadMessages = true,
+  canLoadMessages = true,
   pageSize = 100,
   panelOpen = false,
 }: UseChatOptions): UseChatReturn {
@@ -303,17 +306,17 @@ export function useChat({
     }
   }, [user?.id])
 
-  // 초기 메시지 로드 (user·conferenceId가 준비된 후에만 실행). conferenceId 변경 시 다시 로드.
+  // 초기 메시지 로드: 회의 입장(join) 완료 후에만 호출. 백엔드는 ConferenceParticipant 있을 때만 채팅 허용.
   const lastLoadedConferenceIdRef = useRef<string | null>(null)
   useEffect(() => {
-    if (!autoLoadMessages || !enabled || !conferenceId || !user?.id) return
+    if (!autoLoadMessages || !canLoadMessages || !enabled || !conferenceId || !user?.id) return
     if (lastLoadedConferenceIdRef.current === conferenceId) return
 
     lastLoadedConferenceIdRef.current = conferenceId
     lastReadAtRef.current = null
     setLastReadAt(null)
     loadMessages(0, false).catch(() => {})
-  }, [autoLoadMessages, enabled, conferenceId, user?.id, loadMessages])
+  }, [autoLoadMessages, canLoadMessages, enabled, conferenceId, user?.id, loadMessages])
 
   // 컴포넌트 언마운트 시 디바운스 타이머 정리
   useEffect(() => {
