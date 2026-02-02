@@ -35,6 +35,17 @@ public enum ErrorCode {
     MATCH_ALREADY_HANDLED(HttpStatus.CONFLICT, "MATCH-004", "이미 처리된 매칭 요청입니다."),
     MATCH_TARGET_OFFLINE(HttpStatus.CONFLICT, "MATCH-005", "상대가 현재 수락할 수 없는 상태입니다."),
 
+    BALANCE_ALREADY_IN_PROGRESS(HttpStatus.CONFLICT, "BALANCE-001", "이미 진행 중인 밸런스 게임이 있습니다."),
+    BALANCE_NOT_PARTICIPANT(HttpStatus.FORBIDDEN, "BALANCE-002", "참여자가 아닙니다."),
+    BALANCE_PARTNER_NOT_JOINED(HttpStatus.CONFLICT, "BALANCE-003", "상대방이 아직 입장하지 않았습니다."),
+    BALANCE_ONLY_ONE_ON_ONE(HttpStatus.BAD_REQUEST, "BALANCE-004", "현재 1:1 세션에서만 사용할 수 있습니다."),
+    BALANCE_TARGET_NOT_FOUND(HttpStatus.BAD_REQUEST, "BALANCE-005", "상대방을 찾을 수 없습니다."),
+    BALANCE_INVITE_NOT_FOUND(HttpStatus.BAD_REQUEST, "BALANCE-006", "대기 중인 밸런스 게임 요청이 없습니다."),
+    BALANCE_RESPONSE_NOT_ALLOWED(HttpStatus.FORBIDDEN, "BALANCE-007", "초대를 받은 사용자만 응답할 수 있습니다."),
+    BALANCE_NOT_STARTED(HttpStatus.BAD_REQUEST, "BALANCE-008", "시작된 밸런스 게임이 없습니다."),
+    BALANCE_ALREADY_SELECTED(HttpStatus.CONFLICT, "BALANCE-009", "이미 선택을 완료했습니다."),
+    BALANCE_INVALID_CHOICE(HttpStatus.BAD_REQUEST, "BALANCE-010", "올바르지 않은 선택 값입니다."),
+
     CONFERENCE_NOT_FOUND(HttpStatus.BAD_REQUEST, "CONF-001", "세션을 찾을 수 없습니다."),
     CONFERENCE_NOT_PARTICIPANT(HttpStatus.FORBIDDEN, "CONF-002", "해당 세션의 참여자가 아닙니다."),
     CONFERENCE_ALREADY_COMPLETED(HttpStatus.CONFLICT, "CONF-003", "이미 종료된 세션입니다."),
