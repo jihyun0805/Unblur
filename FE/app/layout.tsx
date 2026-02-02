@@ -9,6 +9,8 @@ import { MatchSseProvider } from "@/contexts/match-sse-context"
 import { MatchRequestToaster } from "@/components/matching/match-request-toaster"
 import { Toaster } from "@/components/ui/toaster"
 import { ConsoleErrorFilter } from "@/components/debug/console-error-filter"
+import { GoogleAnalytics } from '@next/third-parties/google'
+
 
 const geist = Geist({ subsets: ["latin"] })
 
@@ -37,6 +39,7 @@ export default function RootLayout({
         </AuthProvider>
         <Analytics />
       </body>
+      <GoogleAnalytics gaId="G-B57MXQH88P" />
     </html>
   )
 }
