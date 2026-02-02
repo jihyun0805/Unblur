@@ -3,6 +3,14 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { createSignalingClient, type SignalingMessage, type VoteChoice, type WebRTCSignalingClient } from "@/lib/webrtc-signaling"
 import { registerStream, unregisterStream } from "@/lib/media-streams"
+import {
+  buildStreamWithoutEndedTracks,
+  attachTrackEndedListeners as attachTrackEndedListenersUtil,
+  subscribeToPermissionChange,
+  getMediaConstraints,
+  VIDEO_CONSTRAINTS_SESSION,
+  type MediaKind,
+} from "@/lib/media-permission-utils"
 
 /** 라운드 시간 종료 시 투표 모달 표시 */
 export type RoundTimeUpPayload = { conferenceId: string; roundNumber: number; message?: string }
@@ -52,15 +60,15 @@ export interface UseWebRTCReturn {
 // }
 
 const ICE_SERVERS: RTCConfiguration = {
-    iceServers: [
-        {
-            urls: ["turn:i14a705.p.ssafy.io:8000?transport=tcp"],
-            username: "A705",
-            credential: "wQ9pX3!Zt7b#V2mN4sC8",
-        },
-    ],
-    iceTransportPolicy: "relay", // TURN만 쓰게 강제(테스트용)
-};
+  iceServers: [
+    {
+      urls: ["turn:i14a705.p.ssafy.io:8000?transport=tcp"],
+      username: "A705",
+      credential: "wQ9pX3!Zt7b#V2mN4sC8",
+    },
+  ],
+  iceTransportPolicy: "relay", // TURN만 쓰게 강제(테스트용)
+}
 
 export function useWebRTC({
   sessionId,
@@ -109,6 +117,28 @@ export function useWebRTC({
     isVideoEnabledRef.current = isVideoEnabled
   }, [isVideoEnabled])
 
+  const syncLocalStreamWithoutEndedTracks = useCallback(() => {
+    const current = localStreamRef.current
+    if (!current) return
+    const next = buildStreamWithoutEndedTracks(current)
+    unregisterStream(current)
+    localStreamRef.current = next
+    setLocalStream(next)
+    if (localVideoRef.current) localVideoRef.current.srcObject = next
+    if (next) registerStream(next)
+  }, [localVideoRef])
+
+  const attachTrackEndedListeners = useCallback(
+    (stream: MediaStream) => {
+      attachTrackEndedListenersUtil(stream, (track) => {
+        if (track.kind === "video") setIsVideoEnabled(false)
+        else if (track.kind === "audio") setIsMuted(true)
+        syncLocalStreamWithoutEndedTracks()
+      })
+    },
+    [syncLocalStreamWithoutEndedTracks]
+  )
+
   const initLocalStream = useCallback(async () => {
     if (!navigator.mediaDevices?.getUserMedia) {
       throw new Error("MediaDevices API를 사용할 수 없습니다")
@@ -119,10 +149,7 @@ export function useWebRTC({
     let micError: string | null = null
 
     try {
-      videoStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user", width: 640, height: 480 },
-        audio: false,
-      })
+      videoStream = await navigator.mediaDevices.getUserMedia({ video: VIDEO_CONSTRAINTS_SESSION, audio: false })
       console.log("[WebRTC] Camera access granted")
     } catch (err: any) {
       console.error("[WebRTC] Camera access error:", err?.name, err?.message)
@@ -149,8 +176,9 @@ export function useWebRTC({
     setLocalStream(combined)
     registerStream(combined)
     if (localVideoRef.current) localVideoRef.current.srcObject = combined
+    attachTrackEndedListeners(combined)
     return combined
-  }, [localVideoRef])
+  }, [localVideoRef, attachTrackEndedListeners])
 
   const createPeerConnection = useCallback(() => {
     const pc = new RTCPeerConnection(ICE_SERVERS)
@@ -214,6 +242,57 @@ export function useWebRTC({
       pc.addIceCandidate(new RTCIceCandidate(c)).catch((e) => console.error("[WebRTC] addIceCandidate (drain):", e))
     })
   }, [])
+
+  const reacquireMedia = useCallback(
+    async (kind: MediaKind) => {
+      const pc = peerConnectionRef.current
+      if (!navigator.mediaDevices?.getUserMedia || !pc) return
+      const currentStream = localStreamRef.current
+      const isVideo = kind === "video"
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia(
+          getMediaConstraints(kind, VIDEO_CONSTRAINTS_SESSION)
+        )
+        const newTrack = (isVideo ? stream.getVideoTracks()[0] : stream.getAudioTracks()[0]) ?? null
+        if (!newTrack) return
+        newTrack.enabled = isVideo ? isVideoEnabledRef.current : !isMutedRef.current
+
+        const sender = pc.getSenders().find((s) => s.track?.kind === kind)
+        if (sender) {
+          await sender.replaceTrack(newTrack)
+        } else {
+          pc.addTrack(newTrack, currentStream ?? new MediaStream())
+          if (signalingClientRef.current) {
+            const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true })
+            await pc.setLocalDescription(offer)
+            signalingClientRef.current.sendOffer(offer, sessionId, userId)
+          }
+        }
+
+        const otherTracks =
+          currentStream?.getTracks().filter((t) => t.readyState !== "ended" && t.kind !== kind) ?? []
+        const nextStream = new MediaStream([...otherTracks, newTrack])
+        attachTrackEndedListeners(nextStream)
+        if (currentStream) unregisterStream(currentStream)
+        localStreamRef.current = nextStream
+        setLocalStream(nextStream)
+        registerStream(nextStream)
+        if (localVideoRef.current) localVideoRef.current.srcObject = nextStream
+
+        if (isVideo) {
+          setIsVideoEnabled(true)
+          setError((prev) => (prev?.includes("카메라") ? prev.replace(/카메라[^.]*\.?/g, "").trim() || null : prev))
+        } else {
+          setIsMuted(false)
+          setError((prev) => (prev?.includes("마이크") ? prev.replace(/마이크[^.]*\.?/g, "").trim() || null : prev))
+        }
+      } catch (err: any) {
+        if (err?.name === "NotAllowedError") return // 사용자가 아직 권한 미허용(포커스만 돌아온 경우 등)
+        console.error("[WebRTC] reacquireMedia failed:", kind, err)
+      }
+    },
+    [sessionId, userId, localVideoRef, attachTrackEndedListeners]
+  )
 
   const createAnswer = useCallback(
     async (offer: RTCSessionDescriptionInit) => {
@@ -315,6 +394,26 @@ export function useWebRTC({
     const unsub = signalingClientRef.current.onMessage(handleMessage)
     return unsub
   }, [enabled, signalingReady, sessionId, createAnswer, createOffer, onDisconnected, drainPendingIceCandidates])
+
+  useEffect(() => {
+    if (!enabled || !signalingReady || !localStream) return
+    const unsubs: Array<() => void> = [
+      subscribeToPermissionChange("camera", () => reacquireMedia("video")),
+      subscribeToPermissionChange("microphone", () => reacquireMedia("audio")),
+    ]
+    const onWindowFocus = async () => {
+      const pc = peerConnectionRef.current
+      const current = localStreamRef.current
+      if (!pc || !navigator.mediaDevices?.getUserMedia) return
+      const needsVideo = !current?.getVideoTracks().some((t) => t.readyState === "live")
+      const needsAudio = !current?.getAudioTracks().some((t) => t.readyState === "live")
+      if (needsVideo) await reacquireMedia("video")
+      if (needsAudio) await reacquireMedia("audio")
+    }
+    window.addEventListener("focus", onWindowFocus)
+    unsubs.push(() => window.removeEventListener("focus", onWindowFocus))
+    return () => unsubs.forEach((fn) => fn())
+  }, [enabled, signalingReady, localStream, reacquireMedia])
 
   useEffect(() => {
     if (!enabled || !sessionId || !userId) return

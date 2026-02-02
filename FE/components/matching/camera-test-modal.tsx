@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
@@ -8,6 +8,13 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Video, VideoOff, Check, AlertCircle, Sparkles, Mic, MicOff } from "lucide-react"
 import { registerStream, unregisterStream } from "@/lib/media-streams"
+import {
+  buildStreamWithoutEndedTracks,
+  attachTrackEndedListeners,
+  subscribeToPermissionChange,
+  getMediaConstraints,
+  VIDEO_CONSTRAINTS_PREVIEW,
+} from "@/lib/media-permission-utils"
 import BeautyFilter from "./beauty-filter"
 
 interface CameraTestModalProps {
@@ -25,6 +32,7 @@ const BLUR_LEVELS = [
 
 export function CameraTestModal({ open, onOpenChange, onReady }: CameraTestModalProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
+  const streamRef = useRef<MediaStream | null>(null)
   const [hasCamera, setHasCamera] = useState<boolean | null>(null)
   const [hasMicrophone, setHasMicrophone] = useState<boolean | null>(null)
   const [selectedBlur, setSelectedBlur] = useState(0)
@@ -38,6 +46,11 @@ export function CameraTestModal({ open, onOpenChange, onReady }: CameraTestModal
 
   const isFinalRound = selectedBlur === BLUR_LEVELS.length - 1
   const isBeautyActive = beautyFilter.enabled && isFinalRound
+
+  // 스트림 ref 동기화 (stopCamera 등에서 최신 스트림 참조용)
+  useEffect(() => {
+    streamRef.current = stream
+  }, [stream])
 
   useEffect(() => {
     if (open) {
@@ -67,6 +80,66 @@ export function CameraTestModal({ open, onOpenChange, onReady }: CameraTestModal
     }
   }, [isFinalRound, beautyFilter.enabled])
 
+  const syncStreamWithoutEndedTracks = useCallback(() => {
+    const current = streamRef.current
+    if (!current) return
+    const next = buildStreamWithoutEndedTracks(current)
+    unregisterStream(current)
+    streamRef.current = next
+    setStream(next)
+    if (videoRef.current) videoRef.current.srcObject = next
+    if (next) {
+      registerStream(next)
+      const hasVideo = next.getTracks().some((t) => t.kind === "video")
+      const hasAudio = next.getTracks().some((t) => t.kind === "audio")
+      setHasCamera((prev) => (hasVideo ? true : prev === null ? null : false))
+      setHasMicrophone((prev) => (hasAudio ? true : prev === null ? null : false))
+    } else {
+      setHasCamera(false)
+      setHasMicrophone(false)
+    }
+  }, [])
+
+  const reacquireMedia = useCallback(
+    async (kind: "video" | "audio") => {
+      if (!navigator.mediaDevices?.getUserMedia) return
+      const current = streamRef.current
+      try {
+        const mediaStream = await navigator.mediaDevices.getUserMedia(
+          getMediaConstraints(kind, VIDEO_CONSTRAINTS_PREVIEW)
+        )
+        const newTracks =
+          kind === "video" ? mediaStream.getVideoTracks() : mediaStream.getAudioTracks()
+        if (newTracks.length === 0) return
+        const otherTracks =
+          (current?.getTracks().filter((t) => t.readyState !== "ended" && t.kind !== kind) ??
+            []) as MediaStreamTrack[]
+        const next = new MediaStream([...otherTracks, ...newTracks])
+        attachTrackEndedListeners(next, () => syncStreamWithoutEndedTracks())
+        if (current) unregisterStream(current)
+        streamRef.current = next
+        setStream(next)
+        registerStream(next)
+        if (videoRef.current) videoRef.current.srcObject = next
+        if (kind === "video") setHasCamera(true)
+        else setHasMicrophone(true)
+      } catch (err: any) {
+        if (err?.name === "NotAllowedError") return
+        console.error("[CameraTest] reacquireMedia failed:", kind, err)
+      }
+    },
+    [syncStreamWithoutEndedTracks]
+  )
+
+  useEffect(() => {
+    if (!open || !stream) return
+    const unsubs = [
+      subscribeToPermissionChange("camera", () => reacquireMedia("video")),
+      subscribeToPermissionChange("microphone", () => reacquireMedia("audio")),
+    ]
+    return () => unsubs.forEach((fn) => fn())
+  }, [open, stream, reacquireMedia])
+
   const initCamera = async () => {
     // Check if mediaDevices API is available
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -85,22 +158,14 @@ export function CameraTestModal({ open, onOpenChange, onReady }: CameraTestModal
     // 카메라 개별 확인
     try {
       videoStream = await navigator.mediaDevices.getUserMedia({
-        video: { 
-          facingMode: "user", 
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        },
+        video: VIDEO_CONSTRAINTS_PREVIEW,
         audio: false,
       })
-      
       const videoTracks = videoStream.getVideoTracks()
       const cameraAvailable = videoTracks.length > 0 && videoTracks[0].readyState === "live"
       setHasCamera(cameraAvailable)
       console.log("[CameraTest] Camera check:", cameraAvailable)
-      
-      // 트랙 상태 변경 감지
       videoTracks.forEach((track) => {
-        track.onended = () => setHasCamera(false)
         track.onmute = () => setHasCamera(false)
         track.onunmute = () => setHasCamera(true)
       })
@@ -120,10 +185,7 @@ export function CameraTestModal({ open, onOpenChange, onReady }: CameraTestModal
       const micAvailable = audioTracks.length > 0 && audioTracks[0].readyState === "live"
       setHasMicrophone(micAvailable)
       console.log("[CameraTest] Microphone check:", micAvailable)
-      
-      // 트랙 상태 변경 감지
       audioTracks.forEach((track) => {
-        track.onended = () => setHasMicrophone(false)
         track.onmute = () => setHasMicrophone(false)
         track.onunmute = () => setHasMicrophone(true)
       })
@@ -135,33 +197,26 @@ export function CameraTestModal({ open, onOpenChange, onReady }: CameraTestModal
     // 스트림 합치기 (둘 다 있거나 하나만 있는 경우 모두 처리)
     if (videoStream || audioStream) {
       const combinedStream = new MediaStream()
-      
-      if (videoStream) {
-        videoStream.getVideoTracks().forEach(track => combinedStream.addTrack(track))
-      }
-      if (audioStream) {
-        audioStream.getAudioTracks().forEach(track => combinedStream.addTrack(track))
-      }
-      
+      if (videoStream) videoStream.getVideoTracks().forEach((t) => combinedStream.addTrack(t))
+      if (audioStream) audioStream.getAudioTracks().forEach((t) => combinedStream.addTrack(t))
+      attachTrackEndedListeners(combinedStream, () => syncStreamWithoutEndedTracks())
+      streamRef.current = combinedStream
       setStream(combinedStream)
       registerStream(combinedStream)
     }
   }
 
   const stopCamera = () => {
-    if (stream) {
-      stream.getTracks().forEach((track) => {
-        track.stop()
-        stream.removeTrack(track)
-      })
-      unregisterStream(stream)
+    const current = streamRef.current
+    if (current) {
+      current.getTracks().forEach((track) => track.stop())
+      unregisterStream(current)
+      streamRef.current = null
       setStream(null)
     }
-    
     if (videoRef.current) {
       videoRef.current.srcObject = null
     }
-    
   }
 
   const handleReady = () => {
