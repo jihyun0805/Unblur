@@ -42,10 +42,11 @@ services:
       KMS_MAX_PORT: ${KMS_MAX_PORT:-26999}
       KMS_STUN_IP: ${TURN_PUBLIC_IP:-127.0.0.1}
       KMS_STUN_PORT: ${TURN_LISTEN_PORT:-20000}
-      KMS_TURN_URL: ${TURN_USER:-user}:${TURN_PASSWORD:-pass}@${TURN_PUBLIC_IP:-127.0.0.1}:${TURN_LISTEN_PORT:-20000}?transport=udp
+      KMS_TURN_URL: ${TURN_USER:-user}:${TURN_PASSWORD:-pass}@${TURN_PUBLIC_IP:-127.0.0.1}:${TURN_LISTEN_PORT:-20000}?transport=tcp
     ports:
       - "8888:8888"
-      - "26000-26999:26000-26999/udp"
+      # 로컬에서는 포트 범위를 줄여서 실행
+      - "26000-26099:26000-26099/udp"
     networks:
       - unblur-net
 
@@ -62,7 +63,8 @@ services:
       TURN_MAX_PORT: ${TURN_MAX_PORT:-21999}
     ports:
       - "20000:20000/udp"
-      - "20001-21999:20001-21999/udp"
+      # 로컬에서는 포트 범위를 줄여서 실행
+      - "20001-20100:20001-20100/udp"
     command:
       - --no-cli
       - --no-tls
