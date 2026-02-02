@@ -177,7 +177,7 @@ public class ConferenceLifecycleServiceImpl implements ConferenceLifecycleServic
     /**
      * 사용자가 세션에서 퇴장했을 때 상태를 기록하는 메서드
      * <p>
-     * 마지막 참여자가 나가면 세션과 진행 중 라운드를 종료한다.
+     * 한 명이라도 남지 않으면 세션과 진행 중 라운드를 종료한다.
      *
      * @param conferenceId 세션 ID
      * @param userId       사용자 ID
@@ -200,10 +200,10 @@ public class ConferenceLifecycleServiceImpl implements ConferenceLifecycleServic
                 participant.markLeft(LocalDateTime.now(clock));
             }
 
-            // 남아 있는 참여자가 없으면 세션/라운드 종료
+            // 남아 있는 참여자가 1명 이하이면 세션/라운드 종료
             long activeCount = participantRepository.countByConference_IdAndLeftAtIsNull(conferenceId);
 
-            if (activeCount == 0) {
+            if (activeCount <= 1) {
                 Conference conference = conferenceRepository.findById(conferenceId)
                         .orElse(null);
 
@@ -212,10 +212,51 @@ public class ConferenceLifecycleServiceImpl implements ConferenceLifecycleServic
                     LocalDateTime now = LocalDateTime.now(clock);
                     conference.complete(now);
 
-                    roundRepository.findFirstByConference_IdAndStatus(conferenceId, ConferenceRoundStatus.ACTIVE)
-                            .ifPresent(round -> round.complete(now));
+                    // 진행 중이던 라운드 조회
+                    ConferenceRound activeRound = roundRepository.findFirstByConference_IdAndStatus(conferenceId, ConferenceRoundStatus.ACTIVE)
+                            .orElse(null);
 
-                    TransactionUtils.runAfterCommit(() -> roundTimerService.cleanup(conferenceId));
+                    // 진행 중이던 라운드 번호 저장 및 라운드 종료
+                    Integer activeRoundNumber = null;
+                    if (activeRound != null) {
+                        activeRoundNumber = activeRound.getRoundNumber();
+                        activeRound.complete(now);
+                    }
+
+                    // 남아 있는 참여자 목록 조회
+                    List<ConferenceParticipant> remainingParticipants = participantRepository.findByConference_IdAndLeftAtIsNull(conferenceId);
+                    List<UUID> remainingParticipantIds = remainingParticipants.stream()
+                            .map(p -> p.getUser().getId())
+                            .toList();
+
+                    // 자동 종료 시 남아 있는 참여자도 퇴장 처리
+                    for (ConferenceParticipant remaining : remainingParticipants) {
+                        if (remaining.getLeftAt() == null) {
+                            remaining.markLeft(now);
+                        }
+                    }
+
+                    Integer finalActiveRoundNumber = activeRoundNumber;
+                    TransactionUtils.runAfterCommit(() -> {
+                        // 녹음 중지 및 업로드
+                        if (finalActiveRoundNumber != null) {
+                            kurentoRoomService.stopRecordingAndUpload(conferenceId, finalActiveRoundNumber);
+                        }
+
+                        // 라운드 타이머 정리
+                        roundTimerService.cleanup(conferenceId);
+
+                        if (!remainingParticipantIds.isEmpty()) {
+                            // 세션 종료 메시지 생성
+                            RoundMessages.ConferenceEnded message = RoundMessages.ConferenceEnded.of(conferenceId.toString());
+
+                            // 남아있는 참여자들에게 세션 종료 알림 전송 및 퇴장 처리
+                            for (UUID participantId : remainingParticipantIds) {
+                                matchEventPublisher.publish(participantId, WsEventType.CONFERENCE_ENDED, message);
+                                kurentoRoomService.leave(conferenceId, participantId);
+                            }
+                        }
+                    });
                 }
             }
 
