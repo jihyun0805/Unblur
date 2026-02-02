@@ -45,10 +45,11 @@ public interface ConferenceHistoryApiDocs {
                                             "createdDate": "2026-01-30",
                                             "durationMinutes": 15,
                                             "unreadCount": 0,
-                                            "partnerName": "상대",
-                                            "partnerProfileImageUrl": "https://example.com/profile.jpg",
-                                            "partnerClarityScore": 48,
-                                            "partnerOnline": true
+                                            "nickname": "상대",
+                                            "profileImageUrl": "https://example.com/profile.jpg",
+                                            "clarityScore": 48,
+                                            "isOnline": true,
+                                            "isBlocked": false
                                           }
                                         ],
                                         "page": 0,
@@ -75,10 +76,10 @@ public interface ConferenceHistoryApiDocs {
                     schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
-                            "isSuccess": false,
-                            "statusCode": 401,
-                            "message": "로그인이 필요합니다.",
-                            "errorCode": "AUTH-007"
+                              "isSuccess": false,
+                              "statusCode": 401,
+                              "message": "로그인이 필요합니다.",
+                              "errorCode": "AUTH-007"
                             }
                             """)
             )
