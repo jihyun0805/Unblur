@@ -32,6 +32,7 @@ interface HistoryItemCardProps {
 
 export function HistoryItemCard({ item, onProfileClick, onChatClick, onBlock, onUnblock, isBlocked }: HistoryItemCardProps) {
   const [isBlockConfirmOpen, setIsBlockConfirmOpen] = useState(false)
+  const [isUnblockConfirmOpen, setIsUnblockConfirmOpen] = useState(false)
 
   const handleUnblock = () => {
     onUnblock(item)
@@ -39,6 +40,10 @@ export function HistoryItemCard({ item, onProfileClick, onChatClick, onBlock, on
 
   const handleBlockConfirm = () => {
     setIsBlockConfirmOpen(true)
+  }
+
+  const handleUnblockConfirm = () => {
+    setIsUnblockConfirmOpen(true)
   }
 
   return (
@@ -109,14 +114,8 @@ export function HistoryItemCard({ item, onProfileClick, onChatClick, onBlock, on
             {isBlocked ? (
               <DropdownMenuItem
                 className="cursor-pointer"
-                onMouseDown={(event) => {
-                  event.preventDefault()
-                  handleUnblock()
-                }}
-                onSelect={(event) => {
-                  event.preventDefault()
-                  handleUnblock()
-                }}
+                onClick={handleUnblockConfirm}
+                onSelect={handleUnblockConfirm}
               >
                 차단해제
               </DropdownMenuItem>
@@ -124,14 +123,8 @@ export function HistoryItemCard({ item, onProfileClick, onChatClick, onBlock, on
               <DropdownMenuItem
                 variant="destructive"
                 className="cursor-pointer"
-                onMouseDown={(event) => {
-                  event.preventDefault()
-                  handleBlockConfirm()
-                }}
-                onSelect={(event) => {
-                  event.preventDefault()
-                  handleBlockConfirm()
-                }}
+                onClick={handleBlockConfirm}
+                onSelect={handleBlockConfirm}
               >
                 차단하기
               </DropdownMenuItem>
@@ -156,6 +149,28 @@ export function HistoryItemCard({ item, onProfileClick, onChatClick, onBlock, on
                 }}
               >
                 차단하기
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={isUnblockConfirmOpen} onOpenChange={setIsUnblockConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>차단을 해제하시겠어요?</AlertDialogTitle>
+              <AlertDialogDescription>
+                차단 해제 시 다시 메시지를 주고받을 수 있습니다.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>취소</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  onUnblock(item)
+                  setIsUnblockConfirmOpen(false)
+                }}
+              >
+                차단해제
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
