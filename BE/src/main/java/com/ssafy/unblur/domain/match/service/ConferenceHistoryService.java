@@ -137,12 +137,14 @@ public class ConferenceHistoryService {
     }
 
     private long computeUnreadCount(Conference conference, ConferenceParticipant participant, User me) {
-        return chatMessageRepository.countUnreadMessages(
-                conference.getId(),
-                me.getId(),
-                participant.getLastReadAt()
-        );
+        LocalDateTime lastReadAt = participant.getLastReadAt();
+        if (lastReadAt == null) {
+            return chatMessageRepository.countOtherMessages(conference.getId(), me.getId());
+        }
+
+        return chatMessageRepository.countOtherMessagesAfter(conference.getId(), me.getId(), lastReadAt);
     }
+
 
     @Transactional(readOnly = true)
     public PartnerProfileResponseDto getPartnerProfile(UUID conferenceId) {
