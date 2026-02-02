@@ -114,6 +114,7 @@ public class ConferenceHistoryService {
                 createdDate,
                 durationMinutes,
                 computeUnreadCount(conference, participant, me),
+                partnerUser != null ? partnerUser.getId() : null,
                 partnerUser != null ? partnerUser.getNickname() : null,
                 partnerUser != null ? partnerUser.getProfileImageUrl() : null,
                 partnerUser != null ? partnerUser.getClarityScore() : null,

@@ -12,6 +12,7 @@ public record ConferenceHistoryItemDto(
         LocalDate createdDate,
         long durationMinutes,
         long unreadCount,
+        UUID userId,
         String nickname,
         String profileImageUrl,
         Integer clarityScore,
