@@ -8,8 +8,11 @@ import com.ssafy.unblur.domain.match.model.*;
 import com.ssafy.unblur.domain.match.repository.ConferenceParticipantRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRoundRepository;
+import com.ssafy.unblur.common.service.event.WsEventType;
 import com.ssafy.unblur.domain.match.service.ConferenceLifecycleService;
+import com.ssafy.unblur.domain.match.service.MatchEventPublisher;
 import com.ssafy.unblur.domain.match.service.RoundTimerService;
+import com.ssafy.unblur.domain.rtc.dto.event.RoundMessages;
 import com.ssafy.unblur.domain.rtc.service.KurentoRoomService;
 import com.ssafy.unblur.common.util.TransactionUtils;
 import lombok.RequiredArgsConstructor;
@@ -63,6 +66,11 @@ public class ConferenceLifecycleServiceImpl implements ConferenceLifecycleServic
      * Kurento 녹음 서비스
      */
     private final KurentoRoomService kurentoRoomService;
+
+    /**
+     * 매치 이벤트 퍼블리셔 
+     */
+    private final MatchEventPublisher matchEventPublisher;
 
     /**
      * 기준 시각 제공용 Clock
@@ -143,6 +151,18 @@ public class ConferenceLifecycleServiceImpl implements ConferenceLifecycleServic
                         // 1라운드 녹음 시작
                         kurentoRoomService.startRecording(conferenceId, 1);
                         roundTimerService.startRoundTimer(conferenceId, 1, participantIds);
+
+                        // 양쪽에 round-started 전송 
+                        RoundMessages.RoundStarted message = RoundMessages.RoundStarted.builder()
+                                .conferenceId(conferenceId.toString())
+                                .roundNumber(1)
+                                .isUnlimited(false)
+                                .build();
+
+                        // 양쪽에 round 시작 이벤트 전송         
+                        for (UUID participantId : participantIds) {
+                            matchEventPublisher.publish(participantId, WsEventType.ROUND_STARTED, message);
+                        }
                     });
                 }
             }

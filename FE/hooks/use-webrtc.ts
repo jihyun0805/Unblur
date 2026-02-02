@@ -1,8 +1,13 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
-import { createSignalingClient, type SignalingMessage, type WebRTCSignalingClient } from "@/lib/webrtc-signaling"
+import { createSignalingClient, type SignalingMessage, type VoteChoice, type WebRTCSignalingClient } from "@/lib/webrtc-signaling"
 import { registerStream, unregisterStream } from "@/lib/media-streams"
+
+/** 라운드 시간 종료 시 투표 모달 표시 */
+export type RoundTimeUpPayload = { conferenceId: string; roundNumber: number; message?: string }
+/** 새 라운드 시작 시 다음 라운드로 전환 */
+export type RoundStartedPayload = { conferenceId: string; roundNumber: number; isUnlimited: boolean; roundEndsAt?: number | null }
 
 export interface UseWebRTCOptions {
   sessionId: string
@@ -13,6 +18,10 @@ export interface UseWebRTCOptions {
   useMock?: boolean
   wsUrl?: string
   onDisconnected?: () => void
+  onRoundTimeUp?: (payload: RoundTimeUpPayload) => void
+  onRoundStarted?: (payload: RoundStartedPayload) => void
+  onVoteConfirmRequest?: () => void
+  onConferenceEnded?: () => void
 }
 
 export interface UseWebRTCReturn {
@@ -20,11 +29,13 @@ export interface UseWebRTCReturn {
   remoteStream: MediaStream | null
   isConnected: boolean
   isConnecting: boolean
+  hasJoined: boolean
   error: string | null
   toggleMute: () => void
   isMuted: boolean
   toggleVideo: () => void
   isVideoEnabled: boolean
+  sendVote: (vote: VoteChoice) => void
 }
 
 // const ICE_SERVERS: RTCConfiguration = {
@@ -60,7 +71,19 @@ export function useWebRTC({
   useMock = false,
   wsUrl,
   onDisconnected,
+  onRoundTimeUp,
+  onRoundStarted,
+  onVoteConfirmRequest,
+  onConferenceEnded,
 }: UseWebRTCOptions): UseWebRTCReturn {
+  const onRoundTimeUpRef = useRef(onRoundTimeUp)
+  const onRoundStartedRef = useRef(onRoundStarted)
+  const onVoteConfirmRequestRef = useRef(onVoteConfirmRequest)
+  const onConferenceEndedRef = useRef(onConferenceEnded)
+  onRoundTimeUpRef.current = onRoundTimeUp
+  onRoundStartedRef.current = onRoundStarted
+  onVoteConfirmRequestRef.current = onVoteConfirmRequest
+  onConferenceEndedRef.current = onConferenceEnded
   const [localStream, setLocalStream] = useState<MediaStream | null>(null)
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null)
   const [isConnected, setIsConnected] = useState(false)
@@ -69,6 +92,7 @@ export function useWebRTC({
   const [isMuted, setIsMuted] = useState(false)
   const [isVideoEnabled, setIsVideoEnabled] = useState(true)
   const [signalingReady, setSignalingReady] = useState(false)
+  const [hasJoined, setHasJoined] = useState(false)
 
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null)
   const signalingClientRef = useRef<WebRTCSignalingClient | null>(null)
@@ -260,6 +284,8 @@ export function useWebRTC({
           }
           break
         case "joined":
+          setHasJoined(true)
+          break
         case "connected":
           break
         case "error":
@@ -271,6 +297,18 @@ export function useWebRTC({
           signalingClientRef.current?.disconnect()
           signalingClientRef.current = null
           onDisconnected?.()
+          break
+        case "round-time-up":
+          if (message.type === "round-time-up") onRoundTimeUpRef.current?.({ conferenceId: message.conferenceId, roundNumber: message.roundNumber, message: message.message })
+          break
+        case "round-started":
+          if (message.type === "round-started") onRoundStartedRef.current?.({ conferenceId: message.conferenceId, roundNumber: message.roundNumber, isUnlimited: message.isUnlimited, roundEndsAt: message.roundEndsAt ?? null })
+          break
+        case "vote-confirm-request":
+          onVoteConfirmRequestRef.current?.()
+          break
+        case "conference-ended":
+          onConferenceEndedRef.current?.()
           break
       }
     }
@@ -326,6 +364,7 @@ export function useWebRTC({
       }
       remoteStreamRef.current = null
       setSignalingReady(false)
+      setHasJoined(false)
       setLocalStream(null)
       setRemoteStream(null)
       setIsConnected(false)
@@ -349,15 +388,24 @@ export function useWebRTC({
     })
   }, [])
 
+  const sendVote = useCallback(
+    (vote: VoteChoice) => {
+      if (sessionId && userId) signalingClientRef.current?.sendVote(sessionId, userId, vote)
+    },
+    [sessionId, userId]
+  )
+
   return {
     localStream,
     remoteStream,
     isConnected,
     isConnecting,
+    hasJoined,
     error,
     toggleMute,
     isMuted,
     toggleVideo,
     isVideoEnabled,
+    sendVote,
   }
 }
