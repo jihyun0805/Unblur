@@ -6,6 +6,16 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useToast } from "@/hooks/use-toast"
 import { Mic, MicOff, PhoneOff, MessageCircle, Gamepad2, BookOpen, Clock, X, Lightbulb, AlertCircle } from "lucide-react"
 import { BalanceGameOverlay } from "@/components/session/balance-game-overlay"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { RoundVoteModal } from "@/components/session/round-vote-modal"
 import { RatingModal } from "@/components/session/rating-modal"
 import { ConfirmLeaveModal } from "@/components/session/confirm-leave-modal"
@@ -41,6 +51,9 @@ export function SessionRoom({
   const [timeLeft, setTimeLeft] = useState(ROUND_TIMES[0])
   const [showChat, setShowChat] = useState(false)
   const [showGame, setShowGame] = useState(false)
+  const [showBalanceInviteDialog, setShowBalanceInviteDialog] = useState(false)
+  const [balanceInviteFromUserId, setBalanceInviteFromUserId] = useState<string | null>(null)
+  const balanceInviteTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [showVote, setShowVote] = useState(false)
   const [showRating, setShowRating] = useState(false)
   const [showConfirmLeave, setShowConfirmLeave] = useState(false)
@@ -73,6 +86,7 @@ export function SessionRoom({
     toggleVideo,
     isVideoEnabled,
     sendVote,
+    signalingClient,
   } = useWebRTC({
     sessionId,
     userId: user?.id ?? "",
@@ -143,6 +157,74 @@ export function SessionRoom({
   useEffect(() => {
     if (showChat) chatMarkAsRead()
   }, [showChat, chatMarkAsRead])
+
+  // 밸런스 게임 메시지 수신 처리 (오버레이가 열리지 않았을 때도 수신)
+  useEffect(() => {
+    if (!signalingClient || !user?.id) return
+
+    const handleMessage = (message: import("@/lib/webrtc-signaling").SignalingMessage) => {
+      if ("sessionId" in message && message.sessionId !== sessionId) return
+
+      if (process.env.NODE_ENV === "development") {
+        console.log("[BalanceGame] 메시지 수신:", message.type, message)
+      }
+
+      switch (message.type) {
+        case "balance-invite":
+          // 초대 받음 - 확인 다이얼로그 표시
+          if (message.fromUserId !== user.id) {
+            console.log("[BalanceGame] 초대 받음, 확인 다이얼로그 표시")
+            // 기존 타임아웃 정리
+            if (balanceInviteTimeoutRef.current) {
+              clearTimeout(balanceInviteTimeoutRef.current)
+            }
+            setBalanceInviteFromUserId(message.fromUserId)
+            setShowBalanceInviteDialog(true)
+            // 10초 타임아웃 설정
+            balanceInviteTimeoutRef.current = setTimeout(() => {
+              if (signalingClient && user?.id) {
+                signalingClient.sendBalanceResponse(sessionId, user.id, false)
+                setShowBalanceInviteDialog(false)
+                setBalanceInviteFromUserId(null)
+              }
+            }, 10000)
+          }
+          break
+        case "balance-start":
+          // 게임 시작 - 오버레이가 닫혀있으면 열기
+          if (balanceInviteTimeoutRef.current) {
+            clearTimeout(balanceInviteTimeoutRef.current)
+            balanceInviteTimeoutRef.current = null
+          }
+          if (!showGame) {
+            console.log("[BalanceGame] 게임 시작, 오버레이 열기")
+            setShowGame(true)
+            setShowBalanceInviteDialog(false)
+          }
+          break
+        case "balance-declined":
+          // 거절됨 - 다이얼로그 및 게임 오버레이 닫기
+          if (balanceInviteTimeoutRef.current) {
+            clearTimeout(balanceInviteTimeoutRef.current)
+            balanceInviteTimeoutRef.current = null
+          }
+          setShowBalanceInviteDialog(false)
+          setBalanceInviteFromUserId(null)
+          // 게임 오버레이도 닫기 (초대 대기 중이었다면)
+          setShowGame(false)
+          break
+      }
+    }
+
+    const unsubscribe = signalingClient.onMessage(handleMessage)
+    return () => {
+      unsubscribe()
+      if (balanceInviteTimeoutRef.current) {
+        clearTimeout(balanceInviteTimeoutRef.current)
+        balanceInviteTimeoutRef.current = null
+      }
+    }
+  }, [signalingClient, sessionId, user?.id, showGame])
 
   // 로컬 스트림을 비디오 요소에 설정
   useEffect(() => {
@@ -560,8 +642,59 @@ export function SessionRoom({
         </div>
       )}
 
+      {/* 밸런스 게임 초대 확인 다이얼로그 */}
+      <AlertDialog open={showBalanceInviteDialog} onOpenChange={setShowBalanceInviteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>밸런스 게임 초대</AlertDialogTitle>
+            <AlertDialogDescription>
+              상대방이 밸런스 게임을 함께 하자고 초대했어요. 참가하시겠습니까?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                if (balanceInviteTimeoutRef.current) {
+                  clearTimeout(balanceInviteTimeoutRef.current)
+                  balanceInviteTimeoutRef.current = null
+                }
+                if (signalingClient && user?.id) {
+                  signalingClient.sendBalanceResponse(sessionId, user.id, false)
+                }
+                setShowBalanceInviteDialog(false)
+                setBalanceInviteFromUserId(null)
+              }}
+            >
+              거절
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (balanceInviteTimeoutRef.current) {
+                  clearTimeout(balanceInviteTimeoutRef.current)
+                  balanceInviteTimeoutRef.current = null
+                }
+                if (signalingClient && user?.id) {
+                  signalingClient.sendBalanceResponse(sessionId, user.id, true)
+                  setShowGame(true)
+                }
+                setShowBalanceInviteDialog(false)
+                setBalanceInviteFromUserId(null)
+              }}
+            >
+              참가하기
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Game Overlay */}
-      {showGame && <BalanceGameOverlay onClose={() => setShowGame(false)} />}
+      <BalanceGameOverlay
+        open={showGame}
+        onOpenChange={setShowGame}
+        sessionId={sessionId}
+        userId={user?.id ?? ""}
+        signalingClient={signalingClient}
+      />
 
       {/* Round Vote Modal (BE 연동: sendVote 전달 시 서버 투표, 미전달 시 로컬 시뮬레이션) */}
       <RoundVoteModal
