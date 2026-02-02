@@ -48,6 +48,7 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
      * MinIO 버킷 이름
      */
     private final String bucketName;
+    private final Path recordingDir;
 
     /**
      * 방 정보 저장소
@@ -58,12 +59,14 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
             KurentoClientProvider kurentoClientProvider,
             RtcParticipantStore participantStore,
             S3Client s3Client,
-            @Value("${minio.bucket}") String bucketName
+            @Value("${minio.bucket}") String bucketName,
+            @Value("${recording.dir:/tmp}") String recordingDir
     ) {
         this.kurentoClientProvider = kurentoClientProvider;
         this.participantStore = participantStore;
         this.s3Client = s3Client;
         this.bucketName = bucketName;
+        this.recordingDir = Path.of(recordingDir);
     }
 
     @Override
@@ -168,10 +171,10 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
      */
     private Room createRoom(UUID conferenceId) {
         try {
-            return new Room(kurentoClientProvider.get(), conferenceId);
+            return new Room(kurentoClientProvider.get(), conferenceId, recordingDir);
 
         } catch (JsonRpcClientClosedException e) {
-            return new Room(kurentoClientProvider.recreate(), conferenceId);
+            return new Room(kurentoClientProvider.recreate(), conferenceId, recordingDir);
         }
     }
 
@@ -219,6 +222,7 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
          * 녹음 파일 경로
          */
         private Path recordingPath;
+        private final Path recordingDir;
 
         /**
          * 방 생성자
@@ -226,10 +230,11 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
          * @param kurentoClient Kurento 클라이언트
          * @param conferenceId  방 ID
          */
-        Room(KurentoClient kurentoClient, UUID conferenceId) {
+        Room(KurentoClient kurentoClient, UUID conferenceId, Path recordingDir) {
             this.conferenceId = conferenceId;
             this.pipeline = kurentoClient.createMediaPipeline();
             this.composite = new Composite.Builder(pipeline).build();
+            this.recordingDir = recordingDir;
             log.info("RTC 방 생성. conferenceId={}", conferenceId);
         }
 
@@ -320,7 +325,8 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
             try {
                 // 임시 파일 생성
                 String filename = conferenceId + "_" + roundNumber + ".webm";
-                this.recordingPath = Files.createTempFile("kurento-recording-", "-" + filename);
+                Files.createDirectories(recordingDir);
+                this.recordingPath = Files.createTempFile(recordingDir, "kurento-recording-", "-" + filename);
 
                 // RecorderEndpoint 생성 및 Composite 연결
                 this.recorder = new RecorderEndpoint.Builder(pipeline, "file://" + recordingPath.toAbsolutePath())
