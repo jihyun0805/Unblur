@@ -16,9 +16,9 @@ export function LandingPage() {
   const [introSharp, setIntroSharp] = useState(false)
   const [heroParallax, setHeroParallax] = useState({ x: 0, y: 0 })
   const stageOptions = [
-    { label: "1R: 강한 블러", round: "1라운드", time: "04:32", blurPx: 16 },
-    { label: "2R: 약한 블러", round: "2라운드", time: "09:18", blurPx: 10 },
-    { label: "3R: 투명", round: "3라운드", time: "13:41", blurPx: 4 },
+    { label: "1R: 강한 블러", round: "1라운드", time: "05:00", blurPx: 16 },
+    { label: "2R: 약한 블러", round: "2라운드", time: "05:00", blurPx: 10 },
+    { label: "3R: 투명", round: "3라운드", time: "10:00", blurPx: 4 },
     { label: "4R: 완전 공개", round: "4라운드", time: "LIVE", blurPx: 0 },
   ] as const
   const [selectedStageIndex, setSelectedStageIndex] = useState(0)
@@ -285,7 +285,7 @@ export function LandingPage() {
                 {
                   icon: Clock,
                   title: "라운드 시스템",
-                  description: "5분, 10분, 10분, 무제한. 서로 동의해야 다음 라운드로!",
+                  description: "5분, 5분, 10분, 무제한. 서로 동의해야 다음 라운드로!",
                 },
                 {
                   icon: Heart,
