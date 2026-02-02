@@ -28,6 +28,12 @@ management:
     web:
       exposure:
         include: health,info,prometheus
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http:
+          server:
+            requests: true
 
 jwt:
   secret: ${JWT_SECRET}
@@ -47,3 +53,5 @@ minio:
   access-key: ${MINIO_ROOT_USER:minio}
   secret-key: ${MINIO_ROOT_PASSWORD:minio123}
   bucket: ${MINIO_BUCKET:unblur-recordings}
+
+
