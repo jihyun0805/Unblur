@@ -8,6 +8,7 @@ import com.ssafy.unblur.domain.auth.repository.UserRepository;
 import com.ssafy.unblur.domain.match.config.MatchConfig.MatchPolicy;
 import com.ssafy.unblur.domain.match.dto.event.QuickMatchResultEvent;
 import com.ssafy.unblur.domain.match.dto.event.QuickMatchStageEvent;
+import com.ssafy.unblur.domain.match.dto.response.OneOnOneMatchResponse;
 import com.ssafy.unblur.domain.match.model.*;
 import com.ssafy.unblur.common.service.event.SseEventType;
 import com.ssafy.unblur.common.util.TransactionUtils;
@@ -113,6 +114,7 @@ public class MatchQueueProcessor {
 
             // 타임아웃 -> 완화 매칭 -> 배치 매칭 순으로 처리
             processTimeouts();
+            processOneOnOneTimeouts();
             processRelaxedMatches();
             processBatchMatches();
             purgeFinished();
@@ -165,6 +167,35 @@ public class MatchQueueProcessor {
                     publishTimeoutEvent(item);
                 }
             }
+        }
+    }
+
+    /**
+     * 1:1 매칭 요청 타임아웃을 처리하는 메서드
+     */
+    private void processOneOnOneTimeouts() {
+        LocalDateTime now = LocalDateTime.now(clock);
+
+        for (MatchQueueItem item : matchQueueService.findAllWaitingByMatchType(MatchType.ONE_ON_ONE)) {
+            // 수신자 정보가 없으면 스킵
+            if (item.getRecipientUserId() == null) {
+                continue;
+            }
+
+            // 타임아웃 기준 미도달 시 스킵
+            if (!isOlderThan(item, now, policy.timeout())) {
+                continue;
+            }
+
+            // 타임아웃 처리
+            item.markTimeout();
+
+            // 타임아웃 이벤트 전송
+            OneOnOneMatchResponse response = buildOneOnOneResponse(item, "timeout");
+            eventPublisher.publish(item.getRequesterUserId(), SseEventType.ONE_ON_ONE_TIMEOUT, response);
+            eventPublisher.publish(item.getRecipientUserId(), SseEventType.ONE_ON_ONE_TIMEOUT, response);
+
+            log.info("1:1 매칭 타임아웃. requestId={}, requesterId={}, recipientId={}", item.getRequestId(), item.getRequesterUserId(), item.getRecipientUserId());
         }
     }
 
@@ -564,6 +595,21 @@ public class MatchQueueProcessor {
         });
 
         log.info("빠른 매칭 완료 이벤트 예약. conferenceId={}, leftUserId={}, rightUserId={}", conferenceId, left.getRequesterUserId(), right.getRequesterUserId());
+    }
+
+    /**
+     * 1:1 매칭 응답을 구성하는 메서드
+     */
+    private OneOnOneMatchResponse buildOneOnOneResponse(MatchQueueItem item, String targetStatus) {
+        return OneOnOneMatchResponse.builder()
+                .requestId(item.getRequestId().toString())
+                .status(item.getStatus().name().toLowerCase())
+                .queueType(item.getMatchType().name().toLowerCase())
+                .targetUserId(item.getRecipientUserId().toString())
+                .targetStatus(targetStatus)
+                .estimatedWaitSeconds(policy.averageWaitSeconds())
+                .queuedAt(item.getCreatedAt())
+                .build();
     }
 
     /**

@@ -191,10 +191,29 @@ public class MatchServiceImpl implements MatchService {
             throw new BaseException(ErrorCode.INVALID_INPUT_VALUE);
         }
 
-        // 동일 사용자가 이미 대기 중이면 중복 등록 방지
-        if (matchQueueService.existsWaiting(userId, MatchType.ONE_ON_ONE)) {
-            log.warn("1:1 매칭 중복 요청. userId={}", userId);
-            throw new BaseException(ErrorCode.MATCH_ALREADY_QUEUED);
+        // 이전 요청 조회
+        Optional<MatchQueueItem> previousRequest = matchQueueService.findUserRequestByMatchType(userId, MatchType.ONE_ON_ONE);
+
+        if (previousRequest.isPresent() && previousRequest.get().isWaiting()) { // 대기 중인 이전 요청이 있을 때
+            MatchQueueItem previous = previousRequest.get();
+            LocalDateTime now = LocalDateTime.now(clock);
+
+            // 30초 쿨다운 내에는 다른 대상에게 새 요청 불가
+            if (now.isBefore(previous.getCreatedAt().plus(policy.timeout()))) {
+                log.warn("1:1 매칭 요청 쿨다운(30초) 중. userId={}, previousRequestId={}", userId, previous.getRequestId());
+                throw new BaseException(ErrorCode.MATCH_ALREADY_QUEUED);
+            }
+
+            // 30초를 넘긴 대기 요청은 즉시 타임아웃 처리
+            previous.markTimeout();
+            OneOnOneMatchResponse timeoutResponse = buildOneOnOneResponse(previous, "timeout");
+
+            eventPublisher.publish(previous.getRequesterUserId(), SseEventType.ONE_ON_ONE_TIMEOUT, timeoutResponse);
+            if (previous.getRecipientUserId() != null) {
+                eventPublisher.publish(previous.getRecipientUserId(), SseEventType.ONE_ON_ONE_TIMEOUT, timeoutResponse);
+            }
+
+            log.info("1:1 매칭 요청 타임아웃 처리(즉시). userId={}, previousRequestId={}", userId, previous.getRequestId());
         }
 
         // 대상 사용자가 온라인인지 확인
