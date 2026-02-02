@@ -17,13 +17,24 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, UUID> 
     Page<ChatMessage> findByConferenceId(UUID conferenceId, Pageable pageable);
 
     @Query("""
-            select count(m)
-            from ChatMessage m
-            where m.conference.id = :conferenceId
-              and (m.user is null or m.user.id <> :userId)
-              and (:lastReadAt is null or m.createdAt > :lastReadAt)
-            """)
-    long countUnreadMessages(
+        select count(m)
+        from ChatMessage m
+        where m.conference.id = :conferenceId
+          and (m.user is null or m.user.id <> :userId)
+    """)
+    long countOtherMessages(
+            @Param("conferenceId") UUID conferenceId,
+            @Param("userId") UUID userId
+    );
+
+    @Query("""
+        select count(m)
+        from ChatMessage m
+        where m.conference.id = :conferenceId
+          and (m.user is null or m.user.id <> :userId)
+          and m.createdAt > :lastReadAt
+    """)
+    long countOtherMessagesAfter(
             @Param("conferenceId") UUID conferenceId,
             @Param("userId") UUID userId,
             @Param("lastReadAt") LocalDateTime lastReadAt
