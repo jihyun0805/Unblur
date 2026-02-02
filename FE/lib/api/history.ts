@@ -14,10 +14,12 @@ interface ConferenceHistoryItemDto {
   createdDate: string | null
   durationMinutes: number
   unreadCount: number
-  partnerName: string | null
-  partnerProfileImageUrl: string | null
-  partnerClarityScore: number | null
-  partnerOnline: boolean | null
+  userId: string | null
+  nickname: string | null
+  profileImageUrl: string | null
+  clarityScore: number | null
+  isOnline: boolean | null
+  isBlocked: boolean | null
 }
 
 interface ConferenceHistoryResponseDto {
@@ -86,12 +88,14 @@ export async function getHistoryList(page: number, size: number): Promise<Histor
   return {
     items: data.items.map((item) => ({
       id: item.conferenceId,
+      partnerId: item.userId ?? undefined,
       date: formatDate(item.createdDate),
-      partnerNickname: item.partnerName ?? "-",
+      partnerNickname: item.nickname ?? "-",
       duration: formatDuration(item.durationMinutes),
       rounds: item.currentRound ?? 0,
-      partnerTemp: item.partnerClarityScore ?? 0,
-      isOnline: item.partnerOnline ?? false,
+      partnerTemp: item.clarityScore ?? 0,
+      isOnline: item.isOnline ?? false,
+      isBlocked: item.isBlocked ?? false,
     })),
     summary: {
       totalMatches: data.summary.totalMatches,

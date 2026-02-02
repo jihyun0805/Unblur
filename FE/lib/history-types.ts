@@ -15,4 +15,5 @@ export interface HistoryItem {
   mbti?: string
   interests?: string[]
   isOnline: boolean
+  isBlocked?: boolean
 }

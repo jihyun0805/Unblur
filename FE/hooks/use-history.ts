@@ -34,6 +34,7 @@ export function useHistory({ page, size }: UseHistoryOptions) {
       setSummary(data.summary)
       setTotalPages(Math.max(1, data.totalPages))
       setTotalElements(data.totalElements)
+      setBlockedIds(data.items.filter((item) => item.isBlocked).map((item) => item.id))
     } catch (e) {
       setError(e instanceof Error ? e : new Error(String(e)))
     } finally {
@@ -46,24 +47,34 @@ export function useHistory({ page, size }: UseHistoryOptions) {
   }, [fetchHistory])
 
   const blockPartner = useCallback(async (localId: string, apiId?: string) => {
-    setBlockedIds((prev) => (prev.includes(localId) ? prev : [...prev, localId]))
+    setBlockedIds((prev) => {
+      const targetIds = apiId ? history.filter((item) => item.partnerId === apiId).map((item) => item.id) : [localId]
+      const next = new Set(prev)
+      for (const id of targetIds) {
+        next.add(id)
+      }
+      return Array.from(next)
+    })
     if (!apiId) return
     try {
       await apiBlockPartner(apiId)
     } catch (error) {
       console.error("[useHistory] 차단 요청 실패", error)
     }
-  }, [])
+  }, [history])
 
   const unblockPartner = useCallback(async (localId: string, apiId?: string) => {
-    setBlockedIds((prev) => prev.filter((b) => b !== localId))
+    setBlockedIds((prev) => {
+      const targetIds = apiId ? history.filter((item) => item.partnerId === apiId).map((item) => item.id) : [localId]
+      return prev.filter((id) => !targetIds.includes(id))
+    })
     if (!apiId) return
     try {
       await apiUnblockPartner(apiId)
     } catch (error) {
       console.error("[useHistory] 차단 해제 요청 실패", error)
     }
-  }, [])
+  }, [history])
 
   return {
     history,
