@@ -33,7 +33,15 @@ export default function MainRouteLayout({ children }: { children: React.ReactNod
       disconnect({ skipServerNotify: true })
       await logout()
       setShowLogoutConfirm(false)
-      toast({ title: "로그아웃 완료", description: "다음에 또 만나요!" })
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem(
+          "pendingToast",
+          JSON.stringify({
+            title: "로그아웃 완료",
+            description: "다음에 또 만나요!",
+          }),
+        )
+      }
       router.replace("/")
     } catch (error) {
       console.error("로그아웃 실패:", error)

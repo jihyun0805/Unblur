@@ -45,10 +45,12 @@ public interface ConferenceHistoryApiDocs {
                                             "createdDate": "2026-01-30",
                                             "durationMinutes": 15,
                                             "unreadCount": 0,
-                                            "partnerName": "상대",
-                                            "partnerProfileImageUrl": "https://example.com/profile.jpg",
-                                            "partnerClarityScore": 48,
-                                            "partnerOnline": true
+                                            "userId": "4b3b2f1a-2b90-4f1b-8b1f-5d6c02c5a3f2",
+                                            "nickname": "상대",
+                                            "profileImageUrl": "https://example.com/profile.jpg",
+                                            "clarityScore": 48,
+                                            "isOnline": true,
+                                            "isBlocked": false
                                           }
                                         ],
                                         "page": 0,
@@ -66,8 +68,40 @@ public interface ConferenceHistoryApiDocs {
     @Parameter(name = "size", description = "페이지 크기", example = "20")
     ResponseEntity<BaseResponse<ConferenceHistoryResponseDto>> getMyConferenceHistory(@Parameter(hidden = true) Pageable pageable);
 
-    @Operation(summary = "상대방 프로필 조회", description = "소개팅 이력에서 상대방의 프로필을 조회합니다.")
-    @ApiResponse(responseCode = "200", description = "상대방 프로필 조회 성공")
+    @Operation(summary = "상대 프로필 조회", description = "대화 이력에서 상대 프로필을 조회합니다.")
+    @ApiResponse(responseCode = "200", description = "상대 프로필 조회 성공")
+    @ApiResponse(
+            responseCode = "200",
+            description = "상대 프로필 조회 예시",
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = BaseResponse.class),
+                    examples = @ExampleObject(value = """
+                            {
+                              "isSuccess": true,
+                              "statusCode": 200,
+                              "message": "OK",
+                              "data": {
+                                "userId": "4b3b2f1a-2b90-4f1b-8b1f-5d6c02c5a3f2",
+                                "nickname": "상대",
+                                "clarityScore": 48,
+                                "age": 27,
+                                "gender": "FEMALE",
+                                "region": "SEOUL",
+                                "mbti": "INFJ",
+                                "intro": "반갑습니다!",
+                                "interestTags": ["영화", "여행"],
+                                "roundSummaries": [
+                                  {
+                                    "roundNumber": 1,
+                                    "summaryText": "가벼운 자기소개와 관심사 공유"
+                                  }
+                                ]
+                              }
+                            }
+                            """)
+            )
+    )
     @ApiResponse(
             responseCode = "401",
             description = "인증되지 않은 사용자",
@@ -75,10 +109,10 @@ public interface ConferenceHistoryApiDocs {
                     schema = @Schema(implementation = BaseResponse.class),
                     examples = @ExampleObject(value = """
                             {
-                            "isSuccess": false,
-                            "statusCode": 401,
-                            "message": "로그인이 필요합니다.",
-                            "errorCode": "AUTH-007"
+                              "isSuccess": false,
+                              "statusCode": 401,
+                              "message": "로그인이 필요합니다.",
+                              "errorCode": "AUTH-007"
                             }
                             """)
             )

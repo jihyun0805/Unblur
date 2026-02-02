@@ -44,9 +44,6 @@ internal:
 
 openai:
   api-key: ${GMS_KEY}
-  embedding:
-    model: text-embedding-3-small
-    dimensions: 384
 
 minio:
   endpoint: ${MINIO_ENDPOINT:http://localhost:9000}

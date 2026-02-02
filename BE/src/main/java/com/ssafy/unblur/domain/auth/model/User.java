@@ -8,7 +8,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.ColumnTransformer;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -134,17 +133,6 @@ public class User {
     private List<String> interestTags = new ArrayList<>();
 
     /**
-     * 관심사/가치관 임베딩 벡터 (384차원).
-     */
-    @Convert(converter = PgVectorConverter.class)
-    @ColumnTransformer(
-            write = "?::vector",
-            read = "interests_vector::text"
-    )
-    @Column(name = "interests_vector", columnDefinition = "vector(384)")
-    private float[] interestsVector;
-
-    /**
      * 마지막 활동 시각.
      */
     @Column(name = "last_active_at")
@@ -215,7 +203,6 @@ public class User {
         this.intro = null;
         this.detailedInfo = null;
         this.interestTags = null;
-        this.interestsVector = null;
         this.region = null;
         this.mbti = null;
         this.loveDna = null;
@@ -271,10 +258,6 @@ public class User {
         if (dto.detailedInfo() != null) {
             this.detailedInfo = dto.detailedInfo();
         }
-    }
-
-    public void updateInterestsVector(float[] vector) {
-        this.interestsVector = vector;
     }
 
     public void updateLoveDna(LoveDna loveDna) {

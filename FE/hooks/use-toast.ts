@@ -6,7 +6,8 @@ import * as React from 'react'
 import type { ToastActionElement, ToastProps } from '@/components/ui/toast'
 
 const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 1000000
+const TOAST_REMOVE_DELAY = 1000
+const TOAST_AUTO_DISMISS_DELAY = 2000
 
 type ToasterToast = ToastProps & {
   id: string
@@ -54,6 +55,7 @@ interface State {
 }
 
 const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
+const dismissTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
 
 const addToRemoveQueue = (toastId: string) => {
   if (toastTimeouts.has(toastId)) {
@@ -69,6 +71,22 @@ const addToRemoveQueue = (toastId: string) => {
   }, TOAST_REMOVE_DELAY)
 
   toastTimeouts.set(toastId, timeout)
+}
+
+const addToDismissQueue = (toastId: string) => {
+  if (dismissTimeouts.has(toastId)) {
+    return
+  }
+
+  const timeout = setTimeout(() => {
+    dismissTimeouts.delete(toastId)
+    dispatch({
+      type: 'DISMISS_TOAST',
+      toastId: toastId,
+    })
+  }, TOAST_AUTO_DISMISS_DELAY)
+
+  dismissTimeouts.set(toastId, timeout)
 }
 
 export const reducer = (state: State, action: Action): State => {
@@ -93,9 +111,19 @@ export const reducer = (state: State, action: Action): State => {
       // ! Side effects ! - This could be extracted into a dismissToast() action,
       // but I'll keep it here for simplicity
       if (toastId) {
+        const dismissTimeout = dismissTimeouts.get(toastId)
+        if (dismissTimeout) {
+          clearTimeout(dismissTimeout)
+          dismissTimeouts.delete(toastId)
+        }
         addToRemoveQueue(toastId)
       } else {
         state.toasts.forEach((toast) => {
+          const dismissTimeout = dismissTimeouts.get(toast.id)
+          if (dismissTimeout) {
+            clearTimeout(dismissTimeout)
+            dismissTimeouts.delete(toast.id)
+          }
           addToRemoveQueue(toast.id)
         })
       }
@@ -153,7 +181,7 @@ function toast({ ...props }: Toast) {
     type: 'ADD_TOAST',
     toast: {
       ...props,
-      duration: props.duration ?? 3000,
+      duration: TOAST_AUTO_DISMISS_DELAY,
       id,
       open: true,
       onOpenChange: (open) => {
@@ -161,6 +189,8 @@ function toast({ ...props }: Toast) {
       },
     },
   })
+
+  addToDismissQueue(id)
 
   return {
     id: id,

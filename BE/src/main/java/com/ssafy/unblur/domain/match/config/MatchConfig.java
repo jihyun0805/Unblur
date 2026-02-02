@@ -35,7 +35,7 @@ public class MatchConfig {
      * 라운드별 시간 제한 정책
      *
      * @param round1 1라운드 시간 (5분)
-     * @param round2 2라운드 시간 (10분)
+     * @param round2 2라운드 시간 (5분)
      * @param round3 3라운드 시간 (10분)
      * @param round4 4라운드 시간 (ZERO면 무제한)
      */
@@ -54,7 +54,7 @@ public class MatchConfig {
         public static RoundDurationPolicy defaultPolicy() {
             return new RoundDurationPolicy(
                     Duration.ofMinutes(5),   // 1라운드: 5분
-                    Duration.ofMinutes(10),  // 2라운드: 10분
+                    Duration.ofMinutes(5),   // 2라운드: 5분
                     Duration.ofMinutes(10),  // 3라운드: 10분
                     Duration.ZERO            // 4라운드: 무제한
             );
@@ -90,7 +90,7 @@ public class MatchConfig {
      * 매칭 정책 설정 값
      */
     public record MatchPolicy(
-            /** 즉시 매칭 시 벡터 검색 상위 K */
+            /** 즉시 매칭 시 후보 검색 상위 K */
             int immediateTopK,
             /** 미니 배치 최소 인원 */
             int batchMinSize,
@@ -117,14 +117,14 @@ public class MatchConfig {
          *
          * <table border="1">
          *   <tr><th>파라미터</th><th>값</th></tr>
-         *   <tr><td>즉시 매칭 시 벡터 검색 상위 K</td><td>10</td></tr>
+         *   <tr><td>즉시 매칭 시 후보 검색 상위 K</td><td>10</td></tr>
          *   <tr><td>미니 배치 최소 인원</td><td>4</td></tr>
          *   <tr><td>미니 배치 최대 인원</td><td>6</td></tr>
          *   <tr><td>미니 배치 대기 시간</td><td>8초</td></tr>
          *   <tr><td>완화 조건 적용까지 대기 시간</td><td>20초</td></tr>
          *   <tr><td>타임아웃 기준</td><td>30초</td></tr>
-         *   <tr><td>즉시 매칭 유사도 임계치(코사인)</td><td>0.7</td></tr>
-         *   <tr><td>완화 매칭 유사도 임계치(코사인)</td><td>0.5</td></tr>
+         *   <tr><td>즉시 매칭 유사도 임계치(설문)</td><td>0.8</td></tr>
+         *   <tr><td>완화 매칭 유사도 임계치(설문)</td><td>0.6</td></tr>
          *   <tr><td>예상 대기 시간 계산용 평균 대기 초</td><td>60</td></tr>
          *   <tr><td>완료/취소 항목 정리 유지 시간</td><td>10분</td></tr>
          * </table>
@@ -139,8 +139,8 @@ public class MatchConfig {
                     Duration.ofSeconds(8),
                     Duration.ofSeconds(20),
                     Duration.ofSeconds(30),
-                    0.7,
-                    0.5,
+                    0.8,
+                    0.6,
                     60,
                     Duration.ofMinutes(10)
             );

@@ -11,45 +11,39 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * PostgreSQL 기반 매칭 후보 검색 레포지토리
+ * {@link MatchCandidateRepository}의 PostgreSQL 네이티브 쿼리 구현체.
  * <p>
- * 인메모리 큐에서 전달된 후보 ID 목록을 대상으로 pgvector 유사도 계산을 수행한다.
- * </p>
+ * 성별·지역·Love DNA·나이 범위 필터와 차단 관계 배제를 단일 네이티브 쿼리로 처리한다.
  */
-public interface PostgresMatchCandidateRepository extends MatchCandidateRepository, Repository<User, UUID> {
+public interface PostgresMatchCandidateRepository
+        extends MatchCandidateRepository, Repository<User, UUID> {
 
     @Override
     @Query(
             value = """
-                    select u.id as id,
-                           (1 - (u.interests_vector <=> cast(:vector as vector))) as similarity
-                    from users u
-                    where u.id in (:candidateIds)
-                      and u.id <> :userId
-                      and u.is_active = true
-                      and u.interests_vector is not null
-                      and (:gender is null or u.gender = cast(:gender as varchar))
-                      and (:region is null or u.region = cast(:region as varchar))
-                      and (:loveDna is null or u.love_dna = cast(:loveDna as varchar))
-                      and u.birth_date <= coalesce(cast(:maxBirthDate as date), u.birth_date)
-                      and u.birth_date >= coalesce(cast(:minBirthDate as date), u.birth_date)
-                      and not exists (
-                        select 1 from user_blocks b
-                        where (b.blocker_id = :userId and b.blocked_id = u.id)
-                           or (b.blocker_id = u.id and b.blocked_id = :userId)
+                    SELECT u.*
+                    FROM users u
+                    WHERE u.id IN (:candidateIds)
+                      AND u.id <> :userId
+                      AND u.is_active = true
+                      AND (:gender IS NULL OR u.gender = cast(:gender as varchar))
+                      AND (:region IS NULL OR u.region = cast(:region as varchar))
+                      AND (:loveDna IS NULL OR u.love_dna = cast(:loveDna as varchar))
+                      AND u.birth_date <= coalesce(cast(:maxBirthDate as date), u.birth_date)
+                      AND u.birth_date >= coalesce(cast(:minBirthDate as date), u.birth_date)
+                      AND NOT EXISTS (
+                        SELECT 1 FROM user_blocks b
+                        WHERE (b.blocker_id = :userId AND b.blocked_id = u.id)
+                           OR (b.blocker_id = u.id AND b.blocked_id = :userId)
                       )
-                    order by u.interests_vector <=> cast(:vector as vector)
-                    limit :limit
                     """,
             nativeQuery = true
     )
-    List<MatchCandidate> findQuickCandidates(@Param("userId") UUID userId,
-                                             @Param("vector") String vector,
-                                             @Param("candidateIds") List<UUID> candidateIds,
-                                             @Param("gender") String gender,
-                                             @Param("region") String region,
-                                             @Param("loveDna") String loveDna,
-                                             @Param("maxBirthDate") LocalDate maxBirthDate,
-                                             @Param("minBirthDate") LocalDate minBirthDate,
-                                             @Param("limit") int limit);
+    List<User> findMatchingCandidates(@Param("userId") UUID userId,
+                                      @Param("candidateIds") List<UUID> candidateIds,
+                                      @Param("gender") String gender,
+                                      @Param("region") String region,
+                                      @Param("loveDna") String loveDna,
+                                      @Param("maxBirthDate") LocalDate maxBirthDate,
+                                      @Param("minBirthDate") LocalDate minBirthDate);
 }

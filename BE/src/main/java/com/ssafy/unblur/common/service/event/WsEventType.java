@@ -13,6 +13,13 @@ public enum WsEventType implements EventType {
     ROUND_ENDED("round-ended"),
     CONFERENCE_ENDED("conference-ended"),
 
+    // 밸런스 게임
+    BALANCE_INVITE("balance-invite"),
+    BALANCE_DECLINED("balance-declined"),
+    BALANCE_STARTED("balance-start"),
+    BALANCE_SELECTED("balance-selected"),
+    BALANCE_RESULT("balance-result"),
+
     // 시그널링 관련
     REGISTERED("registered"),
     JOINED("joined"),

@@ -58,10 +58,15 @@ export function LoginModal({ open, onOpenChange, onSwitchToRegister }: LoginModa
     setIsLoading(false)
 
     if (success) {
-      toast({
-        title: "로그인 성공",
-        description: "환영합니다!",
-      })
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem(
+          "pendingToast",
+          JSON.stringify({
+            title: "로그인 성공",
+            description: "환영합니다!",
+          }),
+        )
+      }
       onOpenChange(false)
     } else {
       toast({

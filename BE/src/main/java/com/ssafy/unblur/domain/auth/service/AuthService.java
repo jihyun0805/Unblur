@@ -2,8 +2,6 @@ package com.ssafy.unblur.domain.auth.service;
 
 import com.ssafy.unblur.common.exception.BaseException;
 import com.ssafy.unblur.common.exception.ErrorCode;
-import com.ssafy.unblur.domain.survey.service.EmbeddingService;
-import com.ssafy.unblur.domain.survey.service.SurveyTextConverter;
 import com.ssafy.unblur.domain.auth.dto.request.LoginRequestDto;
 import com.ssafy.unblur.domain.auth.dto.request.SignupRequestDto;
 import com.ssafy.unblur.domain.auth.model.User;
@@ -23,8 +21,6 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder bCryptPasswordEncoder;
-    private final SurveyTextConverter surveyTextConverter;
-    private final EmbeddingService embeddingService;
 
     /**
      * 회원가입 프로세스를 진행합니다.
@@ -38,14 +34,6 @@ public class AuthService {
 
         String encodedPassword = bCryptPasswordEncoder.encode(signupRequestDto.password());
         User user = User.from(signupRequestDto, encodedPassword);
-
-        String surveyText = surveyTextConverter.convert(signupRequestDto.detailedInfo());
-        if (surveyText != null) {
-            float[] vector = embeddingService.embed(surveyText);
-            if (vector != null) {
-                user.updateInterestsVector(vector);
-            }
-        }
 
         User savedUser = userRepository.save(user);
         return savedUser.getEmail();
