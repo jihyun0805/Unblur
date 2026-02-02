@@ -24,6 +24,8 @@ export function MatchingModal({ open, onOpenChange, onMatchFound }: MatchingModa
   const { toast } = useToast()
   const onMatchFoundRef = useRef(onMatchFound)
   onMatchFoundRef.current = onMatchFound
+  const isConflictError = (err: unknown) =>
+    err instanceof Error && err.message?.includes("API_ERROR_409")
 
   // 빠른 매칭 시작 + SSE 구독
   useEffect(() => {
@@ -38,6 +40,11 @@ export function MatchingModal({ open, onOpenChange, onMatchFound }: MatchingModa
       })
       .catch((err) => {
         if (cancelled) return
+        if (isConflictError(err)) {
+          setStep("camera")
+          setRequestId(null)
+          return
+        }
         toast({
           title: "매칭 시작 실패",
           description: err instanceof Error ? err.message : "잠시 후 다시 시도해주세요.",
@@ -97,6 +104,12 @@ export function MatchingModal({ open, onOpenChange, onMatchFound }: MatchingModa
       try {
         await matchApi.cancelQuickMatch(requestId)
       } catch (err) {
+        if (isConflictError(err)) {
+          setRequestId(null)
+          setStep("camera")
+          setMatchingTime(0)
+          return
+        }
         toast({
           title: "취소 실패",
           description: err instanceof Error ? err.message : "매칭 취소에 실패했습니다.",
