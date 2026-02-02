@@ -15,6 +15,7 @@ import com.ssafy.unblur.domain.match.model.Conference;
 import com.ssafy.unblur.domain.match.model.ConferenceParticipant;
 import com.ssafy.unblur.domain.match.repository.ConferenceParticipantRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRoundRepository;
+import com.ssafy.unblur.domain.user.repository.UserBlockRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -25,6 +26,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -40,6 +42,7 @@ public class ConferenceHistoryService {
     private final ChatMessageRepository chatMessageRepository;
     private final ConferenceRoundRepository conferenceRoundRepository;
     private final SseService sseService;
+    private final UserBlockRepository userBlockRepository;
 
     @Transactional(readOnly = true)
     public ConferenceHistoryResponseDto getMyConferenceHistory(String email, Pageable pageable) {
@@ -56,9 +59,10 @@ public class ConferenceHistoryService {
         Map<UUID, List<ConferenceParticipant>> participantsByConference = fetchParticipantsByConference(conferenceIds);
 
         Set<UUID> connectedUserIds = sseService.getConnectedUserIds();
+        Set<UUID> blockedUserIds = fetchBlockedUserIds(user, participantsByConference);
 
         List<ConferenceHistoryItemDto> items = page.getContent().stream()
-                .map(cp -> toHistoryItem(cp, user, participantsByConference, connectedUserIds))
+                .map(cp -> toHistoryItem(cp, user, participantsByConference, connectedUserIds, blockedUserIds))
                 .toList();
 
         ConferenceHistorySummaryDto summary = buildSummary(user);
@@ -85,7 +89,8 @@ public class ConferenceHistoryService {
             ConferenceParticipant participant,
             User me,
             Map<UUID, List<ConferenceParticipant>> participantsByConference,
-            Set<UUID> connectedUserIds
+            Set<UUID> connectedUserIds,
+            Set<UUID> blockedUserIds
     ) {
         Conference conference = participant.getConference();
         List<ConferenceParticipant> participants = participantsByConference.getOrDefault(conference.getId(), List.of());
@@ -100,7 +105,8 @@ public class ConferenceHistoryService {
         LocalDate createdDate = conference.getCreatedAt() != null ? conference.getCreatedAt().toLocalDate() : null;
         long durationMinutes = calculateDurationMinutes(conference.getStartedAt(), conference.getEndedAt());
 
-        Boolean partnerOnline = partnerUser != null ? connectedUserIds.contains(partnerUser.getId()) : null;
+        Boolean isOnline = partnerUser != null ? connectedUserIds.contains(partnerUser.getId()) : null;
+        Boolean isBlocked = partnerUser != null ? blockedUserIds.contains(partnerUser.getId()) : null;
 
         return new ConferenceHistoryItemDto(
                 conference.getId(),
@@ -111,8 +117,24 @@ public class ConferenceHistoryService {
                 partnerUser != null ? partnerUser.getNickname() : null,
                 partnerUser != null ? partnerUser.getProfileImageUrl() : null,
                 partnerUser != null ? partnerUser.getClarityScore() : null,
-                partnerOnline
+                isOnline,
+                isBlocked
         );
+    }
+
+    private Set<UUID> fetchBlockedUserIds(User me, Map<UUID, List<ConferenceParticipant>> participantsByConference) {
+        Set<UUID> partnerIds = participantsByConference.values().stream()
+                .flatMap(List::stream)
+                .map(ConferenceParticipant::getUser)
+                .filter(user -> !user.getId().equals(me.getId()))
+                .map(User::getId)
+                .collect(Collectors.toSet());
+
+        if (partnerIds.isEmpty()) {
+            return Collections.emptySet();
+        }
+
+        return new HashSet<>(userBlockRepository.findBlockedIdsByBlockerAndBlockedIdIn(me, partnerIds));
     }
 
     private ConferenceHistorySummaryDto buildSummary(User user) {
