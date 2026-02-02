@@ -1,11 +1,12 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Send } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/contexts/auth-context"
 import { UserProfileModal, UserProfileData } from "@/components/common/user-profile-modal"
 import * as matchApi from "@/lib/api/match"
 import type { OnlineUserDto } from "@/lib/api/match"
@@ -47,15 +48,24 @@ interface OneOnOneModalProps {
 
 export function OneOnOneModal({ open, onOpenChange, onRequestChat }: OneOnOneModalProps) {
   const { toast } = useToast()
+  const { user } = useAuth()
   const [matchedUsers, setMatchedUsers] = useState<MatchedUser[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const isConflictError = (err: unknown) =>
+    err instanceof Error && err.message?.includes("API_ERROR_409")
 
   useEffect(() => {
     if (!open) return
     setIsLoading(true)
     matchApi
       .getOnlineUsers(10)
-      .then((res) => setMatchedUsers((res.onlineUsers ?? []).map(mapOnlineUserToMatched)))
+      .then((res) =>
+        setMatchedUsers(
+          (res.onlineUsers ?? [])
+            .filter((item) => item.id !== user?.id)
+            .map(mapOnlineUserToMatched)
+        )
+      )
       .catch(() => {
         toast({
           title: "목록 조회 실패",
@@ -65,11 +75,19 @@ export function OneOnOneModal({ open, onOpenChange, onRequestChat }: OneOnOneMod
         setMatchedUsers([])
       })
       .finally(() => setIsLoading(false))
-  }, [open, toast])
+  }, [open, toast, user?.id])
 
   const onlineUsers = matchedUsers.filter((user) => user.isOnline)
 
   const handleRequestChat = async (userId: string, nickname: string) => {
+    if (user?.id && userId === user.id) {
+      toast({
+        title: "요청 불가",
+        description: "본인에게는 매칭 요청을 보낼 수 없습니다.",
+        variant: "destructive",
+      })
+      return
+    }
     try {
       await matchApi.startOneOnOneMatch(userId)
       toast({
@@ -79,6 +97,9 @@ export function OneOnOneModal({ open, onOpenChange, onRequestChat }: OneOnOneMod
       onRequestChat(userId)
       onOpenChange(false)
     } catch (err) {
+      if (isConflictError(err)) {
+        return
+      }
       toast({
         title: "요청 실패",
         description: err instanceof Error ? err.message : "매칭 요청에 실패했습니다.",
@@ -92,9 +113,9 @@ export function OneOnOneModal({ open, onOpenChange, onRequestChat }: OneOnOneMod
       <DialogContent className="sm:max-w-md bg-background">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-center">1:1 매칭</DialogTitle>
-          <p className="text-sm text-muted-foreground text-center mt-2">
+          <DialogDescription className="text-sm text-muted-foreground text-center mt-2">
             현재 활동 중인 사람들에게 매칭 요청을 보내보세요!
-          </p>
+          </DialogDescription>
         </DialogHeader>
 
         <div className="mt-4 space-y-3 max-h-96 overflow-y-auto">

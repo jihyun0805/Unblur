@@ -29,6 +29,7 @@ export function CameraTestModal({ open, onOpenChange, onReady }: CameraTestModal
   const [hasMicrophone, setHasMicrophone] = useState<boolean | null>(null)
   const [selectedBlur, setSelectedBlur] = useState(0)
   const [stream, setStream] = useState<MediaStream | null>(null)
+  const BEAUTY_STORAGE_KEY = "beauty_filter_settings"
 
   const [beautyFilter, setBeautyFilter] = useState({
     enabled: false,
@@ -38,6 +39,34 @@ export function CameraTestModal({ open, onOpenChange, onReady }: CameraTestModal
 
   const isFinalRound = selectedBlur === BLUR_LEVELS.length - 1
   const isBeautyActive = beautyFilter.enabled && isFinalRound
+
+  useEffect(() => {
+    if (!open) return
+    try {
+      const raw = localStorage.getItem(BEAUTY_STORAGE_KEY)
+      if (!raw) return
+      const parsed = JSON.parse(raw) as {
+        enabled?: boolean
+        smoothness?: number
+        lipIntensity?: number
+      }
+      setBeautyFilter((prev) => ({
+        enabled: parsed.enabled ?? prev.enabled,
+        smoothness: Number.isFinite(parsed.smoothness) ? Number(parsed.smoothness) : prev.smoothness,
+        lipIntensity: Number.isFinite(parsed.lipIntensity) ? Number(parsed.lipIntensity) : prev.lipIntensity,
+      }))
+    } catch {
+      // ignore corrupted storage
+    }
+  }, [open])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(BEAUTY_STORAGE_KEY, JSON.stringify(beautyFilter))
+    } catch {
+      // ignore storage failures
+    }
+  }, [beautyFilter])
 
   useEffect(() => {
     if (open) {
