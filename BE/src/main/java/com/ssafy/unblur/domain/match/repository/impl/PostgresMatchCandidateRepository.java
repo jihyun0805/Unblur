@@ -1,6 +1,7 @@
-package com.ssafy.unblur.domain.match.repository;
+package com.ssafy.unblur.domain.match.repository.impl;
 
 import com.ssafy.unblur.domain.auth.model.User;
+import com.ssafy.unblur.domain.match.repository.MatchCandidateRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
@@ -10,13 +11,14 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * 매칭 대기열 후보 조회 전용 레포지토리
+ * {@link MatchCandidateRepository}의 PostgreSQL 네이티브 쿼리 구현체.
  * <p>
- * 대기열에 등록된 사용자 중 성별·지역·나이 필터와 차단 관계를 적용하여
- * 매칭 가능한 후보 목록을 반환한다.
+ * 성별·지역·Love DNA·나이 범위 필터와 차단 관계 배제를 단일 네이티브 쿼리로 처리한다.
  */
-public interface MatchableUserRepository extends Repository<User, UUID> {
+public interface PostgresMatchCandidateRepository
+        extends MatchCandidateRepository, Repository<User, UUID> {
 
+    @Override
     @Query(
             value = """
                     SELECT u.*
@@ -26,6 +28,7 @@ public interface MatchableUserRepository extends Repository<User, UUID> {
                       AND u.is_active = true
                       AND (:gender IS NULL OR u.gender = cast(:gender as varchar))
                       AND (:region IS NULL OR u.region = cast(:region as varchar))
+                      AND (:loveDna IS NULL OR u.love_dna = cast(:loveDna as varchar))
                       AND u.birth_date <= coalesce(cast(:maxBirthDate as date), u.birth_date)
                       AND u.birth_date >= coalesce(cast(:minBirthDate as date), u.birth_date)
                       AND NOT EXISTS (
@@ -40,6 +43,7 @@ public interface MatchableUserRepository extends Repository<User, UUID> {
                                       @Param("candidateIds") List<UUID> candidateIds,
                                       @Param("gender") String gender,
                                       @Param("region") String region,
+                                      @Param("loveDna") String loveDna,
                                       @Param("maxBirthDate") LocalDate maxBirthDate,
                                       @Param("minBirthDate") LocalDate minBirthDate);
 }
