@@ -7,8 +7,15 @@ export type SignalingMessage =
   | { type: "joined"; conferenceId: string; userId: string; sessionId: string }
   | { type: "connected"; sessionId: string }
   | { type: "disconnected"; sessionId: string }
+  | { type: "round-time-up"; conferenceId: string; roundNumber: number; message?: string }
+  | { type: "round-started"; conferenceId: string; roundNumber: number; isUnlimited: boolean; roundEndsAt?: number | null }
+  | { type: "vote-confirm-request"; conferenceId: string; message?: string }
+  | { type: "partner-voted"; conferenceId: string; message?: string }
+  | { type: "conference-ended"; conferenceId: string; message?: string }
 
 export type SignalingMessageHandler = (message: SignalingMessage) => void
+
+export type VoteChoice = "PROCEED" | "END"
 
 export interface WebRTCSignalingClient {
   connect(conferenceId: string, userId: string): Promise<void>
@@ -16,6 +23,7 @@ export interface WebRTCSignalingClient {
   sendOffer(sdp: RTCSessionDescriptionInit, conferenceId: string, userId: string): void
   sendAnswer(sdp: RTCSessionDescriptionInit, conferenceId: string, userId: string): void
   sendIceCandidate(candidate: RTCIceCandidateInit, conferenceId: string, userId: string): void
+  sendVote(conferenceId: string, userId: string, vote: VoteChoice): void
   onMessage(handler: SignalingMessageHandler): () => void
   isConnected(): boolean
 }
@@ -28,6 +36,9 @@ interface ServerMessage {
   sdpAnswer?: string
   candidate?: { candidate: string; sdpMid: string; sdpMLineIndex: number }
   message?: string
+  roundNumber?: number
+  isUnlimited?: boolean
+  roundEndsAt?: number | null
 }
 
 function normalizeWsUrl(input: string): string {
@@ -163,6 +174,23 @@ export class WebSocketSignalingClient implements WebRTCSignalingClient {
     if (raw.type === "left") {
       return { type: "disconnected", sessionId }
     }
+    // 라운드/투표 이벤트
+    const cid = raw.conferenceId ?? ""
+    if (raw.type === "round-time-up" && raw.roundNumber != null) {
+      return { type: "round-time-up", conferenceId: cid, roundNumber: raw.roundNumber, message: raw.message }
+    }
+    if (raw.type === "round-started" && raw.roundNumber != null) {
+      return { type: "round-started", conferenceId: cid, roundNumber: raw.roundNumber, isUnlimited: raw.isUnlimited ?? false, roundEndsAt: raw.roundEndsAt ?? null }
+    }
+    if (raw.type === "vote-confirm-request") {
+      return { type: "vote-confirm-request", conferenceId: cid, message: raw.message }
+    }
+    if (raw.type === "partner-voted") {
+      return { type: "partner-voted", conferenceId: cid, message: raw.message }
+    }
+    if (raw.type === "conference-ended") {
+      return { type: "conference-ended", conferenceId: cid, message: raw.message }
+    }
     return null
   }
 
@@ -222,6 +250,10 @@ export class WebSocketSignalingClient implements WebRTCSignalingClient {
     })
   }
 
+  sendVote(conferenceId: string, userId: string, vote: VoteChoice): void {
+    this.send({ type: "vote", conferenceId, userId, vote })
+  }
+
   onMessage(handler: SignalingMessageHandler): () => void {
     this.messageHandlers.add(handler)
     return () => {
@@ -277,6 +309,10 @@ export class MockSignalingClient implements WebRTCSignalingClient {
 
   sendIceCandidate(candidate: RTCIceCandidateInit, conferenceId: string, userId: string): void {
     console.log("[WebRTC] Mock: ICE candidate sent", { conferenceId, userId })
+  }
+
+  sendVote(_conferenceId: string, _userId: string, vote: VoteChoice): void {
+    console.log("[WebRTC] Mock: vote sent", { vote })
   }
 
   onMessage(handler: SignalingMessageHandler): () => void {

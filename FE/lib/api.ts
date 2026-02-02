@@ -91,9 +91,11 @@ export const apiFetch = async (
         credentials: "include",
       })
 
-      if (retryResponse.status === 401 || retryResponse.status === 403) {
-        // 재시도 후에도 401이면 토큰 삭제하고 에러
+      if (retryResponse.status === 401) {
         clearAuthToken()
+        throw new Error("AUTH_FORBIDDEN")
+      }
+      if (retryResponse.status === 403) {
         throw new Error("AUTH_FORBIDDEN")
       }
 
@@ -103,14 +105,16 @@ export const apiFetch = async (
 
       return retryResponse
     } catch (reissueError) {
-      // 토큰 재발급 실패 시 토큰 삭제하고 에러
       clearAuthToken()
       throw new Error("AUTH_FORBIDDEN")
     }
   }
 
-  if (response.status === 401 || response.status === 403) {
+  if (response.status === 401) {
     clearAuthToken()
+    throw new Error("AUTH_FORBIDDEN")
+  }
+  if (response.status === 403) {
     throw new Error("AUTH_FORBIDDEN")
   }
 
