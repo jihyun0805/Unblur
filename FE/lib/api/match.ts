@@ -177,3 +177,26 @@ export async function getOnlineUsers(limit = 10): Promise<OnlineUserListResponse
   const response = await apiFetch(`${MATCH_BASE}/online-users?${params}`)
   return parseMatchResponse<OnlineUserListResponse>(response)
 }
+
+export interface ClarityEvaluationRequest {
+  score: number
+}
+
+export async function evaluateClarity(
+  conferenceId: string,
+  score: number
+): Promise<void> {
+  const response = await apiFetch(
+    `/api/v1/conferences/${encodeURIComponent(conferenceId)}/clarity-evaluations`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ score } satisfies ClarityEvaluationRequest),
+    }
+  )
+
+  if (!response.ok) {
+    const base: BaseResponse<unknown> = await response.json().catch(() => ({}))
+    throw new Error(base.message || "선명도 평가에 실패했습니다.")
+  }
+}

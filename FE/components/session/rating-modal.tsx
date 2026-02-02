@@ -4,30 +4,44 @@ import { useState } from "react"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Star } from "lucide-react"
-import { useAuth } from "@/contexts/auth-context"
+import { useToast } from "@/hooks/use-toast"
+import { evaluateClarity } from "@/lib/api/match"
 
 interface RatingModalProps {
   open: boolean
   onComplete: () => void
   partnerNickname: string
+  conferenceId: string
 }
 
 const RATING_LABELS = ["매우 불쾌", "불쾌", "보통", "좋음", "매우 좋음"]
 
-export function RatingModal({ open, onComplete, partnerNickname }: RatingModalProps) {
-  const { updateTemperature } = useAuth()
+export function RatingModal({ open, onComplete, partnerNickname, conferenceId }: RatingModalProps) {
+  const { toast } = useToast()
   const [rating, setRating] = useState(0)
   const [hoveredRating, setHoveredRating] = useState(0)
   const [submitted, setSubmitted] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleSubmit = () => {
-    if (rating > 0) {
-      // 상대방에게 평가 점수 반영 (데모에서는 자신의 온도에 반영)
-      updateTemperature(rating)
+  const handleSubmit = async () => {
+    if (rating <= 0 || isSubmitting) return
+    setIsSubmitting(true)
+    try {
+      await evaluateClarity(conferenceId, rating)
       setSubmitted(true)
       setTimeout(() => {
         onComplete()
       }, 1500)
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "선명도 평가에 실패했습니다."
+      toast({
+        title: "평가 실패",
+        description: message,
+        variant: "destructive",
+      })
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -73,10 +87,10 @@ export function RatingModal({ open, onComplete, partnerNickname }: RatingModalPr
 
               <Button
                 onClick={handleSubmit}
-                disabled={rating === 0}
+                disabled={rating === 0 || isSubmitting}
                 className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
               >
-                평가 완료
+                {isSubmitting ? "전송 중..." : "평가 완료"}
               </Button>
             </>
           ) : (
