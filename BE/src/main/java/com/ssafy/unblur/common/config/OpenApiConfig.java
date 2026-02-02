@@ -31,7 +31,7 @@ public class OpenApiConfig {
                 .description("<h3>2030 세대를 위한 가치관/관심사 기반 블라인드 소개팅 서비스</h3>" +
                         "<ul>" +
                         "<li>영상/채팅 실시간 매칭</li>" +
-                        "<li>PGVector 기반 관심사 추천</li>" +
+
                         "<li>단계별 블라인드 해제 기능</li>" +
                         "</ul>")
                 .version("v1.0.0")

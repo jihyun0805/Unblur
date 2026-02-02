@@ -2,7 +2,9 @@ package com.ssafy.unblur.domain.match.service.impl;
 
 import com.ssafy.unblur.common.exception.BaseException;
 import com.ssafy.unblur.common.exception.ErrorCode;
-import com.ssafy.unblur.common.util.VectorUtils;
+import com.ssafy.unblur.common.service.event.SseEventType;
+import com.ssafy.unblur.common.util.TransactionUtils;
+import com.ssafy.unblur.domain.auth.model.Gender;
 import com.ssafy.unblur.domain.auth.model.User;
 import com.ssafy.unblur.domain.auth.repository.UserRepository;
 import com.ssafy.unblur.domain.match.config.MatchConfig.MatchPolicy;
@@ -10,13 +12,12 @@ import com.ssafy.unblur.domain.match.dto.event.QuickMatchResultEvent;
 import com.ssafy.unblur.domain.match.dto.event.QuickMatchStageEvent;
 import com.ssafy.unblur.domain.match.dto.response.OneOnOneMatchResponse;
 import com.ssafy.unblur.domain.match.model.*;
-import com.ssafy.unblur.common.service.event.SseEventType;
-import com.ssafy.unblur.common.util.TransactionUtils;
 import com.ssafy.unblur.domain.match.repository.ConferenceRepository;
 import com.ssafy.unblur.domain.match.repository.MatchCandidateRepository;
-import com.ssafy.unblur.domain.match.repository.MatchCandidateRepository.MatchCandidate;
 import com.ssafy.unblur.domain.match.service.MatchEventPublisher;
 import com.ssafy.unblur.domain.match.service.MatchQueueService;
+import com.ssafy.unblur.domain.survey.service.SurveySimilarityCalculator;
+import com.ssafy.unblur.domain.user.repository.UserBlockRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -25,11 +26,26 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.*;
 import java.util.*;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 /**
- * 매칭 대기열 처리 컴포넌트
- * <p>
- * 단일 큐를 시간 기준으로 훑으며 완화/타임아웃/배치 매칭을 처리하며 동시 충돌을 막기 위해 내부 락으로 보호한다.
+ * 매칭 대기열 처리 컴포넌트.
+ *
+ * <h3>처리 흐름</h3>
+ * <ol>
+ *   <li><b>즉시 매칭</b> ({@link #tryImmediateMatch}) — 대기열 등록 직후 1회 시도. 높은 임계치 적용.</li>
+ *   <li><b>주기 처리</b> ({@link #processQueue}) — 스케줄러가 호출하며 아래 순서로 진행:
+ *     <ol>
+ *       <li>타임아웃 — 대기 시간 초과 항목을 임계치 없이 최종 시도 후 만료 처리</li>
+ *       <li>완화 매칭 — 일정 시간 경과 항목에 낮은 임계치로 재시도</li>
+ *       <li>배치 매칭 — 충분한 대기 인원이 모이면 그리디 방식으로 최적 쌍 매칭</li>
+ *       <li>정리 — 종료 상태 항목 퍼지</li>
+ *     </ol>
+ *   </li>
+ * </ol>
+ *
+ * <h3>동시성</h3>
+ * 내부 {@link ReentrantLock}으로 모든 매칭 연산을 직렬화하여 동시 충돌을 방지한다.
  */
 @Slf4j
 @Component
@@ -52,7 +68,7 @@ public class MatchQueueProcessor {
     private final UserRepository userRepository;
 
     /**
-     * 매칭 후보 벡터 검색 레포지토리
+     * 매칭 후보 필터링 검색 레포지토리
      */
     private final MatchCandidateRepository matchCandidateRepository;
 
@@ -60,6 +76,11 @@ public class MatchQueueProcessor {
      * 매칭 완료 시 컨퍼런스 저장 레포지토리
      */
     private final ConferenceRepository conferenceRepository;
+
+    /**
+     * 사용자 차단 관계 조회 레포지토리
+     */
+    private final UserBlockRepository userBlockRepository;
 
     /**
      * 매칭 정책 설정값
@@ -70,6 +91,11 @@ public class MatchQueueProcessor {
      * 매칭 이벤트 전송기
      */
     private final MatchEventPublisher eventPublisher;
+
+    /**
+     * 설문 유사도 계산기
+     */
+    private final SurveySimilarityCalculator surveySimilarityCalculator;
 
     /**
      * 기준 시각 제공용 Clock
@@ -93,7 +119,7 @@ public class MatchQueueProcessor {
 
         try {
             log.info("즉시 매칭 시도. userId={}, requestId={}, threshold={}, topK={}", user.getId(), item.getRequestId(), policy.immediateSimilarityThreshold(), policy.immediateTopK());
-            return tryMatch(item, user, policy.immediateSimilarityThreshold(), policy.immediateTopK());
+            return tryMatch(item, user, policy.immediateSimilarityThreshold());
 
         } finally {
             matchLock.unlock();
@@ -159,7 +185,7 @@ public class MatchQueueProcessor {
                 }
 
                 // 타임아웃 시점에는 임계치 없이 최종 후보를 시도
-                boolean matched = tryMatch(item, user, NO_THRESHOLD, policy.immediateTopK());
+                boolean matched = tryMatch(item, user, NO_THRESHOLD);
                 if (!matched) {
                     log.info("타임아웃 매칭 실패. requestId={}, userId={}", item.getRequestId(), item.getRequesterUserId());
 
@@ -239,7 +265,7 @@ public class MatchQueueProcessor {
                 }
 
                 // 완화 임계치로 다시 매칭 시도
-                tryMatch(item, user, policy.relaxedSimilarityThreshold(), policy.immediateTopK());
+                tryMatch(item, user, policy.relaxedSimilarityThreshold());
             }
         }
     }
@@ -276,21 +302,24 @@ public class MatchQueueProcessor {
     }
 
     /**
+     * 설문 유사도 점수가 부여된 매칭 후보.
+     *
+     * @param user  후보 사용자 엔티티
+     * @param score 설문 유사도 (0.0 ~ 1.0)
+     */
+    private record ScoredCandidate(User user, double score) {
+    }
+
+    /**
      * 단일 사용자 기준으로 후보를 조회해 매칭을 시도하는 메서드
      *
      * @param item      대기열 항목
      * @param user      요청자 사용자
      * @param threshold 유사도 임계치
-     * @param limit     후보 상위 K
      * @return 매칭 성공 여부
      */
-    private boolean tryMatch(MatchQueueItem item, User user, double threshold, int limit) {
+    private boolean tryMatch(MatchQueueItem item, User user, double threshold) {
         if (!item.isWaiting()) {
-            return false;
-        }
-
-        if (user.getInterestsVector() == null) {
-            log.warn("매칭 스킵: 관심 벡터 없음. userId={}, requestId={}", user.getId(), item.getRequestId());
             return false;
         }
 
@@ -312,59 +341,55 @@ public class MatchQueueProcessor {
         LocalDate maxBirthDate = filters.ageMin() != null ? now.minusYears(filters.ageMin()) : null;
         LocalDate minBirthDate = filters.ageMax() != null ? now.minusYears(filters.ageMax()) : null;
 
-        // pgvector 후보 조회(상위 K) 후 상호 필터/유사도 검증
-        List<MatchCandidate> candidates = matchCandidateRepository.findQuickCandidates(
+
+        // 이성 매칭 강제 적용
+        String oppositeGender = user.getGender() != null
+                ? (user.getGender() == Gender.MALE ? Gender.FEMALE.name() : Gender.MALE.name())
+                : null;
+
+        // DB에서 기본 필터링된 후보 목록 조회
+        List<User> candidates = matchCandidateRepository.findMatchingCandidates(
                 user.getId(),
-                VectorUtils.toVectorLiteral(user.getInterestsVector()),
                 candidateIds,
-                filters.gender() != null ? filters.gender().name() : null,
+                oppositeGender,
                 filters.region() != null ? filters.region().name() : null,
                 filters.loveDna() != null ? filters.loveDna().name() : null,
                 maxBirthDate,
-                minBirthDate,
-                limit
+                minBirthDate
         );
 
-        for (MatchCandidate candidate : candidates) {
-            Optional<MatchQueueItem> candidateItem = matchQueueService.findUserRequestByMatchType(candidate.id(), MatchType.QUICK);
-            if (candidateItem.isEmpty()) {
+        List<ScoredCandidate> scoredCandidates = new ArrayList<>();
+        for (User candidateUser : candidates) {
+            Optional<MatchQueueItem> candidateItemOpt = matchQueueService.findUserRequestByMatchType(candidateUser.getId(), MatchType.QUICK);
+            if (candidateItemOpt.isEmpty() || !candidateItemOpt.get().isWaiting()) {
                 continue;
             }
 
-            MatchQueueItem targetItem = candidateItem.get();
-            if (!targetItem.isWaiting()) {
-                continue;
-            }
-
-            // 상대 사용자 정보 조회(벡터가 없으면 스킵)
-            User targetUser = userRepository.findById(targetItem.getRequesterUserId())
-                    .orElse(null);
-
-            if (targetUser == null || targetUser.getInterestsVector() == null) {
-                continue;
-            }
-
-            // 상대 필터 기준으로 현재 사용자를 검증
-            if (!matchesFilters(user, MatchFilters.from(targetItem.getFilters()), now)) {
+            // 상대 필터 기준으로 현재 사용자를 검증 (양방향 필터링)
+            if (!matchesFilters(user, MatchFilters.from(candidateItemOpt.get().getFilters()), candidateUser.getGender(), now)) {
                 continue;
             }
 
             // 양방향 유사도 모두 임계치 통과해야 확정
-            double reverseSimilarity = VectorUtils.cosineSimilarity(targetUser.getInterestsVector(), user.getInterestsVector());
-            if (candidate.similarity() == null) {
-                continue;
+            double similarity = surveySimilarityCalculator.calculate(user.getDetailedInfo(), candidateUser.getDetailedInfo());
+            if (threshold < 0 || similarity >= threshold) {
+                scoredCandidates.add(new ScoredCandidate(candidateUser, similarity));
             }
+        }
 
-            if (threshold >= 0 && (candidate.similarity() < threshold || reverseSimilarity < threshold)) {
-                continue;
-            }
+        // 점수가 높은 순으로 정렬
+        scoredCandidates.sort(Comparator.comparingDouble(ScoredCandidate::score).reversed());
 
-            // 상호 임계치 통과 시 매칭 확정
+        // 가장 점수가 높은 후보와 매칭 시도
+        if (!scoredCandidates.isEmpty()) {
+            User targetUser = scoredCandidates.get(0).user();
+            MatchQueueItem targetItem = matchQueueService.findUserRequestByMatchType(targetUser.getId(), MatchType.QUICK).get();
+
             Conference conference = createConference(user, targetUser);
             LocalDateTime matchedAt = LocalDateTime.now(clock);
             item.markMatched(matchedAt);
             targetItem.markMatched(matchedAt);
-            publishMatchedEvent(item, targetItem, conference, matchedAt);
+            publishMatchedEvent(item, targetItem, conference, matchedAt, user, targetUser, scoredCandidates.get(0).score());
             return true;
         }
 
@@ -384,11 +409,12 @@ public class MatchQueueProcessor {
 
         // 배치에 포함된 사용자들의 정보를 한 번에 조회
         List<UUID> userIds = batch.stream().map(MatchQueueItem::getRequesterUserId).toList();
-        List<User> users = userRepository.findAllById(userIds);
+        Map<UUID, User> batchUserMap = userRepository.findAllById(userIds).stream()
+                .collect(Collectors.toMap(User::getId, u -> u));
         LocalDate now = LocalDate.now(clock);
 
         while (batch.size() >= 2) {
-            MatchPair bestPair = findBestPair(batch, users, now, threshold);
+            MatchPair bestPair = findBestPair(batch, batchUserMap, now, threshold);
 
             // 매칭 가능한 쌍이 없으면 종료
             if (bestPair == null) {
@@ -397,14 +423,13 @@ public class MatchQueueProcessor {
             }
 
             // 최적 매칭 쌍 확정 후 컨퍼런스 생성
-            Conference conference = createConference(
-                    findUser(users, bestPair.left().getRequesterUserId()),
-                    findUser(users, bestPair.right().getRequesterUserId())
-            );
+            User leftUser = batchUserMap.get(bestPair.left().getRequesterUserId());
+            User rightUser = batchUserMap.get(bestPair.right().getRequesterUserId());
+            Conference conference = createConference(leftUser, rightUser);
             LocalDateTime matchedAt = LocalDateTime.now(clock);
             bestPair.left().markMatched(matchedAt);
             bestPair.right().markMatched(matchedAt);
-            publishMatchedEvent(bestPair.left(), bestPair.right(), conference, matchedAt);
+            publishMatchedEvent(bestPair.left(), bestPair.right(), conference, matchedAt, leftUser, rightUser, bestPair.similarity());
 
             batch.remove(bestPair.left());
             batch.remove(bestPair.right());
@@ -414,40 +439,39 @@ public class MatchQueueProcessor {
     /**
      * 배치 내에서 가장 유사도가 높은 쌍을 찾는 메서드
      *
-     * @param batch     후보 배치
-     * @param users     배치 사용자 목록
-     * @param now       기준 시각
-     * @param threshold 유사도 임계치
+     * @param batch        후보 배치
+     * @param batchUserMap 배치 내 사용자 ID → User 엔티티 룩업 맵
+     * @param now          기준 시각
+     * @param threshold    유사도 임계치
      * @return 매칭 쌍, 없으면 null
      */
-    private MatchPair findBestPair(List<MatchQueueItem> batch, List<User> users, LocalDate now, double threshold) {
+    private MatchPair findBestPair(List<MatchQueueItem> batch, Map<UUID, User> batchUserMap, LocalDate now, double threshold) {
         MatchPair bestPair = null;
         double bestSimilarity = -1.0;
 
         for (int i = 0; i < batch.size(); i++) {
             MatchQueueItem left = batch.get(i);
-            User leftUser = findUser(users, left.getRequesterUserId());
-            if (leftUser == null || leftUser.getInterestsVector() == null) {
-                continue;
-            }
+            User leftUser = batchUserMap.get(left.getRequesterUserId());
+            if (leftUser == null || !leftUser.isActive()) continue;
 
             for (int j = i + 1; j < batch.size(); j++) {
                 MatchQueueItem right = batch.get(j);
-                User rightUser = findUser(users, right.getRequesterUserId());
-                if (rightUser == null || rightUser.getInterestsVector() == null) {
+                User rightUser = batchUserMap.get(right.getRequesterUserId());
+                if (rightUser == null || !rightUser.isActive()) continue;
+
+                // 양방향 차단 관계 확인
+                if (userBlockRepository.existsByBlockerAndBlocked(leftUser, rightUser) ||
+                        userBlockRepository.existsByBlockerAndBlocked(rightUser, leftUser)) {
                     continue;
                 }
 
-                // 서로의 필터 기준으로 양방향 검증
-                if (!matchesFilters(leftUser, MatchFilters.from(right.getFilters()), now)) {
+                // 서로의 필터 기준으로 양방향 검증 (이성 강제 포함)
+                if (!matchesFilters(leftUser, MatchFilters.from(right.getFilters()), rightUser.getGender(), now) ||
+                        !matchesFilters(rightUser, MatchFilters.from(left.getFilters()), leftUser.getGender(), now)) {
                     continue;
                 }
 
-                if (!matchesFilters(rightUser, MatchFilters.from(left.getFilters()), now)) {
-                    continue;
-                }
-
-                double similarity = VectorUtils.cosineSimilarity(leftUser.getInterestsVector(), rightUser.getInterestsVector());
+                double similarity = surveySimilarityCalculator.calculate(leftUser.getDetailedInfo(), rightUser.getDetailedInfo());
                 if (similarity < threshold) {
                     continue;
                 }
@@ -455,7 +479,7 @@ public class MatchQueueProcessor {
                 // 가장 높은 유사도 쌍을 선택
                 if (similarity > bestSimilarity) {
                     bestSimilarity = similarity;
-                    bestPair = new MatchPair(left, right);
+                    bestPair = new MatchPair(left, right, similarity);
                 }
             }
         }
@@ -464,32 +488,23 @@ public class MatchQueueProcessor {
     }
 
     /**
-     * 사용자 목록에서 사용자 ID를 찾아 반환하는 메서드
+     * 대상 사용자가 요청 필터를 만족하는지 확인하는 메서드.
+     * 이성 매칭 강제 정책에 따라 필터 요청자와 동성이면 거부한다.
      *
-     * @param users  사용자 목록
-     * @param userId 사용자 ID
-     * @return 사용자, 없으면 null
-     */
-    private User findUser(List<User> users, UUID userId) {
-        for (User user : users) {
-            if (user.getId().equals(userId)) {
-                return user;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * 대상 사용자가 요청 필터를 만족하는지 확인하는 메서드
-     *
-     * @param target  대상 사용자
-     * @param filters 요청 필터
-     * @param now     기준 날짜
+     * @param target          대상 사용자
+     * @param filters         요청 필터
+     * @param requesterGender 필터 요청자의 성별 (이성 검증용)
+     * @param now             기준 날짜
      * @return 조건 통과 여부
      */
-    private boolean matchesFilters(User target, MatchFilters filters, LocalDate now) {
-        if (filters.gender() != null && target.getGender() != filters.gender()) {
+    private boolean matchesFilters(User target, MatchFilters filters, Gender requesterGender, LocalDate now) {
+        // 성별이 없으면 비정상 데이터이므로 거부
+        if (requesterGender == null || target.getGender() == null) {
+            return false;
+        }
+
+        // 이성 매칭 강제: 동성이면 거부
+        if (requesterGender == target.getGender()) {
             return false;
         }
 
@@ -568,7 +583,7 @@ public class MatchQueueProcessor {
      * @param right     두 번째 사용자 항목
      * @param matchedAt 매칭 완료 시각
      */
-    private void publishMatchedEvent(MatchQueueItem left, MatchQueueItem right, Conference conference, LocalDateTime matchedAt) {
+    private void publishMatchedEvent(MatchQueueItem left, MatchQueueItem right, Conference conference, LocalDateTime matchedAt, User leftUser, User rightUser, double similarityScore) {
         String conferenceId = conference.getId() != null ? conference.getId().toString() : null;
 
         QuickMatchResultEvent leftEvent = QuickMatchResultEvent.builder()
@@ -578,6 +593,7 @@ public class MatchQueueProcessor {
                 .matchedUserId(right.getRequesterUserId().toString())
                 .conferenceId(conferenceId)
                 .matchedAt(matchedAt)
+                .similarityScore(similarityScore)
                 .build();
 
         QuickMatchResultEvent rightEvent = QuickMatchResultEvent.builder()
@@ -587,6 +603,7 @@ public class MatchQueueProcessor {
                 .matchedUserId(left.getRequesterUserId().toString())
                 .conferenceId(conferenceId)
                 .matchedAt(matchedAt)
+                .similarityScore(similarityScore)
                 .build();
 
         TransactionUtils.runAfterCommit(() -> {
@@ -625,11 +642,12 @@ public class MatchQueueProcessor {
     }
 
     /**
-     * 배치 매칭에 사용하는 후보 쌍
+     * 배치 매칭에서 선택된 최적 후보 쌍.
      *
-     * @param left  왼쪽 후보
-     * @param right 오른쪽 후보
+     * @param left       첫 번째 대기열 항목
+     * @param right      두 번째 대기열 항목
+     * @param similarity 두 사용자 간 설문 유사도
      */
-    private record MatchPair(MatchQueueItem left, MatchQueueItem right) {
+    private record MatchPair(MatchQueueItem left, MatchQueueItem right, double similarity) {
     }
 }

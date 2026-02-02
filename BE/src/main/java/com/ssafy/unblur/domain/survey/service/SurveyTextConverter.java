@@ -94,30 +94,6 @@ public class SurveyTextConverter {
                 "like", "동물 좋아해요",
                 "prefer-none", "없는 분 선호"
         )));
-        QUESTIONS.put("interests", new QuestionDef("관심사 태그", Map.ofEntries(
-                Map.entry("fitness", "헬스"),
-                Map.entry("running", "러닝"),
-                Map.entry("hiking", "등산"),
-                Map.entry("golf", "골프"),
-                Map.entry("climbing", "클라이밍"),
-                Map.entry("baseball", "축구/야구"),
-                Map.entry("movie", "영화/OTT"),
-                Map.entry("exhibition", "전시"),
-                Map.entry("reading", "독서"),
-                Map.entry("concert", "콘서트"),
-                Map.entry("game", "게임"),
-                Map.entry("comic", "만화"),
-                Map.entry("food", "맛집"),
-                Map.entry("cooking", "요리"),
-                Map.entry("cafe", "카페"),
-                Map.entry("wine", "와인/술"),
-                Map.entry("bread", "빵지순례"),
-                Map.entry("travel", "여행"),
-                Map.entry("investment", "재테크"),
-                Map.entry("pet", "반려동물"),
-                Map.entry("drive", "드라이브"),
-                Map.entry("idol", "아이돌")
-        )));
     }
 
     @SuppressWarnings("unchecked")
