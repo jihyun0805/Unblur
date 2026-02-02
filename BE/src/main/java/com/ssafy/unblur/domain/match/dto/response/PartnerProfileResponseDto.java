@@ -4,9 +4,11 @@ import com.ssafy.unblur.domain.auth.model.User;
 import lombok.Builder;
 
 import java.util.List;
+import java.util.UUID;
 
 @Builder
 public record PartnerProfileResponseDto(
+        UUID userId,
         String nickname,
         Integer clarityScore,
         Integer age,
@@ -30,6 +32,7 @@ public record PartnerProfileResponseDto(
 
     public static PartnerProfileResponseDto from(User user, List<RoundSummaryDto> roundSummaries) {
         return new PartnerProfileResponseDto(
+                user.getId(),
                 user.getNickname(),
                 user.getClarityScore(),
                 user.getAge(),
