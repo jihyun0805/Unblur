@@ -25,7 +25,7 @@ interface SessionRoomProps {
   onExternalCancelLeave?: () => void
 }
 
-const ROUND_TIMES = [600, 600, 600, Number.POSITIVE_INFINITY] // seconds (1라운드: 5분 = 300초)
+const ROUND_TIMES = [300, 300, 600, Number.POSITIVE_INFINITY] // seconds (1라운드: 5분 = 300초)
 const BLUR_LEVELS = [20, 10, 5, 0] // px
 const ROUND_NAMES = ["1라운드", "2라운드", "3라운드", "최종 라운드"]
 const BLUR_LABELS = ["블라인드", "강한 블러", "약간 블러", "완전 공개"]
@@ -80,6 +80,15 @@ export function SessionRoom({
     if (!showSessionEndedModal) return
     const t = setTimeout(() => {
       setShowSessionEndedModal(false)
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem(
+          "pendingToast",
+          JSON.stringify({
+            title: "대화가 마무리되었어요",
+            description: "좋은 인연이었길 바라요. 다음 만남도 응원합니다!",
+          }),
+        )
+      }
       onLeave()
     }, 3000)
     return () => clearTimeout(t)
@@ -151,7 +160,7 @@ export function SessionRoom({
 
   // Timer logic
   useEffect(() => {
-    if (currentRound >= 3 || showVote || showGame || showRating || showConfirmLeave || showEndConfirm) return
+    if (currentRound >= 3 || showVote || showRating || showConfirmLeave) return
 
     const interval = setInterval(() => {
       setTimeLeft((prev) => {
@@ -164,7 +173,7 @@ export function SessionRoom({
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [currentRound, showVote, showGame, showRating, showConfirmLeave, showEndConfirm])
+  }, [currentRound, showVote, showRating, showConfirmLeave])
 
   // Silence detection - 5초 이상 정적 시 질문 카드 표시
   useEffect(() => {
@@ -244,10 +253,15 @@ export function SessionRoom({
     setShowRating(false)
     const shouldLeaveExternally = pendingExternalLeave && !!onExternalConfirmLeave
     setPendingExternalLeave(false)
-    toast({
-      title: "소개팅 종료",
-      description: "다음에 더 좋은 인연을 만나길 바랍니다!",
-    })
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem(
+        "pendingToast",
+        JSON.stringify({
+          title: "대화가 마무리되었어요",
+          description: "좋은 인연이었길 바라요. 다음 만남도 응원합니다!",
+        }),
+      )
+    }
     if (shouldLeaveExternally && onExternalConfirmLeave) {
       onExternalConfirmLeave()
     } else {

@@ -35,7 +35,7 @@ public class MatchConfig {
      * 라운드별 시간 제한 정책
      *
      * @param round1 1라운드 시간 (5분)
-     * @param round2 2라운드 시간 (10분)
+     * @param round2 2라운드 시간 (5분)
      * @param round3 3라운드 시간 (10분)
      * @param round4 4라운드 시간 (ZERO면 무제한)
      */
@@ -54,7 +54,7 @@ public class MatchConfig {
         public static RoundDurationPolicy defaultPolicy() {
             return new RoundDurationPolicy(
                     Duration.ofMinutes(5),   // 1라운드: 5분
-                    Duration.ofMinutes(10),  // 2라운드: 10분
+                    Duration.ofMinutes(5),   // 2라운드: 5분
                     Duration.ofMinutes(10),  // 3라운드: 10분
                     Duration.ZERO            // 4라운드: 무제한
             );
