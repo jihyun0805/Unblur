@@ -38,6 +38,7 @@ export function SessionRoom({
   onExternalCancelLeave,
 }: SessionRoomProps) {
   const [currentRound, setCurrentRound] = useState(0)
+  const [hasRoundStarted, setHasRoundStarted] = useState(true)
   const [timeLeft, setTimeLeft] = useState(ROUND_TIMES[0])
   const [showChat, setShowChat] = useState(false)
   const [showGame, setShowGame] = useState(false)
@@ -56,6 +57,62 @@ export function SessionRoom({
   const { user } = useAuth()
   const lastIceBreakerRef = useRef("")
 
+  // WebRTC 비디오 refs (useWebRTC보다 먼저 선언)
+  const localVideoRef = useRef<HTMLVideoElement | null>(null)
+  const remoteVideoRef = useRef<HTMLVideoElement | null>(null)
+
+  // WebRTC 훅: join → offer는 세션 룸 마운트 시 최초 1회 전송.
+  const {
+    localStream,
+    remoteStream,
+    isConnected,
+    isConnecting,
+    hasJoined,
+    error: webrtcError,
+    toggleMute,
+    isMuted,
+    toggleVideo,
+    isVideoEnabled,
+    sendVote,
+  } = useWebRTC({
+    sessionId,
+    userId: user?.id ?? "",
+    localVideoRef,
+    remoteVideoRef,
+    enabled: !!sessionId && !!user?.id,
+    useMock: false,
+    onDisconnected: () => {
+      setShowSessionEndedModal(true)
+    },
+    onRoundTimeUp: (payload) => {
+      setCurrentRound(Math.max(0, payload.roundNumber - 1))
+      setShowVote(true)
+    },
+    onRoundStarted: (payload) => {
+      setShowVote(false)
+      setHasRoundStarted(true)
+      const roundIndex = payload.roundNumber - 1
+      setCurrentRound(roundIndex)
+      setTimeLeft(payload.isUnlimited ? Number.POSITIVE_INFINITY : ROUND_TIMES[roundIndex])
+      toast({
+        title: `${ROUND_NAMES[roundIndex]} 시작!`,
+        description: payload.isUnlimited ? "최종 라운드입니다. 제한 없이 대화하세요!" : "대화를 계속해보세요.",
+        duration: 3000,
+      })
+    },
+    onVoteConfirmRequest: () => {
+      setShowVote(false)
+      setPendingLeave(true)
+      setShowConfirmLeave(true)
+    },
+    onConferenceEnded: () => {
+      setShowVote(false)
+      setShowConfirmLeave(false)
+      setPendingLeave(false)
+      setShowRating(true)
+    },
+  })
+
   const {
     messages: chatMessages,
     isLoading: chatLoading,
@@ -67,6 +124,7 @@ export function SessionRoom({
     conferenceId: sessionId,
     enabled: true,
     autoLoadMessages: true,
+    canLoadMessages: hasJoined,
     panelOpen: showChat,
   })
 
@@ -84,33 +142,6 @@ export function SessionRoom({
     }, 3000)
     return () => clearTimeout(t)
   }, [showSessionEndedModal, onLeave])
-
-  // WebRTC 비디오 refs
-  const localVideoRef = useRef<HTMLVideoElement | null>(null)
-  const remoteVideoRef = useRef<HTMLVideoElement | null>(null)
-
-  // WebRTC 훅 사용
-  const {
-    localStream,
-    remoteStream,
-    isConnected,
-    isConnecting,
-    error: webrtcError,
-    toggleMute,
-    isMuted,
-    toggleVideo,
-    isVideoEnabled,
-  } = useWebRTC({
-    sessionId,
-    userId: user?.id ?? "",
-    localVideoRef,
-    remoteVideoRef,
-    enabled: !!sessionId && !!user?.id,
-    useMock: false,
-    onDisconnected: () => {
-      setShowSessionEndedModal(true)
-    },
-  })
 
   // 로컬 스트림을 비디오 요소에 설정
   useEffect(() => {
@@ -149,25 +180,22 @@ export function SessionRoom({
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [])
 
-  // Timer logic
+  // 타이머: 두 명 모두 입장 후 round-started 수신 시에만 카운트다운 (라운드 종료·투표는 BE round-time-up으로만)
   useEffect(() => {
+    if (!hasRoundStarted) return
     if (currentRound >= 3 || showVote || showGame || showRating || showConfirmLeave || showEndConfirm) return
+    if (timeLeft === Number.POSITIVE_INFINITY || timeLeft <= 0) return
 
     const interval = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          setShowVote(true)
-          return 0
-        }
-        return prev - 1
-      })
+      setTimeLeft((prev) => (prev <= 1 ? 0 : prev - 1))
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [currentRound, showVote, showGame, showRating, showConfirmLeave, showEndConfirm])
+  }, [hasRoundStarted, currentRound, showVote, showGame, showRating, showConfirmLeave, showEndConfirm, timeLeft])
 
   // Silence detection - 5초 이상 정적 시 질문 카드 표시
   useEffect(() => {
+    if (!hasRoundStarted) return
     const interval = setInterval(() => {
       setSilenceTimer((prev) => {
         if (prev >= 5 && !showIceBreaker) {
@@ -190,7 +218,7 @@ export function SessionRoom({
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [showIceBreaker, currentRound])
+  }, [hasRoundStarted, showIceBreaker, currentRound])
 
 
   const formatTime = (seconds: number) => {
@@ -217,18 +245,26 @@ export function SessionRoom({
       setPendingLeave(true)
       setShowConfirmLeave(true)
     } else {
-      // 둘 다 종료 원함 -> 평가 모달로 이동
+      // 둘 다 종료 또는 상대만 거절 -> 결과 후 평가 모달
       setShowRating(true)
     }
   }
 
-  const handleConfirmLeave = () => {
-    setShowConfirmLeave(false)
-    setPendingLeave(false)
+  const handleRejectConfirm = () => {
+    setShowVote(false)
     setShowRating(true)
   }
 
+  /** vote-confirm-request 수신 후 "그래도 나갈게요" → END 전송, conference-ended 대기 */
+  const handleConfirmLeave = () => {
+    sendVote("END")
+    setShowConfirmLeave(false)
+    setPendingLeave(false)
+  }
+
+  /** vote-confirm-request 수신 후 "다음 라운드 진행할게요" → PROCEED 전송, round-started 대기 */
   const handleContinueAfterConfirm = () => {
+    sendVote("PROCEED")
     setShowConfirmLeave(false)
     setPendingLeave(false)
     setCurrentRound((prev) => Math.min(prev + 1, 3))
@@ -512,13 +548,25 @@ export function SessionRoom({
       {/* Game Overlay */}
       {showGame && <BalanceGameOverlay onClose={() => setShowGame(false)} />}
 
-      {/* Round Vote Modal */}
-      <RoundVoteModal open={showVote} currentRound={currentRound} onResult={handleVoteResult} />
+      {/* Round Vote Modal (BE 연동: sendVote 전달 시 서버 투표, 미전달 시 로컬 시뮬레이션) */}
+      <RoundVoteModal
+        open={showVote}
+        currentRound={currentRound}
+        onResult={handleVoteResult}
+        onRejectConfirm={handleRejectConfirm}
+        sendVote={sendVote}
+        conferenceId={sessionId}
+        userId={user?.id ?? ""}
+      />
 
       <ConfirmLeaveModal
         open={showConfirmLeave}
         onConfirmLeave={handleConfirmLeave}
         onContinue={handleContinueAfterConfirm}
+        title="상대방이 대화를 원해요!"
+        description={<>상대방은 아직 대화를 계속하고 싶어해요.<br />정말 대화를 종료하시겠어요?</>}
+        confirmLabel="그래도 나갈게요"
+        continueLabel="다음 라운드 진행할게요"
       />
 
       <EndCallConfirmModal

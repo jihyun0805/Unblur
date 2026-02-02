@@ -72,17 +72,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const loadUser = async () => {
-      const token = getAuthToken()
-      if (!token) {
-        setIsLoading(false)
-        return
-      }
       try {
+        await authApi.reissueToken()
         const userData = await getMyProfile()
         setUser(userData)
         localStorage.setItem("user", JSON.stringify(userData))
       } catch {
-        clearAuthToken()
         setUser(null)
       } finally {
         setIsLoading(false)
