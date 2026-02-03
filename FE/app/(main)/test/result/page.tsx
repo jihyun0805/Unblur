@@ -503,30 +503,6 @@ export default function MbtiResultPage() {
     }
   }, [resultContent.bestMatch.code, resultContent.worstMatch.code])
 
-  const handleShare = async () => {
-    if (!result) return
-    const shareText = `연애 가치관 테스트 결과: ${result}`
-    const shareUrl = typeof window !== "undefined" ? window.location.href : ""
-
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: "연애 가치관 테스트", text: shareText, url: shareUrl })
-        setShareStatus("공유했어요!")
-        return
-      }
-
-      if (navigator.clipboard) {
-        await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`)
-        setShareStatus("링크를 복사했어요!")
-        return
-      }
-
-      setShareStatus("이 환경에서는 공유가 지원되지 않습니다.")
-    } catch {
-      setShareStatus("공유에 실패했어요. 다시 시도해 주세요.")
-    }
-  }
-
   const handleRequestChat = async (targetUserId: string, nickname: string) => {
     try {
       await startOneOnOneMatch(targetUserId)
@@ -570,15 +546,6 @@ export default function MbtiResultPage() {
             <div className="flex items-center justify-between">
               <div className="w-16" />
               <CardTitle className="text-xl">나의 유형은?</CardTitle>
-              <button
-                type="button"
-                onClick={handleShare}
-                disabled={!result}
-                aria-label="공유하기"
-                className="text-muted-foreground hover:text-foreground transition-colors hover:scale-110 disabled:opacity-50"
-              >
-                <Share2 className="w-4 h-4" />
-              </button>
             </div>
             <div className="flex flex-col items-center text-center gap-1">
               {result ? (
