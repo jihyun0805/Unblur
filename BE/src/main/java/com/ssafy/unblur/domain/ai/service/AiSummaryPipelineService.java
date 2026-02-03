@@ -49,7 +49,8 @@ public class AiSummaryPipelineService {
         FileMeta meta = parseFilename(filename);
         Path tempFile = null;
         try {
-            log.info("AI pipeline start: bucket={}, key={}", bucket, decodedKey);
+            log.info("AI 파이프라인 시작: conferenceId={}, round={}, bucket={}, key={}",
+                    meta.conferenceId(), meta.roundNumber(), bucket, decodedKey);
             tempFile = Files.createTempFile("ai-summary-", "-" + filename);
             downloadFromMinio(bucket, decodedKey, tempFile);
             String transcript = transcribe(tempFile);
@@ -60,7 +61,7 @@ public class AiSummaryPipelineService {
                         .orElseThrow(() -> new BaseException(ErrorCode.CONFERENCE_NOT_FOUND));
                 round.updateSummary(summary);
             });
-            log.info("AI pipeline done: conferenceId={}, round={}", meta.conferenceId(), meta.roundNumber());
+            log.info("AI 요약 완료: conferenceId={}, round={}", meta.conferenceId(), meta.roundNumber());
             deleteFromMinio(bucket, decodedKey);
         } catch (IOException e) {
             log.error("AI pipeline IO error", e);
@@ -72,6 +73,7 @@ public class AiSummaryPipelineService {
             if (tempFile != null) {
                 try {
                     Files.deleteIfExists(tempFile);
+                    log.info("임시 파일 삭제 완료: file={}", tempFile.getFileName());
                 } catch (IOException ignored) {
                 }
             }
@@ -223,4 +225,3 @@ public class AiSummaryPipelineService {
         }
     }
 }
-
