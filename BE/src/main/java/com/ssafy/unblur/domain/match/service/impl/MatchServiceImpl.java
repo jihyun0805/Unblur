@@ -15,6 +15,7 @@ import com.ssafy.unblur.domain.match.dto.request.FastMatchingRequest;
 import com.ssafy.unblur.domain.match.dto.request.OneOnOneMatchRequest;
 import com.ssafy.unblur.domain.match.dto.response.MatchingQueueResponse;
 import com.ssafy.unblur.domain.match.dto.response.OneOnOneMatchResponse;
+import com.ssafy.unblur.domain.match.dto.response.OneOnOneRequesterProfileDto;
 import com.ssafy.unblur.domain.match.dto.response.OneOnOneMatchedResponse;
 import com.ssafy.unblur.domain.match.dto.response.OnlineUserDto;
 import com.ssafy.unblur.domain.match.dto.response.OnlineUserListResponse;
@@ -225,6 +226,9 @@ public class MatchServiceImpl implements MatchService {
             throw new BaseException(ErrorCode.MATCH_TARGET_OFFLINE);
         }
 
+        User requester = userRepository.findById(userId)
+                .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
+
         LocalDateTime now = LocalDateTime.now(clock);
 
         // 대기열 항목 생성 및 등록
@@ -241,11 +245,16 @@ public class MatchServiceImpl implements MatchService {
         log.info("1:1 매칭 대기열 등록. userId={}, targetUserId={}, requestId={}", userId, targetUserId, item.getRequestId());
 
         // 대상 사용자에게 알림 전송
-        OneOnOneMatchResponse response = buildOneOnOneResponse(item, "pending");
-        eventPublisher.publish(targetUserId, SseEventType.ONE_ON_ONE_REQUESTED, response);
+        OneOnOneMatchResponse recipientResponse = buildOneOnOneResponse(
+                item,
+                "pending",
+                OneOnOneRequesterProfileDto.from(requester)
+        );
+
+        eventPublisher.publish(targetUserId, SseEventType.ONE_ON_ONE_REQUESTED, recipientResponse);
         log.info("1:1 매칭 요청 전송. requesterId={}, targetUserId={}, requestId={}", userId, targetUserId, item.getRequestId());
 
-        return response;
+        return buildOneOnOneResponse(item, "pending");
     }
 
     @Override
@@ -438,11 +447,25 @@ public class MatchServiceImpl implements MatchService {
      * @return 1:1 매칭 응답
      */
     private OneOnOneMatchResponse buildOneOnOneResponse(MatchQueueItem item, String targetStatus) {
+        return buildOneOnOneResponse(item, targetStatus, null);
+    }
+
+    /**
+     * 1:1 매칭 응답을 구성하는 메서드
+     *
+     * @param item         대기열 항목
+     * @param targetStatus 대상 상태
+     * @return 1:1 매칭 응답
+     */
+    private OneOnOneMatchResponse buildOneOnOneResponse(MatchQueueItem item,
+                                                        String targetStatus,
+                                                        OneOnOneRequesterProfileDto requesterProfile) {
         return OneOnOneMatchResponse.builder()
                 .requestId(item.getRequestId().toString())
                 .status(item.getStatus().name().toLowerCase())
                 .queueType(item.getMatchType().name().toLowerCase())
                 .targetUserId(item.getRecipientUserId().toString())
+                .requesterProfile(requesterProfile)
                 .targetStatus(targetStatus)
                 .estimatedWaitSeconds(policy.averageWaitSeconds())
                 .queuedAt(item.getCreatedAt())
