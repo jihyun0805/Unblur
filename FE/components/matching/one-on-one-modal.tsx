@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Send } from "lucide-react"
@@ -49,6 +49,8 @@ export function OneOnOneModal({ open, onOpenChange, onRequestChat }: OneOnOneMod
   const { toast } = useToast()
   const [matchedUsers, setMatchedUsers] = useState<MatchedUser[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const isConflictError = (err: unknown) =>
+    err instanceof Error && err.message?.includes("API_ERROR_409")
 
   useEffect(() => {
     if (!open) return
@@ -79,6 +81,9 @@ export function OneOnOneModal({ open, onOpenChange, onRequestChat }: OneOnOneMod
       onRequestChat(userId)
       onOpenChange(false)
     } catch (err) {
+      if (isConflictError(err)) {
+        return
+      }
       toast({
         title: "요청 실패",
         description: err instanceof Error ? err.message : "매칭 요청에 실패했습니다.",
@@ -92,9 +97,9 @@ export function OneOnOneModal({ open, onOpenChange, onRequestChat }: OneOnOneMod
       <DialogContent className="sm:max-w-md bg-background">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-center">1:1 매칭</DialogTitle>
-          <p className="text-sm text-muted-foreground text-center mt-2">
+          <DialogDescription className="text-sm text-muted-foreground text-center mt-2">
             현재 활동 중인 사람들에게 매칭 요청을 보내보세요!
-          </p>
+          </DialogDescription>
         </DialogHeader>
 
         <div className="mt-4 space-y-3 max-h-96 overflow-y-auto">

@@ -69,6 +69,9 @@ export function MatchRequestToaster() {
         return
       }
 
+      const isConflictError = (err: unknown) =>
+        err instanceof Error && err.message?.includes("API_ERROR_409")
+
       const t = showToast({
         title: "1:1 매칭 요청",
         description: "매칭 요청이 왔습니다. 수락하시겠습니까?",
@@ -95,6 +98,10 @@ export function MatchRequestToaster() {
                     router.push(`/session/${conferenceId}`)
                   } catch (err) {
                     console.error("1:1 수락 실패:", err)
+                    if (isConflictError(err)) {
+                      t.dismiss()
+                      return
+                    }
                     showToast({
                       title: "수락 실패",
                       description: err instanceof Error ? err.message : "수락에 실패했습니다.",
@@ -120,6 +127,10 @@ export function MatchRequestToaster() {
                     })
                   } catch (err) {
                     console.error("1:1 거절 실패:", err)
+                    if (isConflictError(err)) {
+                      t.dismiss()
+                      return
+                    }
                     showToast({
                       title: "거절 실패",
                       description: err instanceof Error ? err.message : "거절에 실패했습니다.",
