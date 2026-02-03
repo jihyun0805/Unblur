@@ -117,6 +117,7 @@ export function SessionRoom({
     remoteAudioMuted,
     sendVote,
     leaveSession,
+    replaceVideoTrack,
     signalingClient,
   } = useWebRTC({
     sessionId,
@@ -283,6 +284,13 @@ export function SessionRoom({
       localVideoRef.current.play().catch(() => {})
     }
   }, [localStream])
+
+  const handleFilteredStream = useCallback(
+    (filteredStream: MediaStream | null) => {
+      replaceVideoTrack(filteredStream)
+    },
+    [replaceVideoTrack]
+  )
 
   // 원격 스트림을 비디오 요소에 설정 및 재생
   useEffect(() => {
@@ -713,6 +721,7 @@ export function SessionRoom({
                     blurLevel={blurLevel}
                     smoothness={beautyFilter.smoothness}
                     lipIntensity={beautyFilter.lipIntensity}
+                    onFilteredStream={handleFilteredStream}
                   />
                 </div>
               )}
