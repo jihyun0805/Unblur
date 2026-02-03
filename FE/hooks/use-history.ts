@@ -76,6 +76,12 @@ export function useHistory({ page, size }: UseHistoryOptions) {
     }
   }, [history])
 
+  const setItemUnreadCount = useCallback((conferenceId: string, unreadCount: number) => {
+    setHistory((prev) =>
+      prev.map((item) => (item.id === conferenceId ? { ...item, unreadCount } : item))
+    )
+  }, [])
+
   return {
     history,
     summary,
@@ -87,5 +93,6 @@ export function useHistory({ page, size }: UseHistoryOptions) {
     blockPartner,
     unblockPartner,
     blockedIds,
+    setItemUnreadCount,
   }
 }
