@@ -5,7 +5,7 @@ import { useChatContext } from "@/contexts/chat-context"
 import { ChatModal } from "./chat-modal"
 import { UserProfileModal } from "@/components/common/user-profile-modal"
 import { Input } from "@/components/ui/input"
-import { HistoryPagination } from "./history-pagination"
+import { HistoryPagination } from "@/components/ui/pagination"
 import { useAuth } from "@/contexts/auth-context"
 import { useHistory } from "@/hooks/use-history"
 import { getPartnerProfile } from "@/lib/api/history"
@@ -67,14 +67,12 @@ export function HistoryPage() {
     wsService.connect().catch(() => {})
   }, [wsService])
   const [currentPage, setCurrentPage] = useState(1)
-  const { history, summary, totalPages, isLoading, error, refetch, blockPartner, unblockPartner, blockedIds, setItemUnreadCount } =
-    useHistory({ page: currentPage - 1, size: pageSize })
   const [selectedChat, setSelectedChat] = useState<HistoryItem | null>(null)
   const [selectedProfile, setSelectedProfile] = useState<HistoryItem | null>(null)
   const [isProfileLoading, setIsProfileLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
-  const { history, summary, totalPages, isLoading, error, refetch, blockPartner, unblockPartner, blockedIds } =
+  const { history, summary, totalPages, isLoading, error, refetch, blockPartner, unblockPartner, blockedIds, setItemUnreadCount } =
     useHistory({ page: currentPage - 1, size: pageSize, search: debouncedSearch })
 
   const sortedHistory = useMemo(() => {
@@ -155,10 +153,10 @@ export function HistoryPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-3">
-          {isLoading ? (
-            <HistoryLoading />
-          ) : error ? (
+          {error ? (
             <HistoryError onRetry={refetch} />
+          ) : isLoading && history.length === 0 ? (
+            <HistoryLoading />
           ) : (
             <>
               {pagedHistory.map((item) => (
@@ -170,6 +168,8 @@ export function HistoryPage() {
                   onBlock={(target) => blockPartner(target.id, target.partnerId)}
                   onUnblock={(target) => unblockPartner(target.id, target.partnerId)}
                   isBlocked={blockedIds.includes(item.id)}
+                  isChatOpen={selectedChat?.id === item.id}
+                  setItemUnreadCount={setItemUnreadCount}
                 />
               ))}
               {emptySlots > 0 &&
