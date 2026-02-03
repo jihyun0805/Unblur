@@ -2,8 +2,8 @@
 
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import { User } from "lucide-react"
 import { SURVEY_QUESTIONS } from "@/lib/survey-questions"
+import { getLoveDnaImage } from "@/lib/profile-image"
 
 export interface UserProfileData {
   nickname?: string
@@ -13,6 +13,7 @@ export interface UserProfileData {
   region?: string
   bio?: string
   mbti?: string
+  loveDna?: string
   interests?: string[]
   roundSummaries?: string[]
 }
@@ -38,9 +39,11 @@ export function UserProfileModal({
         <div className="space-y-3 pt-2">
           {/* 닉네임, 선명도 */}
           <div className="flex items-center gap-4 px-4">
-            <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-              <User className="w-7 h-7 text-primary-foreground" />
-            </div>
+            <img
+              src={getLoveDnaImage(profile.loveDna)}
+              alt={profile.nickname ? `${profile.nickname} 프로필 이미지` : "프로필 이미지"}
+              className="w-16 h-16 rounded-full object-cover bg-card flex-shrink-0"
+            />
             <div className="flex-1">
               <h2 className="text-xl font-bold">{profile.nickname || "-"}</h2>
               <div className="flex items-center gap-1.5 mt-0.5">
