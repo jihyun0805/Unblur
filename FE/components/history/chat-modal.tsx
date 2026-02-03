@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useMemo, startTransition } from "react"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -29,13 +29,14 @@ export function ChatModal({ open, onOpenChange, partner, isBlocked = false }: Ch
   const { connectionState } = useChatContext()
   const { user } = useAuth()
 
+  const scrollToBottomRef = useRef<(() => void) | null>(null)
+  scrollToBottomRef.current = () => {
+    const el = scrollContainerRef.current
+    if (el) el.scrollTop = 0 
+  }
   const scrollToBottom = () => {
     requestAnimationFrame(() => {
-      const el = scrollContainerRef.current
-      if (el) {
-        // flex-col-reverse 이므로 맨 아래(최신 메시지) = scrollTop 0
-        el.scrollTop = 0
-      }
+      requestAnimationFrame(() => scrollToBottomRef.current?.())
     })
   }
 
@@ -53,20 +54,31 @@ export function ChatModal({ open, onOpenChange, partner, isBlocked = false }: Ch
     panelOpen: open,
   })
 
-  // 모달 열릴 때마다 최신 메시지 다시 가져오기 (빨간점 있을 때 들어와도 새 메시지 보이도록)
+  // 모달 열릴 때마다 최신 메시지 다시 가져오기 
   useEffect(() => {
     if (open && !isBlocked) {
       refreshMessages()
     }
   }, [open, isBlocked, refreshMessages])
 
-  // 표시용 메시지 목록 (낙관적 전송 시 pending 포함, use-chat 수정 없이 컴포넌트에서만 처리)
-  const displayMessages: ChatMessage[] =
-    pendingMessage
-      ? [...messages, pendingMessage].sort(
-          (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
-        )
-      : messages
+  // 표시용 메시지 목록: 낙관적 메시지 추가, 서버 메시지와 중복 시 pending 제외
+  const displayMessages: ChatMessage[] = useMemo(() => {
+    if (!pendingMessage) return messages
+    const last = messages[messages.length - 1]
+    const isDuplicate =
+      last?.isMine &&
+      last.content === pendingMessage.content &&
+      Math.abs(last.createdAt.getTime() - pendingMessage.createdAt.getTime()) < 4000
+    if (isDuplicate) return messages
+    return [...messages, pendingMessage]
+  }, [messages, pendingMessage])
+
+  const prevLengthRef = useRef(0)
+  useEffect(() => {
+    if (!open || displayMessages.length <= prevLengthRef.current) return
+    prevLengthRef.current = displayMessages.length
+    scrollToBottom()
+  }, [open, displayMessages.length])
 
   useEffect(() => {
     if (open && !isBlocked) {
@@ -74,19 +86,13 @@ export function ChatModal({ open, onOpenChange, partner, isBlocked = false }: Ch
     }
   }, [open, isBlocked, markChatAsRead])
 
-  // 모달이 열릴 때 맨 아래(최신 메시지)로 스크롤
+  // 모달이 열릴 때만 맨 아래로 스크롤
   useEffect(() => {
     if (open) {
+      prevLengthRef.current = displayMessages.length
       scrollToBottom()
     }
   }, [open])
-
-  // 새 메시지 올 때마다 맨 아래로 스크롤
-  useEffect(() => {
-    if (open && displayMessages.length > 0) {
-      scrollToBottom()
-    }
-  }, [open, displayMessages.length])
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() || isSendingMessage || isBlocked) return
@@ -108,7 +114,7 @@ export function ChatModal({ open, onOpenChange, partner, isBlocked = false }: Ch
 
     try {
       await sendChatMessage(trimmed)
-      setPendingMessage(null)
+      startTransition(() => setPendingMessage(null))
     } catch (error: any) {
       setPendingMessage(null)
       setNewMessage(trimmed)

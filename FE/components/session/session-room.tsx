@@ -176,6 +176,15 @@ export function SessionRoom({
     if (showChat) chatMarkAsRead()
   }, [showChat, chatMarkAsRead])
 
+  // 채팅 패널을 닫을 때 읽음 처리 
+  const prevShowChatRef = useRef(false)
+  useEffect(() => {
+    if (prevShowChatRef.current && !showChat) {
+      chatMarkAsRead()
+    }
+    prevShowChatRef.current = showChat
+  }, [showChat, chatMarkAsRead])
+
   // 밸런스 게임 메시지 수신 처리 (오버레이가 열리지 않았을 때도 수신)
   useEffect(() => {
     if (!signalingClient || !user?.id) return

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import {
   AlertDialog,
@@ -43,13 +43,27 @@ export function HistoryItemCard({ item, onProfileClick, onChatClick, onBlock, on
     autoLoadMessages: false,
     panelOpen: isChatOpen,
   })
-  // autoLoadMessages: false라 로컬 messages는 비어 있음 → 서버 item.unreadCount 우선 사용
-  const hasUnread = !isChatOpen && (item.unreadCount ?? unreadCount) > 0
+  const effectiveUnread = Math.max(item.unreadCount ?? 0, unreadCount)
+  const hasUnread = !isChatOpen && effectiveUnread > 0
+  useEffect(() => {
+    if (unreadCount > (item.unreadCount ?? 0)) {
+      setItemUnreadCount?.(item.id, unreadCount)
+    }
+  }, [unreadCount, item.unreadCount, item.id, setItemUnreadCount])
 
+  const wasChatOpenRef = useRef(false)
   useEffect(() => {
     if (isChatOpen) {
       markAsRead()
       setItemUnreadCount?.(item.id, 0)
+      wasChatOpenRef.current = true
+    } else {
+      // 모달을 닫을 때도 읽음 처리
+      if (wasChatOpenRef.current) {
+        markAsRead()
+        setItemUnreadCount?.(item.id, 0)
+        wasChatOpenRef.current = false
+      }
     }
   }, [isChatOpen, markAsRead, item.id, setItemUnreadCount])
 
