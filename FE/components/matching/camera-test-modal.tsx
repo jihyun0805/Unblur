@@ -202,7 +202,7 @@ export function CameraTestModal({ open, onOpenChange, onReady }: CameraTestModal
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl w-[90vw] h-[85vh] bg-background p-0 overflow-hidden flex flex-col max-[720px]:fixed max-[720px]:inset-0 max-[720px]:w-screen max-[720px]:h-screen max-[720px]:max-w-none max-[720px]:max-h-none max-[720px]:rounded-none max-[720px]:border-0 max-[720px]:top-0 max-[720px]:left-0 max-[720px]:translate-x-0 max-[720px]:translate-y-0">
+      <DialogContent className="sm:max-w-4xl w-[90vw] h-[85vh] bg-background p-0 overflow-hidden flex flex-col max-[1023px]:h-[85vh] max-[1023px]:max-h-[85vh] max-[768px]:fixed max-[768px]:inset-0 max-[768px]:w-screen max-[768px]:h-screen max-[768px]:max-w-none max-[768px]:max-h-none max-[768px]:rounded-none max-[768px]:border-0 max-[768px]:top-0 max-[768px]:left-0 max-[768px]:translate-x-0 max-[768px]:translate-y-0">
         <DialogHeader className="px-6 pt-6 pb-4 border-b flex-shrink-0">
           <DialogTitle className="text-2xl font-bold text-center">카메라 테스트</DialogTitle>
           <p className="text-muted-foreground text-center text-sm">
@@ -212,8 +212,8 @@ export function CameraTestModal({ open, onOpenChange, onReady }: CameraTestModal
 
         <div className="flex-1 flex overflow-hidden flex-col md:flex-row">
           {/* 왼쪽: Camera Preview */}
-          <div className="flex-1 p-4 flex items-center justify-center min-w-0 md:min-h-0 max-[720px]:h-[50vh] max-[720px]:flex-none">
-            <div className="relative w-full max-w-md aspect-square rounded-2xl overflow-hidden bg-[#2a2a2a] max-[720px]:h-full max-[720px]:w-full max-[720px]:max-w-none max-[720px]:aspect-auto">
+          <div className="flex-1 p-4 flex items-center justify-center min-w-0 md:min-h-0 max-[768px]:h-[45vh] max-[768px]:flex-none">
+            <div className="relative w-full max-w-md aspect-square rounded-2xl overflow-hidden bg-[#2a2a2a] max-[768px]:h-full max-[768px]:w-full max-[768px]:max-w-none max-[768px]:aspect-auto max-[1023px]:max-w-[360px]">
             {hasCamera === false ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
                 <AlertCircle className="w-12 h-12 mb-4 text-destructive" />
@@ -276,22 +276,24 @@ export function CameraTestModal({ open, onOpenChange, onReady }: CameraTestModal
           </div>
 
           {/* 오른쪽: 컨트롤 패널 */}
-          <div className="w-full md:w-[400px] border-t md:border-t-0 md:border-l overflow-y-auto p-4 flex flex-col gap-4">
+          <div className="w-full md:w-[360px] border-t md:border-t-0 md:border-l overflow-y-auto p-4 flex flex-col gap-4 max-[1023px]:min-h-0">
             {/* Blur Level Selector */}
             <div className="space-y-2 flex-shrink-0">
               <Label className="text-sm font-medium">블러 단계 미리보기</Label>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-4 max-[400px]:grid-cols-2 gap-2">
               {BLUR_LEVELS.map((blur, index) => (
                 <button
                   key={blur.level}
                   onClick={() => setSelectedBlur(index)}
-                  className={`p-3 rounded-xl text-center transition-all ${
+                  className={`p-3 max-[400px]:p-2 rounded-xl text-center transition-all ${
                     selectedBlur === index ? "bg-primary text-primary-foreground" : "bg-card hover:bg-card/80"
                   }`}
                 >
-                  <p className="font-medium text-sm">{blur.label}</p>
+                  <p className="font-medium text-sm max-[400px]:text-xs">{blur.label}</p>
                   <p
-                    className={`text-xs mt-1 ${selectedBlur === index ? "text-primary-foreground/80" : "text-muted-foreground"}`}
+                    className={`text-xs max-[400px]:text-[11px] mt-1 ${
+                      selectedBlur === index ? "text-primary-foreground/80" : "text-muted-foreground"
+                    }`}
                   >
                     {blur.description}
                   </p>
