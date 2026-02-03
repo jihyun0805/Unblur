@@ -54,20 +54,8 @@ public class RefreshTokenService {
     }
 
     /**
-     * 토큰의 유효성을 DB에서 검증합니다.
-     */
-    @Transactional(readOnly = true)
-    public boolean validateToken(String jti, String token) {
-        return refreshTokenRepository.findByJti(jti)
-                .map(refreshToken ->
-                        refreshToken.canRefresh() &&
-                                refreshToken.getTokenHash().equals(hashToken(token)))
-                .orElse(false);
-    }
-
-    /**
      * Refresh Token을 검증하고 새로운 토큰을 발급합니다. (Token Rotation)
-     *
+     * 동시 요청 시 race condition을 방지하기 위해 비관적 락을 사용합니다.
      */
     @Transactional
     public TokenReissueResponseDto reissue(String refreshToken) {
@@ -75,38 +63,51 @@ public class RefreshTokenService {
             throw new BaseException(ErrorCode.INVALID_TOKEN);
         }
 
-        // JWT에서 정보 추출 및 검증
+        // JWT에서 정보 추출
         String jti;
         String email;
         try {
             jti = jwtUtil.getJti(refreshToken);
             email = jwtUtil.getUsername(refreshToken);
-
-            if (jwtUtil.isTokenExpired(refreshToken)) {
-                throw new BaseException(ErrorCode.EXPIRED_TOKEN);
-            }
-        } catch (BaseException e) {
-            throw e;
         } catch (Exception e) {
             throw new BaseException(ErrorCode.INVALID_TOKEN);
         }
 
-        // DB에서 Refresh Token 검증
-        if (!validateToken(jti, refreshToken)) {
-            throw new BaseException(ErrorCode.INVALID_TOKEN);
+        // JWT 만료 검증
+        if (jwtUtil.isTokenExpired(refreshToken)) {
+            throw new BaseException(ErrorCode.EXPIRED_TOKEN);
         }
 
         // 사용자 조회
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
 
+        // DB에서 Refresh Token 조회 (비관적 락으로 동시 요청 직렬화)
+        RefreshToken storedToken = refreshTokenRepository.findByUserForUpdate(user)
+                .orElseThrow(() -> new BaseException(ErrorCode.INVALID_TOKEN));
+
+        // jti 검증 (다른 요청이 이미 토큰을 교체했는지 확인)
+        if (!storedToken.getJti().equals(jti)) {
+            throw new BaseException(ErrorCode.INVALID_TOKEN);
+        }
+
+        // 토큰 해시 검증
+        if (!storedToken.getTokenHash().equals(hashToken(refreshToken))) {
+            throw new BaseException(ErrorCode.INVALID_TOKEN);
+        }
+
+        // 토큰 상태 검증 (만료, 취소, 교체 여부)
+        if (!storedToken.canRefresh()) {
+            throw new BaseException(ErrorCode.INVALID_TOKEN);
+        }
+
         // 새로운 토큰 생성 (Token Rotation)
         String newAccessToken = jwtUtil.createAccessToken(user.getId(), email);
         String newRefreshToken = jwtUtil.createRefreshToken(user.getId(), email);
+        String newJti = jwtUtil.getJti(newRefreshToken);
 
-        // 새로운 Refresh Token 저장 (기존 토큰 대체)
-        saveRefreshToken(user, newRefreshToken,
-                jwtUtil.getJti(newRefreshToken),
+        // 기존 토큰 업데이트 (이미 락을 획득한 엔티티 직접 사용)
+        storedToken.update(newJti, hashToken(newRefreshToken),
                 jwtUtil.getExpiration(newRefreshToken).toInstant());
 
         return new TokenReissueResponseDto(newAccessToken, newRefreshToken);
