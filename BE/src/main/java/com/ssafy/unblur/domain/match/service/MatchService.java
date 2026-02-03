@@ -1,6 +1,7 @@
 package com.ssafy.unblur.domain.match.service;
 
 import com.ssafy.unblur.domain.match.dto.request.FastMatchingRequest;
+import com.ssafy.unblur.domain.auth.model.LoveDna;
 import com.ssafy.unblur.domain.match.dto.request.OneOnOneMatchRequest;
 import com.ssafy.unblur.domain.match.dto.response.MatchingQueueResponse;
 import com.ssafy.unblur.domain.match.dto.response.OneOnOneMatchResponse;
@@ -73,6 +74,6 @@ public interface MatchService {
      * @param limit  최대 반환 개수
      * @return 온라인 사용자 목록
      */
-    OnlineUserListResponse getRandomOnlineUsers(UUID userId, int limit);
+    OnlineUserListResponse getRandomOnlineUsers(UUID userId, int limit, LoveDna loveDna);
 
 }

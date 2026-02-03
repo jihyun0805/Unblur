@@ -7,6 +7,7 @@ import com.ssafy.unblur.common.service.event.SseEventType;
 import com.ssafy.unblur.common.util.TransactionUtils;
 import com.ssafy.unblur.common.annotation.TimeWindow;
 import com.ssafy.unblur.domain.auth.model.Gender;
+import com.ssafy.unblur.domain.auth.model.LoveDna;
 import com.ssafy.unblur.domain.auth.model.User;
 import com.ssafy.unblur.domain.auth.repository.UserRepository;
 import com.ssafy.unblur.domain.match.config.MatchConfig.MatchPolicy;
@@ -357,8 +358,8 @@ public class MatchServiceImpl implements MatchService {
     }
 
     @Override
-    public OnlineUserListResponse getRandomOnlineUsers(UUID userId, int limit) {
-        log.debug("온라인 사용자 목록 조회. userId={}, limit={}", userId, limit);
+    public OnlineUserListResponse getRandomOnlineUsers(UUID userId, int limit, LoveDna loveDna) {
+        log.debug("온라인 사용자 목록 조회. userId={}, limit={}, loveDna={}", userId, limit, loveDna);
         // 사용자 성별 조회
         Gender myGender = userRepository.findById(userId)
                 .map(User::getGender)
@@ -377,6 +378,7 @@ public class MatchServiceImpl implements MatchService {
         Set<UUID> connectedUserIds = sseService.getConnectedUserIds();
         List<User> oppositeGenderUsers = userRepository.findAllById(connectedUserIds).stream()
                 .filter(user -> user.getGender() == oppositeGender)
+                .filter(user -> loveDna == null || loveDna.equals(user.getLoveDna()))
                 .toList();
 
         // 응답용 사용자 목록 구성
