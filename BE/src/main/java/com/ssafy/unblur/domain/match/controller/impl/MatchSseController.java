@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 /**
- * 留ㅼ묶 SSE 援щ룆 而⑦듃濡ㅻ윭
+ * 매칭 SSE 구독 컨트롤러
  */
 @RestController
 @RequestMapping("/api/v1/match")
@@ -32,14 +32,14 @@ public class MatchSseController implements MatchSseDocs {
     public SseEmitter connect(@AuthenticationPrincipal CustomUserDetails userDetails) {
         try {
             if (userDetails == null) {
-                throw new IllegalStateException("SSE ?ъ슜???뺣낫媛 ?놁뒿?덈떎.");
+                throw new IllegalStateException("SSE 사용자 정보가 없습니다.");
             }
 
-            log.info("SSE 援щ룆 ?붿껌. userId={}", userDetails.getUserId());
+            log.info("SSE 구독 요청. userId={}", userDetails.getUserId());
             return sseService.connect(userDetails.getUserId());
 
         } catch (Exception e) {
-            log.warn("SSE 援щ룆 ?ㅻ쪟. error={}", e.toString());
+            log.warn("SSE 구독 오류. error={}", e.toString());
             SseEmitter emitter = new SseEmitter(0L);
             emitter.completeWithError(e);
             return emitter;
@@ -49,11 +49,11 @@ public class MatchSseController implements MatchSseDocs {
     @Override
     @DeleteMapping("/stream")
     public ResponseEntity<BaseResponse<Void>> disconnect(@AuthenticationPrincipal CustomUserDetails userDetails) {
-        log.info("SSE 援щ룆 ?댁젣 ?붿껌. userId={}", userDetails.getUserId());
+        log.info("SSE 구독 해제 요청. userId={}", userDetails.getUserId());
 
         sseService.disconnect(userDetails.getUserId());
         return ResponseEntity.status(HttpStatus.NO_CONTENT)
-                .body(BaseResponse.onNoContent("留ㅼ묶 ?곹깭 ?ㅽ듃由??곌껐???댁젣?섏뿀?듬땲??")
+                .body(BaseResponse.onNoContent("매칭 상태 스트림 연결이 해제되었습니다.")
                 );
     }
 }
