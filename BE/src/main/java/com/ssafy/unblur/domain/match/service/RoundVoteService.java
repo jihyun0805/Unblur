@@ -1,5 +1,6 @@
 package com.ssafy.unblur.domain.match.service;
 
+import com.ssafy.unblur.common.service.EventSender;
 import com.ssafy.unblur.common.service.event.WsEventType;
 import com.ssafy.unblur.common.util.TransactionUtils;
 import com.ssafy.unblur.domain.auth.model.User;
@@ -48,9 +49,9 @@ public class RoundVoteService {
     private final RoundTimerService timerService;
 
     /**
-     * 매칭 이벤트 퍼블리셔
+     * 이벤트 전송기
      */
-    private final MatchEventPublisher eventPublisher;
+    private final EventSender eventSender;
 
     /**
      * 세션 저장소 레포지토리
@@ -262,7 +263,7 @@ public class RoundVoteService {
 
         // 종료 선택자에게 재확인 요청
         RoundMessages.VoteConfirmRequest endVoterMessage = RoundMessages.VoteConfirmRequest.of(conferenceId.toString());
-        eventPublisher.publish(endVoter, WsEventType.VOTE_CONFIRM_REQUEST, endVoterMessage);
+        eventSender.publish(endVoter, WsEventType.VOTE_CONFIRM_REQUEST, endVoterMessage);
     }
 
     /**
@@ -328,7 +329,7 @@ public class RoundVoteService {
                     .build();
 
             for (UUID userId : participants) {
-                eventPublisher.publish(userId, WsEventType.ROUND_STARTED, message);
+                eventSender.publish(userId, WsEventType.ROUND_STARTED, message);
             }
 
             // 새 라운드 녹음 시작
@@ -377,7 +378,7 @@ public class RoundVoteService {
             RoundMessages.ConferenceEnded message = RoundMessages.ConferenceEnded.of(conferenceId.toString());
 
             for (UUID userId : participants) {
-                eventPublisher.publish(userId, WsEventType.CONFERENCE_ENDED, message);
+                eventSender.publish(userId, WsEventType.CONFERENCE_ENDED, message);
             }
 
             // 타이머 정리

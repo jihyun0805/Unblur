@@ -7,7 +7,7 @@ import com.ssafy.unblur.common.exception.ErrorCode;
 import com.ssafy.unblur.common.service.event.WsEventType;
 import com.ssafy.unblur.domain.match.model.VoteChoice;
 import com.ssafy.unblur.domain.match.service.ConferenceLifecycleService;
-import com.ssafy.unblur.domain.match.service.MatchEventPublisher;
+import com.ssafy.unblur.common.service.EventSender;
 import com.ssafy.unblur.domain.match.service.RoundVoteService;
 import com.ssafy.unblur.domain.match.service.BalanceGameService;
 import com.ssafy.unblur.domain.rtc.dto.event.SignalingMessages;
@@ -15,6 +15,7 @@ import com.ssafy.unblur.domain.rtc.model.UserSession;
 import com.ssafy.unblur.domain.rtc.service.KurentoRoomService;
 import com.ssafy.unblur.domain.rtc.service.RtcParticipantStore;
 import com.ssafy.unblur.domain.rtc.service.RtcSessionStore;
+import com.ssafy.unblur.common.service.WebSocketMessageSender;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.kurento.client.IceCandidate;
@@ -27,9 +28,7 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Kurento WebRTC 시그널링 핸들러
@@ -52,9 +51,9 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
     private final ConferenceLifecycleService conferenceLifecycleService;
 
     /**
-     * 매치 이벤트 발행자 (WebSocket 메시지 전송)
+     * 이벤트 전송기 (WebSocket 메시지 전송)
      */
-    private final MatchEventPublisher matchEventPublisher;
+    private final EventSender eventSender;
 
     /**
      * 라운드 투표 처리 서비스
@@ -82,9 +81,9 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
     private final ObjectMapper objectMapper;
 
     /**
-     * 세션별 메시지 전송 동기화용 락 맵
+     * WebSocket 메시지 전송기
      */
-    private final Map<String, Object> sessionLocks = new ConcurrentHashMap<>();
+    private final WebSocketMessageSender webSocketMessageSender;
 
     /**
      * 텍스트 메시지를 수신해 type 값에 따라 처리기로 분기하는 메서드
@@ -151,7 +150,7 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
 
         // 세션 정보 조회
         String sessionId = session.getId();
-        sessionLocks.remove(sessionId);
+        webSocketMessageSender.release(sessionId);
 
         // 룸 퇴장 처리
         sessionStore.getConferenceId(sessionId).ifPresent(conferenceId ->
@@ -501,7 +500,7 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
         // 참가자에게 left 이벤트 발송
         for (UUID participantId : participants) {
             if (!participantId.equals(userId)) {
-                matchEventPublisher.publish(participantId, WsEventType.LEFT, leftMessage);
+                eventSender.publish(participantId, WsEventType.LEFT, leftMessage);
             }
         }
     }
@@ -568,18 +567,7 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
      * @throws IOException 전송 중 오류
      */
     private void send(WebSocketSession session, Object message) throws IOException {
-        // 세션 열림 여부 확인
-        if (!session.isOpen()) {
-            return;
-        }
-
-        // 세션별 락을 통해 동시 전송 충돌 방지
-        Object lock = sessionLocks.computeIfAbsent(session.getId(), id -> new Object());
-        synchronized (lock) {
-            if (session.isOpen()) {
-                session.sendMessage(new TextMessage(objectMapper.writeValueAsString(message))); // 메시지 전송
-            }
-        }
+        webSocketMessageSender.send(session, message);
     }
 
 }

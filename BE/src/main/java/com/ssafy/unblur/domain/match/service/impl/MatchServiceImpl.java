@@ -3,9 +3,9 @@ package com.ssafy.unblur.domain.match.service.impl;
 import com.ssafy.unblur.common.exception.BaseException;
 import com.ssafy.unblur.common.exception.ErrorCode;
 import com.ssafy.unblur.common.service.SseService;
+import com.ssafy.unblur.common.service.EventSender;
 import com.ssafy.unblur.common.service.event.SseEventType;
 import com.ssafy.unblur.common.util.TransactionUtils;
-import com.ssafy.unblur.common.annotation.TimeWindow;
 import com.ssafy.unblur.domain.auth.model.Gender;
 import com.ssafy.unblur.domain.auth.model.LoveDna;
 import com.ssafy.unblur.domain.auth.model.User;
@@ -22,7 +22,6 @@ import com.ssafy.unblur.domain.match.dto.response.OnlineUserDto;
 import com.ssafy.unblur.domain.match.dto.response.OnlineUserListResponse;
 import com.ssafy.unblur.domain.match.model.*;
 import com.ssafy.unblur.domain.match.repository.ConferenceRepository;
-import com.ssafy.unblur.domain.match.service.MatchEventPublisher;
 import com.ssafy.unblur.domain.match.service.MatchQueueService;
 import com.ssafy.unblur.domain.match.service.MatchService;
 import lombok.RequiredArgsConstructor;
@@ -63,7 +62,7 @@ public class MatchServiceImpl implements MatchService {
     /**
      * 매칭 상태 알림 전송기
      */
-    private final MatchEventPublisher eventPublisher;
+    private final EventSender eventSender;
 
     /**
      * SSE 서비스 (연결 상태 조회용)
@@ -122,7 +121,7 @@ public class MatchServiceImpl implements MatchService {
         MatchingQueueResponse response = buildResponse(item);
 
         if (!matched) {
-            eventPublisher.publish(userId, SseEventType.QUICK_WAITING, response);
+            eventSender.publish(userId, SseEventType.QUICK_WAITING, response);
         }
 
         return response;
@@ -164,7 +163,7 @@ public class MatchServiceImpl implements MatchService {
                 .occurredAt(LocalDateTime.now(clock))
                 .build();
 
-        eventPublisher.publish(userId, SseEventType.QUICK_CANCELED, event);
+        eventSender.publish(userId, SseEventType.QUICK_CANCELED, event);
         log.info("빠른 매칭 취소 완료. userId={}, requestId={}", userId, requestId);
     }
 
@@ -213,9 +212,9 @@ public class MatchServiceImpl implements MatchService {
             previous.markTimeout();
             OneOnOneMatchResponse timeoutResponse = buildOneOnOneResponse(previous, "timeout");
 
-            eventPublisher.publish(previous.getRequesterUserId(), SseEventType.ONE_ON_ONE_TIMEOUT, timeoutResponse);
+            eventSender.publish(previous.getRequesterUserId(), SseEventType.ONE_ON_ONE_TIMEOUT, timeoutResponse);
             if (previous.getRecipientUserId() != null) {
-                eventPublisher.publish(previous.getRecipientUserId(), SseEventType.ONE_ON_ONE_TIMEOUT, timeoutResponse);
+                eventSender.publish(previous.getRecipientUserId(), SseEventType.ONE_ON_ONE_TIMEOUT, timeoutResponse);
             }
 
             log.info("1:1 매칭 요청 타임아웃 처리(즉시). userId={}, previousRequestId={}", userId, previous.getRequestId());
@@ -252,7 +251,7 @@ public class MatchServiceImpl implements MatchService {
                 OneOnOneRequesterProfileDto.from(requester)
         );
 
-        eventPublisher.publish(targetUserId, SseEventType.ONE_ON_ONE_REQUESTED, recipientResponse);
+        eventSender.publish(targetUserId, SseEventType.ONE_ON_ONE_REQUESTED, recipientResponse);
         log.info("1:1 매칭 요청 전송. requesterId={}, targetUserId={}, requestId={}", userId, targetUserId, item.getRequestId());
 
         return buildOneOnOneResponse(item, "pending");
@@ -311,8 +310,8 @@ public class MatchServiceImpl implements MatchService {
         OneOnOneMatchedResponse recipientResponse = buildOneOnOneMatchedResponse(item, savedConference, item.getRequesterUserId());
 
         TransactionUtils.runAfterCommit(() -> {
-            eventPublisher.publish(item.getRequesterUserId(), SseEventType.ONE_ON_ONE_ACCEPTED, requesterResponse);
-            eventPublisher.publish(userId, SseEventType.ONE_ON_ONE_ACCEPTED, recipientResponse);
+            eventSender.publish(item.getRequesterUserId(), SseEventType.ONE_ON_ONE_ACCEPTED, requesterResponse);
+            eventSender.publish(userId, SseEventType.ONE_ON_ONE_ACCEPTED, recipientResponse);
         });
 
         return recipientResponse;
@@ -351,7 +350,7 @@ public class MatchServiceImpl implements MatchService {
 
         // 요청자에게 거절 이벤트 전송
         OneOnOneMatchResponse requesterResponse = buildOneOnOneResponse(item, "declined");
-        eventPublisher.publish(item.getRequesterUserId(), SseEventType.ONE_ON_ONE_DECLINED, requesterResponse);
+        eventSender.publish(item.getRequesterUserId(), SseEventType.ONE_ON_ONE_DECLINED, requesterResponse);
         log.info("1:1 매칭 거절 전송. userId={}, requestId={}, requesterId={}", userId, requestId, item.getRequesterUserId());
 
         return buildOneOnOneResponse(item, "declined");
