@@ -40,6 +40,10 @@ const BLUR_LEVELS = [20, 10, 5, 0] // px
 const ROUND_NAMES = ["1라운드", "2라운드", "3라운드", "최종 라운드"]
 const BLUR_LABELS = ["블라인드", "강한 블러", "약간 블러", "완전 공개"]
 const BEAUTY_STORAGE_KEY = "beauty_filter_settings"
+/** 마이크 침묵 후 랜덤 질문을 띄우기까지 필요한 시간(초) */
+const SILENCE_THRESHOLD_SECONDS = 20
+/** 이 값 이하면 침묵으로 간주 (0~255, 환경소음 수준) */
+const SILENCE_VOLUME_THRESHOLD = 15
 
 export function SessionRoom({ 
   sessionId, 
@@ -75,6 +79,10 @@ export function SessionRoom({
   const { toast } = useToast()
   const { user } = useAuth()
   const lastIceBreakerRef = useRef("")
+  const showIceBreakerRef = useRef(showIceBreaker)
+  const audioContextRef = useRef<AudioContext | null>(null)
+  const analyserRef = useRef<AnalyserNode | null>(null)
+  const volumeRef = useRef(0)
 
   // WebRTC 비디오 refs (useWebRTC보다 먼저 선언)
   const localVideoRef = useRef<HTMLVideoElement | null>(null)
@@ -305,32 +313,88 @@ export function SessionRoom({
 
   }, [hasRoundStarted, currentRound, showVote, showRating, showConfirmLeave, timeLeft])
 
-  // Silence detection - 5초 이상 정적 시 질문 카드 표시
+  // 마이크 음량 샘플링 (침묵 감지용)
+  useEffect(() => {
+    const stream = localStream
+    const audioTrack = stream?.getAudioTracks()[0]
+    if (!stream || !audioTrack || !hasRoundStarted) {
+      volumeRef.current = 0
+      return
+    }
+    try {
+      const ctx = new AudioContext()
+      const source = ctx.createMediaStreamSource(stream)
+      const analyser = ctx.createAnalyser()
+      analyser.fftSize = 256
+      analyser.smoothingTimeConstant = 0.8
+      source.connect(analyser)
+      audioContextRef.current = ctx
+      analyserRef.current = analyser
+
+      const dataArray = new Uint8Array(analyser.frequencyBinCount)
+      const sampleInterval = setInterval(() => {
+        if (analyserRef.current && audioContextRef.current?.state === "running") {
+          analyserRef.current.getByteFrequencyData(dataArray)
+          const sum = dataArray.reduce((a, b) => a + b, 0)
+          volumeRef.current = dataArray.length > 0 ? sum / dataArray.length : 0
+        }
+      }, 200)
+
+      return () => {
+        clearInterval(sampleInterval)
+        try {
+          source.disconnect()
+          ctx.close()
+        } catch {
+          // ignore
+        }
+        audioContextRef.current = null
+        analyserRef.current = null
+        volumeRef.current = 0
+      }
+    } catch {
+      volumeRef.current = 0
+      return () => {}
+    }
+  }, [localStream, hasRoundStarted])
+
+  showIceBreakerRef.current = showIceBreaker
   useEffect(() => {
     if (!hasRoundStarted) return
+    if (currentRound >= 3 || showVote || showRating || showConfirmLeave) return
+
     const interval = setInterval(() => {
-      setSilenceTimer((prev) => {
-        if (prev >= 5 && !showIceBreaker) {
-          const questions = getRoundQuestions(currentRound)
-          let randomQuestion = questions[Math.floor(Math.random() * questions.length)]
-          if (questions.length > 1) {
-            let guard = 0
-            while (randomQuestion === lastIceBreakerRef.current && guard < 10) {
-              randomQuestion = questions[Math.floor(Math.random() * questions.length)]
-              guard += 1
+      if (showIceBreakerRef.current) return
+      const ctx = audioContextRef.current
+      const measuring = ctx?.state === "running"
+      const isSilent = isMuted || (measuring && volumeRef.current < SILENCE_VOLUME_THRESHOLD)
+      if (isSilent) {
+        setSilenceTimer((prev) => {
+          if (prev >= SILENCE_THRESHOLD_SECONDS) {
+            const questions = getRoundQuestions(currentRound)
+            if (questions.length === 0) return 0
+            let randomQuestion = questions[Math.floor(Math.random() * questions.length)]
+            if (questions.length > 1) {
+              let guard = 0
+              while (randomQuestion === lastIceBreakerRef.current && guard < 10) {
+                randomQuestion = questions[Math.floor(Math.random() * questions.length)]
+                guard += 1
+              }
             }
+            setCurrentIceBreaker(randomQuestion)
+            lastIceBreakerRef.current = randomQuestion
+            setShowIceBreaker(true)
+            return 0
           }
-          setCurrentIceBreaker(randomQuestion)
-          lastIceBreakerRef.current = randomQuestion
-          setShowIceBreaker(true)
-          return 0
-        }
-        return prev + 1
-      })
+          return prev + 1
+        })
+      } else {
+        setSilenceTimer(0)
+      }
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [hasRoundStarted, showIceBreaker, currentRound])
+  }, [hasRoundStarted, currentRound, showVote, showRating, showConfirmLeave, isMuted])
 
 
   const formatTime = (seconds: number) => {
