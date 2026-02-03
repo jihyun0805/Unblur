@@ -355,7 +355,7 @@ export function MatchRequestToaster() {
           </DialogDescription>
           <div className="mt-6 space-y-3">
             <Button
-              onClick={handleAccept}
+              onClick={() => setIsCameraTestOpen(true)}
               className="w-full py-6 bg-primary text-primary-foreground hover:bg-primary/90"
             >
               수락하기
@@ -367,14 +367,6 @@ export function MatchRequestToaster() {
             >
               거절하기
             </Button>
-            <button
-              type="button"
-              className="w-full text-xs text-muted-foreground hover:text-foreground flex items-center justify-center gap-2"
-              onClick={() => setIsCameraTestOpen(true)}
-            >
-              <Camera className="w-4 h-4" />
-              카메라 테스트하기
-            </button>
           </div>
         </DialogContent>
       </Dialog>

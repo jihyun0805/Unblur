@@ -1,5 +1,6 @@
 package com.ssafy.unblur.domain.match.service;
 
+import com.ssafy.unblur.common.service.EventSender;
 import com.ssafy.unblur.common.service.event.WsEventType;
 import com.ssafy.unblur.domain.match.config.MatchConfig.RoundDurationPolicy;
 import com.ssafy.unblur.domain.match.model.VoteState;
@@ -52,9 +53,9 @@ public class RoundTimerService {
     private final RoundVoteStore voteStore;
 
     /**
-     * 매치 이벤트 퍼블리셔
+     * 이벤트 전송기
      */
-    private final MatchEventPublisher matchEventPublisher;
+    private final EventSender eventSender;
 
     /**
      * 라운드 시작 시 타이머를 등록하는 메서드
@@ -111,7 +112,7 @@ public class RoundTimerService {
         // 참가자들에게 메시지 전송
         List<UUID> participants = participantStore.getParticipantIds(conferenceId);
         for (UUID userId : participants) {
-            matchEventPublisher.publish(userId, WsEventType.ROUND_ENDED, message);
+            eventSender.publish(userId, WsEventType.ROUND_ENDED, message);
         }
     }
 
