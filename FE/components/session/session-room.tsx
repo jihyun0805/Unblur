@@ -21,6 +21,7 @@ import { RatingModal } from "@/components/session/rating-modal"
 import { ConfirmLeaveModal } from "@/components/session/confirm-leave-modal"
 import { EndCallConfirmModal } from "@/components/session/end-call-confirm-modal"
 import { QuestionBankModal, getRoundQuestions } from "@/components/session/question-bank-modal"
+import BeautyFilter from "@/components/matching/beauty-filter"
 import { useAuth } from "@/contexts/auth-context"
 import { useWebRTC } from "@/hooks/use-webrtc"
 import { useChat } from "@/hooks/use-chat"
@@ -38,6 +39,7 @@ const ROUND_TIMES = [300, 300, 600, Number.POSITIVE_INFINITY] // seconds (1라�
 const BLUR_LEVELS = [20, 10, 5, 0] // px
 const ROUND_NAMES = ["1라운드", "2라운드", "3라운드", "최종 라운드"]
 const BLUR_LABELS = ["블라인드", "강한 블러", "약간 블러", "완전 공개"]
+const BEAUTY_STORAGE_KEY = "beauty_filter_settings"
 
 export function SessionRoom({ 
   sessionId, 
@@ -65,6 +67,11 @@ export function SessionRoom({
   const [showIceBreaker, setShowIceBreaker] = useState(false)
   const [currentIceBreaker, setCurrentIceBreaker] = useState("")
   const [silenceTimer, setSilenceTimer] = useState(0)
+  const [beautyFilter, setBeautyFilter] = useState({
+    enabled: false,
+    smoothness: 50,
+    lipIntensity: 67,
+  })
   const { toast } = useToast()
   const { user } = useAuth()
   const lastIceBreakerRef = useRef("")
@@ -395,6 +402,26 @@ export function SessionRoom({
 
   const blurLevel = BLUR_LEVELS[currentRound]
   const blurLabel = BLUR_LABELS[currentRound]
+  const isBeautyActive = beautyFilter.enabled && blurLevel === 0 && isVideoEnabled
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(BEAUTY_STORAGE_KEY)
+      if (!raw) return
+      const parsed = JSON.parse(raw) as {
+        enabled?: boolean
+        smoothness?: number
+        lipIntensity?: number
+      }
+      setBeautyFilter((prev) => ({
+        enabled: parsed.enabled ?? prev.enabled,
+        smoothness: Number.isFinite(parsed.smoothness) ? Number(parsed.smoothness) : prev.smoothness,
+        lipIntensity: Number.isFinite(parsed.lipIntensity) ? Number(parsed.lipIntensity) : prev.lipIntensity,
+      }))
+    } catch {
+      // ignore corrupted storage
+    }
+  }, [])
   const isTimeWarning = timeLeft <= 60 && timeLeft > 0
 
   return (
@@ -536,14 +563,31 @@ export function SessionRoom({
                 autoPlay
                 playsInline
                 muted
-                className="w-full h-full object-cover transition-all duration-1000 -scale-x-100"
+                className={`absolute inset-0 w-full h-full object-cover transition-all duration-1000 -scale-x-100 ${
+                  isBeautyActive ? "hidden" : ""
+                }`}
                 style={{ filter: `blur(${blurLevel}px)`, display: localStream ? "block" : "none" }}
               />
+              {localStream && isBeautyActive && (
+                <div className="absolute inset-0">
+                  <BeautyFilter
+                    stream={localStream}
+                    blurLevel={blurLevel}
+                    smoothness={beautyFilter.smoothness}
+                    lipIntensity={beautyFilter.lipIntensity}
+                  />
+                </div>
+              )}
               {localStream ? (
                 <>
                   <div className="absolute bottom-4 left-4 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-sm">
                     <span className="text-white text-sm">나</span>
                   </div>
+                  {isBeautyActive && (
+                    <div className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-pink-500/80 backdrop-blur-sm">
+                      <span className="text-white text-xs">뷰티 필터 ON</span>
+                    </div>
+                  )}
                   {!isVideoEnabled && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/50">
                       <div className="text-white text-sm">카메라 꺼짐</div>

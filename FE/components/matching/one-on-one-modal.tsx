@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Send } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/contexts/auth-context"
 import { UserProfileModal, UserProfileData } from "@/components/common/user-profile-modal"
 import * as matchApi from "@/lib/api/match"
 import type { OnlineUserDto } from "@/lib/api/match"
@@ -20,7 +21,28 @@ export interface MatchedUser {
   profile?: UserProfileData
 }
 
+const REGION_CODE_TO_LABEL: Record<string, string> = {
+  SEOUL: "서울",
+  GYEONGGI: "경기",
+  INCHEON: "인천",
+  BUSAN: "부산",
+  DAEGU: "대구",
+  DAEJEON: "대전",
+  GWANGJU: "광주",
+  ULSAN: "울산",
+  SEJONG: "세종",
+  GANGWON: "강원",
+  CHUNGBUK: "충북",
+  CHUNGNAM: "충남",
+  JEONBUK: "전북",
+  JEONNAM: "전남",
+  GYEONGBUK: "경북",
+  GYEONGNAM: "경남",
+  JEJU: "제주",
+}
+
 function mapOnlineUserToMatched(dto: OnlineUserDto): MatchedUser {
+  const region = dto.region ? REGION_CODE_TO_LABEL[dto.region] || dto.region : ""
   return {
     id: dto.id,
     nickname: dto.nickname,
@@ -31,7 +53,7 @@ function mapOnlineUserToMatched(dto: OnlineUserDto): MatchedUser {
       temperature: dto.clarityScore ?? 0,
       age: dto.age,
       gender: dto.gender?.toLowerCase() === "female" ? "female" : "male",
-      region: dto.region ?? "",
+      region,
       mbti: dto.mbti ?? undefined,
       bio: dto.intro ?? undefined,
       interests: dto.interestTags ?? [],
@@ -42,11 +64,12 @@ function mapOnlineUserToMatched(dto: OnlineUserDto): MatchedUser {
 interface OneOnOneModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onRequestChat: (userId: string) => void
+  onRequestChat: (payload: { requestId: string }) => void
 }
 
 export function OneOnOneModal({ open, onOpenChange, onRequestChat }: OneOnOneModalProps) {
   const { toast } = useToast()
+  const { user } = useAuth()
   const [matchedUsers, setMatchedUsers] = useState<MatchedUser[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const isConflictError = (err: unknown) =>
@@ -54,10 +77,21 @@ export function OneOnOneModal({ open, onOpenChange, onRequestChat }: OneOnOneMod
 
   useEffect(() => {
     if (!open) return
+    if (!user?.id) {
+      setMatchedUsers([])
+      setIsLoading(false)
+      return
+    }
     setIsLoading(true)
     matchApi
       .getOnlineUsers(10)
-      .then((res) => setMatchedUsers((res.onlineUsers ?? []).map(mapOnlineUserToMatched)))
+      .then((res) =>
+        setMatchedUsers(
+          (res.onlineUsers ?? [])
+            .filter((item) => item.id !== user?.id)
+            .map(mapOnlineUserToMatched)
+        )
+      )
       .catch(() => {
         toast({
           title: "목록 조회 실패",
@@ -67,18 +101,34 @@ export function OneOnOneModal({ open, onOpenChange, onRequestChat }: OneOnOneMod
         setMatchedUsers([])
       })
       .finally(() => setIsLoading(false))
-  }, [open, toast])
+  }, [open, toast, user?.id])
 
   const onlineUsers = matchedUsers.filter((user) => user.isOnline)
 
   const handleRequestChat = async (userId: string, nickname: string) => {
+    if (!user?.id) {
+      toast({
+        title: "요청 불가",
+        description: "사용자 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.",
+        variant: "destructive",
+      })
+      return
+    }
+    if (userId === user.id) {
+      toast({
+        title: "요청 불가",
+        description: "본인에게는 매칭 요청을 보낼 수 없습니다.",
+        variant: "destructive",
+      })
+      return
+    }
     try {
-      await matchApi.startOneOnOneMatch(userId)
+      const res = await matchApi.startOneOnOneMatch(userId)
       toast({
         title: "1:1 매칭 요청",
         description: `${nickname}님에게 매칭 요청을 보냈습니다. 수락 시 세션방으로 이동합니다.`,
       })
-      onRequestChat(userId)
+      onRequestChat({ requestId: res.requestId })
       onOpenChange(false)
     } catch (err) {
       if (isConflictError(err)) {
