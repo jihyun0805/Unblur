@@ -36,6 +36,7 @@ export function BalanceGameOverlay({
     optionA: string
     optionB: string
   } | null>(null)
+  const [pendingChoice, setPendingChoice] = useState<"A" | "B" | null>(null)
   const [myChoice, setMyChoice] = useState<"A" | "B" | "NONE" | null>(null)
   const [partnerChoice, setPartnerChoice] = useState<"A" | "B" | "NONE" | null>(null)
   const [timeLeft, setTimeLeft] = useState(TIME_LIMIT_SECONDS)
@@ -46,20 +47,10 @@ export function BalanceGameOverlay({
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const startTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const startIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const resultTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const myChoiceRef = useRef<"A" | "B" | "NONE" | null>(null)
   const partnerChoiceRef = useRef<"A" | "B" | "NONE" | null>(null)
   const gameStateRef = useRef<GameState>(gameState)
   const selectionStartTimeRef = useRef<number | null>(null)
-  const pendingResultRef = useRef<{
-    questionId: string
-    category: string
-    question: string
-    optionA: string
-    optionB: string
-    sameChoice: boolean
-    selections: Array<{ userId: string; choice: string }>
-  } | null>(null)
   const selectionSentRef = useRef<boolean>(false)
 
   useEffect(() => {
@@ -95,10 +86,6 @@ export function BalanceGameOverlay({
       clearInterval(startIntervalRef.current)
       startIntervalRef.current = null
     }
-    if (resultTimeoutRef.current) {
-      clearTimeout(resultTimeoutRef.current)
-      resultTimeoutRef.current = null
-    }
   }, [])
 
   const displayResult = useCallback(
@@ -112,6 +99,7 @@ export function BalanceGameOverlay({
       selections: Array<{ userId: string; choice: string }>
     }) => {
       setGameState("result")
+      setPendingChoice(null)
       setCurrentQuestion({
         questionId: resultData.questionId,
         category: resultData.category,
@@ -136,7 +124,6 @@ export function BalanceGameOverlay({
         setPartnerChoice(choice)
       }
 
-      pendingResultRef.current = null
       clearTimers()
     },
     [userId, clearTimers]
@@ -147,10 +134,10 @@ export function BalanceGameOverlay({
     if (!open) {
       setGameState("idle")
       setCurrentQuestion(null)
+      setPendingChoice(null)
       setMyChoice(null)
       setPartnerChoice(null)
       setSameChoice(null)
-      pendingResultRef.current = null
       selectionStartTimeRef.current = null
       selectionSentRef.current = false
       clearTimers()
@@ -193,8 +180,9 @@ export function BalanceGameOverlay({
             optionA: message.optionA,
             optionB: message.optionB,
           })
-    setMyChoice(null)
-    setPartnerChoice(null)
+          setPendingChoice(null)
+          setMyChoice(null)
+          setPartnerChoice(null)
           setTimeLeft(TIME_LIMIT_SECONDS)
           selectionSentRef.current = false
           startSelectionTimer()
@@ -205,8 +193,7 @@ export function BalanceGameOverlay({
           break
 
         case "balance-result":
-          // 결과 수신 - 10초가 지날 때까지 대기 후 표시
-          // select는 10초 타이머에서 보내므로 여기서는 결과만 저장
+          // 결과 수신 - 상대도 10초 내에 선택하면 바로 표시
           const resultData = {
             questionId: message.questionId,
             category: message.category,
@@ -216,32 +203,7 @@ export function BalanceGameOverlay({
             sameChoice: message.sameChoice,
             selections: message.selections,
           }
-          pendingResultRef.current = resultData
-
-          // 선택 시작 시간부터 경과 시간 계산
-          const elapsed = selectionStartTimeRef.current
-            ? Math.floor((Date.now() - selectionStartTimeRef.current) / 1000)
-            : 0
-          const remainingTime = Math.max(0, TIME_LIMIT_SECONDS - elapsed)
-
-          console.log("[BalanceGame] 결과 수신, 경과 시간:", elapsed, "남은 시간:", remainingTime)
-
-          // 남은 시간만큼 대기 후 결과 표시
-          if (resultTimeoutRef.current) {
-            clearTimeout(resultTimeoutRef.current)
-          }
-
-          if (remainingTime > 0) {
-            resultTimeoutRef.current = setTimeout(() => {
-              if (pendingResultRef.current) {
-                displayResult(pendingResultRef.current)
-                pendingResultRef.current = null
-              }
-            }, remainingTime * 1000)
-          } else {
-            displayResult(resultData)
-            pendingResultRef.current = null
-          }
+          displayResult(resultData)
           break
       }
     }
@@ -285,16 +247,13 @@ export function BalanceGameOverlay({
     timeoutRef.current = setTimeout(() => {
       // 10초가 지나면 결과 표시
       // 타임아웃 시 NONE 처리 (서버에서 처리하지만 UI 업데이트)
+      selectionSentRef.current = true
+      setPendingChoice(null)
       if (myChoiceRef.current === null) {
         setMyChoice("NONE")
       }
       if (partnerChoiceRef.current === null) {
         setPartnerChoice("NONE")
-      }
-      // 10초가 지나면 결과 표시 (pendingResult가 있으면)
-      if (pendingResultRef.current) {
-        displayResult(pendingResultRef.current)
-        pendingResultRef.current = null
       }
     }, TIME_LIMIT_SECONDS * 1000)
   }
@@ -307,13 +266,18 @@ export function BalanceGameOverlay({
   }
 
   const handleChoice = (choice: "A" | "B") => {
-    if (!signalingClient || selectionSentRef.current) return
-    setMyChoice(choice)
-    // 선택하면 바로 전송
+    if (selectionSentRef.current) return
+    setPendingChoice(choice)
+  }
+
+  const handleConfirmChoice = () => {
+    if (!signalingClient || selectionSentRef.current || !pendingChoice) return
+    setMyChoice(pendingChoice)
+    setPendingChoice(null)
     try {
-      signalingClient.sendBalanceSelect(sessionId, userId, choice)
+      signalingClient.sendBalanceSelect(sessionId, userId, pendingChoice)
       selectionSentRef.current = true
-      console.log("[BalanceGame] 선택 전송:", choice)
+      console.log("[BalanceGame] 선택 전송:", pendingChoice)
     } catch (error) {
       console.error("[BalanceGame] 선택 전송 실패:", error)
     }
@@ -330,10 +294,15 @@ export function BalanceGameOverlay({
 
   const isMatch = sameChoice === true
   const isNoChoice = myChoice === "NONE"
+  const activeChoice = selectionSentRef.current ? myChoice : pendingChoice
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg" showCloseButton={gameState === "idle" || gameState === "result"}>
+      <DialogContent
+        className="sm:max-w-lg"
+        showCloseButton={gameState === "idle" || gameState === "result"}
+        onInteractOutside={(event) => event.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>밸런스 게임</DialogTitle>
         </DialogHeader>
@@ -419,9 +388,9 @@ export function BalanceGameOverlay({
               {!partnerChoice ? (
             <div className="space-y-3">
               <Button
-                variant={myChoice === "A" ? "default" : "outline"}
+                variant={activeChoice === "A" ? "default" : "outline"}
                     className={`w-full py-6 text-left justify-start transition-all ${
-                      myChoice === "A" ? "bg-primary text-primary-foreground border-primary" : ""
+                      activeChoice === "A" ? "bg-primary text-primary-foreground border-primary" : ""
                     }`}
                     onClick={() => handleChoice("A")}
                     disabled={selectionSentRef.current}
@@ -432,9 +401,9 @@ export function BalanceGameOverlay({
                     <span className="flex-1">{currentQuestion.optionA}</span>
               </Button>
               <Button
-                variant={myChoice === "B" ? "default" : "outline"}
+                variant={activeChoice === "B" ? "default" : "outline"}
                     className={`w-full py-6 text-left justify-start transition-all ${
-                      myChoice === "B" ? "bg-primary text-primary-foreground border-primary" : ""
+                      activeChoice === "B" ? "bg-primary text-primary-foreground border-primary" : ""
                     }`}
                     onClick={() => handleChoice("B")}
                     disabled={selectionSentRef.current}
@@ -444,7 +413,14 @@ export function BalanceGameOverlay({
                 </span>
                     <span className="flex-1">{currentQuestion.optionB}</span>
               </Button>
-
+              <Button
+                variant="default"
+                className="w-full"
+                onClick={handleConfirmChoice}
+                disabled={!pendingChoice || selectionSentRef.current}
+              >
+                선택
+              </Button>
             </div>
               ) : (
                 // 양쪽 모두 선택 완료 - 결과 미리보기
