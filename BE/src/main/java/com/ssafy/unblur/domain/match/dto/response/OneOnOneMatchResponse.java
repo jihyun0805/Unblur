@@ -1,5 +1,6 @@
 package com.ssafy.unblur.domain.match.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 
@@ -22,6 +23,10 @@ public record OneOnOneMatchResponse(
 
         @Schema(description = "상대 사용자 ID", example = "0f4d8f6a-8df6-4fa9-9b9d-2b3bcd0b7b8f")
         String targetUserId,
+
+        @JsonInclude(JsonInclude.Include.NON_NULL) // null인 경우 응답에서 제외
+        @Schema(description = "요청자 프로필(요청 수신자에게 전달)", nullable = true)
+        OneOnOneRequesterProfileDto requesterProfile,
 
         @Schema(description = "상대방 수락 상태", example = "pending")
         String targetStatus,
