@@ -187,10 +187,10 @@ export function useRegisterForm() {
     return age
   }
 
-  const submitRegistration = async () => {
+  const submitRegistration = async (): Promise<{ success: true } | { success: false; error: Error }> => {
     setIsLoading(true)
     const age = calculateAge(formData.birthYear, formData.birthMonth, formData.birthDay)
-    const success = await register({
+    const result = await register({
       nickname: formData.nickname,
       email: formData.email,
       password: formData.password,
@@ -220,7 +220,7 @@ export function useRegisterForm() {
       },
     })
     setIsLoading(false)
-    return success
+    return result
   }
 
   return {
