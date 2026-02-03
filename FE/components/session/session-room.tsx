@@ -655,7 +655,7 @@ export function SessionRoom({
             </div>
 
             {/* My Video - 나도 블러 적용 */}
-            <div className="relative rounded-2xl overflow-hidden bg-[#2a2a2a] min-h-0">
+            <div className="relative rounded-2xl overflow-hidden bg-[#2a2a2a] hidden md:block">
               <video
                 ref={setLocalVideoRef}
                 autoPlay

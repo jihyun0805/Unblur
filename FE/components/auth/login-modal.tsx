@@ -119,21 +119,6 @@ export function LoginModal({ open, onOpenChange, onSwitchToRegister }: LoginModa
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="remember"
-              checked={rememberMe}
-              onCheckedChange={(checked) => setRememberMe(checked as boolean)}
-              className="bg-background border-2"
-            />
-            <label
-              htmlFor="remember"
-              className={`text-sm cursor-pointer ${rememberMe ? "text-foreground font-medium" : "text-muted-foreground"}`}
-            >
-              로그인 상태 유지
-            </label>
-          </div>
-
           <Button
             type="submit"
             className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
