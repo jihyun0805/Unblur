@@ -8,9 +8,9 @@ import com.ssafy.unblur.domain.match.model.*;
 import com.ssafy.unblur.domain.match.repository.ConferenceParticipantRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRoundRepository;
+import com.ssafy.unblur.common.service.EventSender;
 import com.ssafy.unblur.common.service.event.WsEventType;
 import com.ssafy.unblur.domain.match.service.ConferenceLifecycleService;
-import com.ssafy.unblur.domain.match.service.MatchEventPublisher;
 import com.ssafy.unblur.domain.match.service.RoundTimerService;
 import com.ssafy.unblur.domain.rtc.dto.event.RoundMessages;
 import com.ssafy.unblur.domain.rtc.service.KurentoRoomService;
@@ -68,9 +68,9 @@ public class ConferenceLifecycleServiceImpl implements ConferenceLifecycleServic
     private final KurentoRoomService kurentoRoomService;
 
     /**
-     * 매치 이벤트 퍼블리셔 
+     * 이벤트 전송기
      */
-    private final MatchEventPublisher matchEventPublisher;
+    private final EventSender eventSender;
 
     /**
      * 기준 시각 제공용 Clock
@@ -161,7 +161,7 @@ public class ConferenceLifecycleServiceImpl implements ConferenceLifecycleServic
 
                         // 양쪽에 round 시작 이벤트 전송         
                         for (UUID participantId : participantIds) {
-                            matchEventPublisher.publish(participantId, WsEventType.ROUND_STARTED, message);
+                            eventSender.publish(participantId, WsEventType.ROUND_STARTED, message);
                         }
                     });
                 }
@@ -252,7 +252,7 @@ public class ConferenceLifecycleServiceImpl implements ConferenceLifecycleServic
 
                             // 남아있는 참여자들에게 세션 종료 알림 전송 및 퇴장 처리
                             for (UUID participantId : remainingParticipantIds) {
-                                matchEventPublisher.publish(participantId, WsEventType.CONFERENCE_ENDED, message);
+                                eventSender.publish(participantId, WsEventType.CONFERENCE_ENDED, message);
                                 kurentoRoomService.leave(conferenceId, participantId);
                             }
                         }

@@ -1,30 +1,29 @@
-package com.ssafy.unblur.domain.match.service.impl;
+package com.ssafy.unblur.common.service.impl;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ssafy.unblur.common.service.SseService;
+import com.ssafy.unblur.common.service.EventSender;
 import com.ssafy.unblur.common.service.event.EventType;
 import com.ssafy.unblur.common.service.event.SseEventType;
+import com.ssafy.unblur.common.service.WebSocketMessageSender;
 import com.ssafy.unblur.common.service.event.WsEventType;
-import com.ssafy.unblur.domain.match.service.MatchEventPublisher;
-import com.ssafy.unblur.common.service.SseService;
 import com.ssafy.unblur.domain.rtc.service.RtcSessionStore;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
 import java.io.IOException;
 import java.util.UUID;
 
 /**
- * 매칭 이벤트 발행 구현체
+ * 이벤트 전송 구현체
  * <p>
- * 이벤트 타입에 따라 SSE 또는 WebSocket으로 라우팅한다
+ * 이벤트 타입에 따라 SSE 또는 WebSocket으로 라우팅한다.
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class MatchEventPublisherImpl implements MatchEventPublisher {
+public class EventSenderImpl implements EventSender {
 
     /**
      * 매칭 SSE 서비스
@@ -37,9 +36,9 @@ public class MatchEventPublisherImpl implements MatchEventPublisher {
     private final RtcSessionStore sessionStore;
 
     /**
-     * JSON 객체 매퍼
+     * WebSocket 메시지 전송기
      */
-    private final ObjectMapper objectMapper;
+    private final WebSocketMessageSender webSocketMessageSender;
 
     @Override
     public void publish(UUID userId, EventType type, Object data) {
@@ -83,10 +82,7 @@ public class MatchEventPublisherImpl implements MatchEventPublisher {
         }
 
         try {
-            synchronized (session) {
-                session.sendMessage(new TextMessage(objectMapper.writeValueAsString(message)));
-            }
-
+            webSocketMessageSender.send(session, message);
             log.debug("WebSocket 전송 성공. sessionId={}", session.getId());
 
         } catch (IOException e) {
