@@ -5,14 +5,7 @@ import { useChatContext } from "@/contexts/chat-context"
 import { ChatModal } from "./chat-modal"
 import { UserProfileModal } from "@/components/common/user-profile-modal"
 import { Input } from "@/components/ui/input"
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination"
+import { HistoryPagination } from "@/components/ui/pagination"
 import { useAuth } from "@/contexts/auth-context"
 import { useHistory } from "@/hooks/use-history"
 import { getPartnerProfile } from "@/lib/api/history"
@@ -74,27 +67,22 @@ export function HistoryPage() {
     wsService.connect().catch(() => {})
   }, [wsService])
   const [currentPage, setCurrentPage] = useState(1)
-  const { history, summary, totalPages, isLoading, error, refetch, blockPartner, unblockPartner, blockedIds, setItemUnreadCount } =
-    useHistory({ page: currentPage - 1, size: pageSize })
   const [selectedChat, setSelectedChat] = useState<HistoryItem | null>(null)
   const [selectedProfile, setSelectedProfile] = useState<HistoryItem | null>(null)
   const [isProfileLoading, setIsProfileLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
-
-  const filteredHistory = useMemo(() => {
-    const trimmed = searchTerm.trim().toLowerCase()
-    if (!trimmed) return history
-    return history.filter((item) => item.partnerNickname.toLowerCase().includes(trimmed))
-  }, [history, searchTerm])
+  const [debouncedSearch, setDebouncedSearch] = useState("")
+  const { history, summary, totalPages, isLoading, error, refetch, blockPartner, unblockPartner, blockedIds, setItemUnreadCount } =
+    useHistory({ page: currentPage - 1, size: pageSize, search: debouncedSearch })
 
   const sortedHistory = useMemo(() => {
-    return [...filteredHistory].sort((a, b) => {
+    return [...history].sort((a, b) => {
       const aBlocked = blockedIds.includes(a.id)
       const bBlocked = blockedIds.includes(b.id)
       if (aBlocked === bBlocked) return 0
       return aBlocked ? 1 : -1
     })
-  }, [filteredHistory, blockedIds])
+  }, [history, blockedIds])
 
   const handleProfileClick = async (item: HistoryItem) => {
     setSelectedProfile(item)
@@ -125,9 +113,17 @@ export function HistoryPage() {
 
   const safePage = Math.min(currentPage, totalPages)
   const pagedHistory = sortedHistory
+  const emptySlots = Math.max(0, pageSize - pagedHistory.length)
 
   useEffect(() => {
     setCurrentPage(1)
+  }, [searchTerm])
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm)
+    }, 500)
+    return () => clearTimeout(timer)
   }, [searchTerm])
 
   useEffect(() => {
@@ -136,25 +132,9 @@ export function HistoryPage() {
     }
   }, [currentPage, totalPages])
 
-  if (isLoading) {
-    return (
-      <div className="max-w-3xl mx-auto">
-        <HistoryLoading />
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="max-w-3xl mx-auto">
-        <HistoryError onRetry={refetch} />
-      </div>
-    )
-  }
-
   return (
     <>
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6">
         <HistoryPageHeader />
         <HistorySummary
           totalCount={summary.totalMatches}
@@ -172,69 +152,52 @@ export function HistoryPage() {
           />
         </div>
 
-        <div className="space-y-3">
-          {pagedHistory.map((item) => (
-            <HistoryItemCard
-              key={item.id}
-              item={item}
-              onProfileClick={handleProfileClick}
-              onChatClick={setSelectedChat}
-              onBlock={(target) => blockPartner(target.id, target.partnerId)}
-              onUnblock={(target) => unblockPartner(target.id, target.partnerId)}
-              isBlocked={blockedIds.includes(item.id)}
-              isChatOpen={selectedChat?.id === item.id}
-              setItemUnreadCount={setItemUnreadCount}
-            />
-          ))}
+        <div className="grid grid-cols-1 gap-3">
+          {error ? (
+            <HistoryError onRetry={refetch} />
+          ) : isLoading && history.length === 0 ? (
+            <HistoryLoading />
+          ) : (
+            <>
+              {pagedHistory.map((item) => (
+                <HistoryItemCard
+                  key={item.id}
+                  item={item}
+                  onProfileClick={handleProfileClick}
+                  onChatClick={setSelectedChat}
+                  onBlock={(target) => blockPartner(target.id, target.partnerId)}
+                  onUnblock={(target) => unblockPartner(target.id, target.partnerId)}
+                  isBlocked={blockedIds.includes(item.id)}
+                  isChatOpen={selectedChat?.id === item.id}
+                  setItemUnreadCount={setItemUnreadCount}
+                />
+              ))}
+              {emptySlots > 0 &&
+                Array.from({ length: emptySlots }, (_, index) => (
+                  <div
+                    key={`history-empty-slot-${index}`}
+                    className="min-h-[128px] sm:min-h-[96px] rounded-xl border border-dashed border-border/60 bg-muted/20"
+                  />
+                ))}
+            </>
+          )}
         </div>
 
-        {history.length === 0 && <HistoryEmptyState />}
-        {history.length > 0 && filteredHistory.length === 0 && (
+        {!isLoading && !error && history.length === 0 && !searchTerm && <HistoryEmptyState />}
+        {!isLoading && !error && history.length === 0 && searchTerm && (
           <div className="py-8 text-center text-sm text-muted-foreground">검색 결과가 없습니다.</div>
         )}
-        {!searchTerm && totalPages > 1 && (
-          <Pagination className="mt-6">
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious
-                  href="#"
-                  className={safePage === 1 ? "pointer-events-none opacity-50" : undefined}
-                  onClick={(event) => {
-                    event.preventDefault()
-                    if (safePage > 1) setCurrentPage(safePage - 1)
-                  }}
-                />
-              </PaginationItem>
-              {Array.from({ length: totalPages }, (_, index) => {
-                const page = index + 1
-                return (
-                  <PaginationItem key={page}>
-                    <PaginationLink
-                      href="#"
-                      isActive={page === safePage}
-                      onClick={(event) => {
-                        event.preventDefault()
-                        setCurrentPage(page)
-                      }}
-                    >
-                      {page}
-                    </PaginationLink>
-                  </PaginationItem>
-                )
-              })}
-              <PaginationItem>
-                <PaginationNext
-                  href="#"
-                  className={safePage === totalPages ? "pointer-events-none opacity-50" : undefined}
-                  onClick={(event) => {
-                    event.preventDefault()
-                    if (safePage < totalPages) setCurrentPage(safePage + 1)
-                  }}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        )}
+        <HistoryPagination
+          className="mt-6"
+          currentPage={safePage - 1}
+          totalPages={totalPages}
+          hasPrevious={!isLoading && safePage > 1}
+          hasNext={!isLoading && safePage < totalPages}
+          onPageChange={(pageIndex) => {
+            if (isLoading) return
+            setCurrentPage(pageIndex + 1)
+          }}
+        />
       </div>
 
       {pagedHistory.map((item) => (

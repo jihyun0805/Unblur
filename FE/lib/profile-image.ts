@@ -1,4 +1,4 @@
-export const DEFAULT_PROFILE_IMAGE = "/placeholder-user.png"
+export const DEFAULT_PROFILE_IMAGE = "/placeholder-user.svg"
 
 export function getLoveDnaImage(loveDna?: string | null): string {
   if (!loveDna) return DEFAULT_PROFILE_IMAGE

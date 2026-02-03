@@ -158,6 +158,7 @@ export interface OnlineUserDto {
   gender: string
   region: string
   mbti: string
+  loveDna?: string
   intro: string | null
   interestTags: string[]
   clarityScore: number
@@ -172,8 +173,11 @@ export interface OnlineUserListResponse {
  * 온라인 사용자 목록 조회 (1:1 매칭 모달용)
  * @param limit 조회 개수 (기본 10)
  */
-export async function getOnlineUsers(limit = 10): Promise<OnlineUserListResponse> {
+export async function getOnlineUsers(limit = 10, loveDna?: string): Promise<OnlineUserListResponse> {
   const params = new URLSearchParams({ limit: String(limit) })
+  if (loveDna) {
+    params.set("loveDna", loveDna.toUpperCase())
+  }
   const response = await apiFetch(`${MATCH_BASE}/online-users?${params}`)
   return parseMatchResponse<OnlineUserListResponse>(response)
 }

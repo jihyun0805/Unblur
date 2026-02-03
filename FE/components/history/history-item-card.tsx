@@ -84,11 +84,11 @@ export function HistoryItemCard({ item, onProfileClick, onChatClick, onBlock, on
 
   return (
     <div
-      className={`p-4 rounded-xl flex items-center gap-3 sm:gap-4 ${
+      className={`min-h-[128px] sm:min-h-[96px] p-4 rounded-xl flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 ${
         isBlocked ? "bg-muted/40 opacity-70" : "bg-card"
       }`}
     >
-      <div className="flex flex-col items-center justify-center flex-shrink-0">
+      <div className="flex items-center justify-center flex-shrink-0">
         <div className="relative w-12 h-12">
           <img
             src={getLoveDnaImage(item.loveDna)}
@@ -100,7 +100,7 @@ export function HistoryItemCard({ item, onProfileClick, onChatClick, onBlock, on
           )}
         </div>
       </div>
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 w-full">
         <div className="flex items-center gap-2">
           <button
             onClick={() => onProfileClick(item)}
@@ -127,7 +127,7 @@ export function HistoryItemCard({ item, onProfileClick, onChatClick, onBlock, on
           </span>
         </div>
       </div>
-      <div className="flex items-center gap-2 flex-shrink-0">
+      <div className="flex items-center justify-between sm:justify-end gap-2 flex-shrink-0 w-full sm:w-auto">
         <Button
           variant="outline"
           size="sm"
@@ -145,7 +145,11 @@ export function HistoryItemCard({ item, onProfileClick, onChatClick, onBlock, on
         </Button>
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-0"
+            >
               <MoreVertical className="w-4 h-4" />
             </Button>
           </DropdownMenuTrigger>
