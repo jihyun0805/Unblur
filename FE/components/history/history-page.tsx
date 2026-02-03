@@ -261,6 +261,7 @@ export function HistoryPage() {
             roundSummaries: selectedProfile.roundSummaries,
           }}
           isLoading={isProfileLoading}
+          showSummaries
         />
       )}
     </>

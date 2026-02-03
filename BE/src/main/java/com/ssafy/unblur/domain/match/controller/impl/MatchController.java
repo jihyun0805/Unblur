@@ -9,6 +9,7 @@ import com.ssafy.unblur.domain.match.dto.response.MatchingQueueResponse;
 import com.ssafy.unblur.domain.match.dto.response.OneOnOneMatchResponse;
 import com.ssafy.unblur.domain.match.dto.response.OneOnOneMatchedResponse;
 import com.ssafy.unblur.domain.match.dto.response.OnlineUserListResponse;
+import com.ssafy.unblur.domain.auth.model.LoveDna;
 import com.ssafy.unblur.domain.match.service.MatchService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -117,11 +118,12 @@ public class MatchController implements MatchApiDocs {
     @GetMapping("/online-users")
     public ResponseEntity<BaseResponse<OnlineUserListResponse>> getOnlineUsers(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestParam(defaultValue = "3") int limit
+            @RequestParam(defaultValue = "3") int limit,
+            @RequestParam(required = false) LoveDna loveDna
     ) {
-        log.debug("API 온라인 사용자 목록 조회. userId={}, limit={}", userDetails.getUserId(), limit);
+        log.debug("API 온라인 사용자 목록 조회. userId={}, limit={}, loveDna={}", userDetails.getUserId(), limit, loveDna);
 
-        OnlineUserListResponse response = matchService.getRandomOnlineUsers(userDetails.getUserId(), limit);
+        OnlineUserListResponse response = matchService.getRandomOnlineUsers(userDetails.getUserId(), limit, loveDna);
         return ResponseEntity.ok(
                 BaseResponse.onSuccess("온라인 사용자 목록 조회 성공", response)
         );
