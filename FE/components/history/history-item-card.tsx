@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import {
   AlertDialog,
@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Calendar, Clock, Layers, MessageCircle, User, MoreVertical } from "lucide-react"
+import { useChat } from "@/hooks/use-chat"
 import type { HistoryItem } from "@/lib/history-types"
 
 interface HistoryItemCardProps {
@@ -28,9 +29,29 @@ interface HistoryItemCardProps {
   onBlock: (item: HistoryItem) => void
   onUnblock: (item: HistoryItem) => void
   isBlocked: boolean
+  /** 이 아이템의 채팅 모달이 열려 있으면 true (빨간점 숨김) */
+  isChatOpen?: boolean
+  /** 채팅 열어서 읽었을 때 목록의 unreadCount를 0으로 갱신 (빨간점 제거) */
+  setItemUnreadCount?: (conferenceId: string, unreadCount: number) => void
 }
 
-export function HistoryItemCard({ item, onProfileClick, onChatClick, onBlock, onUnblock, isBlocked }: HistoryItemCardProps) {
+export function HistoryItemCard({ item, onProfileClick, onChatClick, onBlock, onUnblock, isBlocked, isChatOpen = false, setItemUnreadCount }: HistoryItemCardProps) {
+  const { unreadCount, markAsRead } = useChat({
+    conferenceId: item.id,
+    enabled: true,
+    autoLoadMessages: false,
+    panelOpen: isChatOpen,
+  })
+  // autoLoadMessages: false라 로컬 messages는 비어 있음 → 서버 item.unreadCount 우선 사용
+  const hasUnread = !isChatOpen && (item.unreadCount ?? unreadCount) > 0
+
+  useEffect(() => {
+    if (isChatOpen) {
+      markAsRead()
+      setItemUnreadCount?.(item.id, 0)
+    }
+  }, [isChatOpen, markAsRead, item.id, setItemUnreadCount])
+
   const [isBlockConfirmOpen, setIsBlockConfirmOpen] = useState(false)
   const [isUnblockConfirmOpen, setIsUnblockConfirmOpen] = useState(false)
 
@@ -94,10 +115,16 @@ export function HistoryItemCard({ item, onProfileClick, onChatClick, onBlock, on
           variant="outline"
           size="sm"
           onClick={() => onChatClick(item)}
-          className="flex items-center gap-1 text-green-600 border-green-600 hover:bg-green-50"
+          className="relative flex items-center gap-1 text-green-600 border-green-600 hover:bg-green-50"
         >
           <MessageCircle className="w-4 h-4" />
           <span className="hidden sm:inline">채팅</span>
+          {hasUnread && (
+            <span
+              className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-red-500"
+              aria-label="읽지 않은 메시지 있음"
+            />
+          )}
         </Button>
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>

@@ -358,7 +358,10 @@ export function SessionRoom({
     }
   }, [localStream, hasRoundStarted])
 
-  showIceBreakerRef.current = showIceBreaker
+  useEffect(() => {
+    showIceBreakerRef.current = showIceBreaker
+  }, [showIceBreaker])
+
   useEffect(() => {
     if (!hasRoundStarted) return
     if (currentRound >= 3 || showVote || showRating || showConfirmLeave) return

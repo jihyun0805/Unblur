@@ -1,13 +1,16 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Send, Heart } from "lucide-react"
+import { X, Send } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useChatContext } from "@/contexts/chat-context"
 import { useChat } from "@/hooks/use-chat"
+import { useAuth } from "@/contexts/auth-context"
 import type { HistoryItem } from "@/lib/history-types"
+import type { ChatMessage } from "@/lib/chat-types"
 
 type ChatModalPartner = Pick<HistoryItem, "id" | "partnerNickname" | "date">
 
@@ -20,44 +23,95 @@ interface ChatModalProps {
 
 export function ChatModal({ open, onOpenChange, partner, isBlocked = false }: ChatModalProps) {
   const [newMessage, setNewMessage] = useState("")
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [pendingMessage, setPendingMessage] = useState<ChatMessage | null>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
   const { toast } = useToast()
+  const { connectionState } = useChatContext()
+  const { user } = useAuth()
 
-  // 채팅 훅 사용 (히스토리 모드: WebSocket 구독 비활성화)
+  const scrollToBottom = () => {
+    requestAnimationFrame(() => {
+      const el = scrollContainerRef.current
+      if (el) {
+        // flex-col-reverse 이므로 맨 아래(최신 메시지) = scrollTop 0
+        el.scrollTop = 0
+      }
+    })
+  }
+
   const {
     messages,
     isLoading: isLoadingMessages,
     isSending: isSendingMessage,
     sendMessage: sendChatMessage,
     markAsRead: markChatAsRead,
+    refreshMessages,
   } = useChat({
     conferenceId: partner.id,
-    enabled: open && !isBlocked, // 모달이 열려있고 차단되지 않았을 때만 구독
+    enabled: open && !isBlocked,
     autoLoadMessages: true,
+    panelOpen: open,
   })
 
-  // 모달이 열릴 때 읽음 처리
+  // 모달 열릴 때마다 최신 메시지 다시 가져오기 (빨간점 있을 때 들어와도 새 메시지 보이도록)
+  useEffect(() => {
+    if (open && !isBlocked) {
+      refreshMessages()
+    }
+  }, [open, isBlocked, refreshMessages])
+
+  // 표시용 메시지 목록 (낙관적 전송 시 pending 포함, use-chat 수정 없이 컴포넌트에서만 처리)
+  const displayMessages: ChatMessage[] =
+    pendingMessage
+      ? [...messages, pendingMessage].sort(
+          (a, b) => a.createdAt.getTime() - b.createdAt.getTime()
+        )
+      : messages
+
   useEffect(() => {
     if (open && !isBlocked) {
       markChatAsRead()
     }
   }, [open, isBlocked, markChatAsRead])
 
-  // 메시지 변경 시 스크롤
+  // 모달이 열릴 때 맨 아래(최신 메시지)로 스크롤
   useEffect(() => {
     if (open) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+      scrollToBottom()
     }
-  }, [messages, open])
+  }, [open])
+
+  // 새 메시지 올 때마다 맨 아래로 스크롤
+  useEffect(() => {
+    if (open && displayMessages.length > 0) {
+      scrollToBottom()
+    }
+  }, [open, displayMessages.length])
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() || isSendingMessage || isBlocked) return
+    const trimmed = newMessage.trim()
+    setNewMessage("")
+
+    // 낙관적 표시 (use-chat 수정 없이 컴포넌트에서만 처리)
+    const optimistic: ChatMessage = {
+      id: `temp-${Date.now()}`,
+      senderId: user?.id ?? null,
+      senderNickname: user?.nickname ?? null,
+      type: "USER",
+      content: trimmed,
+      createdAt: new Date(),
+      isReadByPartner: false,
+      isMine: true,
+    }
+    setPendingMessage(optimistic)
 
     try {
-      await sendChatMessage(newMessage.trim())
-      setNewMessage("")
-      markChatAsRead() // 메시지 전송 후 읽음 처리
+      await sendChatMessage(trimmed)
+      setPendingMessage(null)
     } catch (error: any) {
+      setPendingMessage(null)
+      setNewMessage(trimmed)
       toast({
         title: "메시지 전송 실패",
         description: error.message || "메시지를 전송하는데 실패했습니다.",
@@ -66,70 +120,65 @@ export function ChatModal({ open, onOpenChange, partner, isBlocked = false }: Ch
     }
   }
 
-  const formatTime = (date: Date) => {
-    return `${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`
-  }
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md bg-background h-[80vh] max-h-[600px] flex flex-col p-0">
-        <DialogHeader className="p-4 border-b border-border">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-              <Heart className="w-5 h-5 text-green-600 fill-green-600" />
-            </div>
-            <div>
-              <DialogTitle className="text-lg">{partner.partnerNickname}</DialogTitle>
-              <p className="text-xs text-muted-foreground">매칭일: {partner.date}</p>
-            </div>
+      <DialogContent className="sm:max-w-md bg-background h-[80vh] max-h-[600px] flex flex-col p-0 gap-0" showCloseButton={false}>
+        <div className="p-4 border-b border-border flex items-center justify-between flex-shrink-0">
+          <div className="flex flex-col gap-0.5">
+            <DialogTitle className="font-semibold text-base mb-0">
+              채팅 <span className="text-muted-foreground font-normal">· {partner.partnerNickname}</span>
+            </DialogTitle>
+            {open && connectionState !== "connected" && !isBlocked && (
+              <span className="text-xs text-muted-foreground">실시간 연결 중...</span>
+            )}
           </div>
-        </DialogHeader>
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
-          {isLoadingMessages && messages.length === 0 ? (
-            <div className="flex items-center justify-center py-8">
+        <div
+          ref={scrollContainerRef}
+          className="flex-1 flex flex-col-reverse overflow-y-auto p-4 space-y-3 space-y-reverse min-h-0"
+        >
+          {isLoadingMessages && displayMessages.length === 0 ? (
+            <div className="flex items-center justify-center py-8 flex-shrink-0">
               <div className="text-sm text-muted-foreground">메시지를 불러오는 중...</div>
             </div>
-          ) : messages.length === 0 ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="text-sm text-muted-foreground">메시지가 없습니다.</div>
+          ) : displayMessages.length === 0 ? (
+            <div className="flex items-center justify-center py-8 flex-shrink-0">
+              <div className="text-sm text-muted-foreground text-center">
+                메시지가 없습니다.
+                <br />
+                <span className="text-xs">새로운 메시지를 보내보세요!</span>
+              </div>
             </div>
           ) : (
-            messages.map((msg) => (
+            [...displayMessages].reverse().map((msg) => (
               <div
                 key={msg.id}
-                className={`flex ${msg.isMine ? "justify-end" : "justify-start"}`}
+                className={`flex items-end gap-2 flex-shrink-0 ${msg.isMine ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-[80%] px-4 py-2 rounded-2xl ${
+                  className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-sm ${
                     msg.isMine
                       ? "bg-primary text-primary-foreground rounded-br-md"
-                      : "bg-card rounded-bl-md"
+                      : "bg-muted text-foreground rounded-bl-md"
                   }`}
                 >
-                  <p className="text-sm">{msg.content}</p>
-                  <p
-                    className={`text-xs mt-1 ${
-                      msg.isMine ? "text-primary-foreground/70" : "text-muted-foreground"
-                    }`}
-                  >
-                    {formatTime(msg.createdAt)}
-                  </p>
-                  {msg.isMine && (
-                    <div className="text-xs mt-1 opacity-70">
-                      {msg.isReadByPartner ? "✓✓" : "✓"}
-                    </div>
-                  )}
+                  <div className="break-words">{msg.content}</div>
                 </div>
+                {!msg.isMine && <div className="w-4 flex-shrink-0" />}
               </div>
             ))
           )}
-          <div ref={messagesEndRef} />
         </div>
 
-        {/* Input / 차단 시 문구 */}
-        <div className="p-4 border-t border-border">
+        <div className="p-4 border-t border-border flex-shrink-0">
           {isBlocked ? (
             <p className="text-sm text-muted-foreground text-center">차단된 상대입니다.</p>
           ) : (
@@ -144,12 +193,12 @@ export function ChatModal({ open, onOpenChange, partner, isBlocked = false }: Ch
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 placeholder="메시지를 입력하세요..."
-                className="bg-input flex-1"
+                className="bg-input"
               />
               <Button
                 type="submit"
                 size="icon"
-                className="bg-primary text-primary-foreground flex-shrink-0"
+                className="bg-primary text-primary-foreground"
                 disabled={isSendingMessage}
               >
                 <Send className="w-4 h-4" />

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { useChatContext } from "@/contexts/chat-context"
 import { ChatModal } from "./chat-modal"
 import { UserProfileModal } from "@/components/common/user-profile-modal"
 import { Input } from "@/components/ui/input"
@@ -66,9 +67,14 @@ const mapRegion = (value?: string | null): string | undefined => {
 
 export function HistoryPage() {
   const { user } = useAuth()
+  const { wsService } = useChatContext()
   const pageSize = 5
+
+  useEffect(() => {
+    wsService.connect().catch(() => {})
+  }, [wsService])
   const [currentPage, setCurrentPage] = useState(1)
-  const { history, summary, totalPages, isLoading, error, refetch, blockPartner, unblockPartner, blockedIds } =
+  const { history, summary, totalPages, isLoading, error, refetch, blockPartner, unblockPartner, blockedIds, setItemUnreadCount } =
     useHistory({ page: currentPage - 1, size: pageSize })
   const [selectedChat, setSelectedChat] = useState<HistoryItem | null>(null)
   const [selectedProfile, setSelectedProfile] = useState<HistoryItem | null>(null)
@@ -176,6 +182,8 @@ export function HistoryPage() {
               onBlock={(target) => blockPartner(target.id, target.partnerId)}
               onUnblock={(target) => unblockPartner(target.id, target.partnerId)}
               isBlocked={blockedIds.includes(item.id)}
+              isChatOpen={selectedChat?.id === item.id}
+              setItemUnreadCount={setItemUnreadCount}
             />
           ))}
         </div>
@@ -229,14 +237,15 @@ export function HistoryPage() {
         )}
       </div>
 
-      {selectedChat && (
+      {pagedHistory.map((item) => (
         <ChatModal
-          open={!!selectedChat}
+          key={item.id}
+          open={selectedChat?.id === item.id}
           onOpenChange={(open) => !open && setSelectedChat(null)}
-          partner={selectedChat}
-          isBlocked={blockedIds.includes(selectedChat.id)}
+          partner={item}
+          isBlocked={blockedIds.includes(item.id)}
         />
-      )}
+      ))}
 
       {selectedProfile && (
         <UserProfileModal
