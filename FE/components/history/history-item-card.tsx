@@ -21,6 +21,7 @@ import {
 import { Calendar, Clock, Layers, MessageCircle, User, MoreVertical } from "lucide-react"
 import { useChat } from "@/hooks/use-chat"
 import type { HistoryItem } from "@/lib/history-types"
+import { getLoveDnaImage } from "@/lib/profile-image"
 
 interface HistoryItemCardProps {
   item: HistoryItem
@@ -75,9 +76,11 @@ export function HistoryItemCard({ item, onProfileClick, onChatClick, onBlock, on
     >
       <div className="flex flex-col items-center justify-center flex-shrink-0">
         <div className="relative w-12 h-12">
-          <div className="w-full h-full rounded-full bg-muted flex items-center justify-center overflow-hidden border border-border">
-            <User className="w-6 h-6 text-muted-foreground" />
-          </div>
+          <img
+            src={getLoveDnaImage(item.loveDna)}
+            alt={`${item.partnerNickname} 프로필 이미지`}
+            className="w-full h-full rounded-full object-cover bg-card flex items-center justify-center overflow-hidden border border-border"
+          />
           {item.isOnline && (
             <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-background rounded-full" />
           )}
