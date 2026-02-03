@@ -33,6 +33,12 @@ export const clearAuthToken = () => {
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
+const IDEMPOTENCY_HEADER = "Idempotency-Key"
+const IDEMPOTENT_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"])
+
+export type ApiFetchInit = RequestInit & {
+  idempotencyKey?: string
+}
 
 /**
  * 상대 경로를 절대 URL로 변환
@@ -53,21 +59,28 @@ export const resolveApiUrl = (input: RequestInfo | URL): string => {
  */
 export const apiFetch = async (
   input: RequestInfo | URL, 
-  init: RequestInit = {},
+  init: ApiFetchInit = {},
   retried = false
 ): Promise<Response> => {
   const token = getAuthToken()
-  const headers = new Headers(init.headers)
+  const { idempotencyKey, ...restInit } = init
+  const headers = new Headers(restInit.headers)
 
   if (token) {
     headers.set("Authorization", `Bearer ${token}`)
+  }
+
+  const method = (restInit.method ?? "GET").toUpperCase()
+  // 멱등 키는 POST/PUT/PATCH/DELETE 요청에만 추가
+  if (idempotencyKey && IDEMPOTENT_METHODS.has(method)) {
+    headers.set(IDEMPOTENCY_HEADER, idempotencyKey)
   }
 
   // 상대 경로인 경우 API_BASE_URL 추가
   const url = resolveApiUrl(input)
 
   const response = await fetch(url, { 
-    ...init, 
+    ...restInit, 
     headers,
     credentials: "include", // 쿠키 포함
   })
@@ -87,14 +100,18 @@ export const apiFetch = async (
       
       // 재발급 성공 시 원래 요청 재시도 (한 번만)
       const newToken = getAuthToken()
-      const newHeaders = new Headers(init.headers)
+      const newHeaders = new Headers(restInit.headers)
       
       if (newToken) {
         newHeaders.set("Authorization", `Bearer ${newToken}`)
       }
 
+      if (idempotencyKey && IDEMPOTENT_METHODS.has(method)) {
+        newHeaders.set(IDEMPOTENCY_HEADER, idempotencyKey)
+      }
+
       const retryResponse = await fetch(url, {
-        ...init,
+        ...restInit,
         headers: newHeaders,
         credentials: "include",
       })
