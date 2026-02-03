@@ -9,7 +9,6 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { CameraTestModal } from "@/components/matching/camera-test-modal"
 import { UserProfileModal, type UserProfileData } from "@/components/common/user-profile-modal"
 import * as matchApi from "@/lib/api/match"
-import type { OnlineUserDto } from "@/lib/api/match"
 import { Camera } from "lucide-react"
 
 const { ACCEPTED_MATCH_SESSION_ID } = matchApi
@@ -54,17 +53,26 @@ export function MatchRequestToaster() {
     JEJU: "제주",
   }
 
-  const mapOnlineUserToProfile = (dto: OnlineUserDto): UserProfileData => {
-    const region = dto.region ? REGION_CODE_TO_LABEL[dto.region] || dto.region : ""
+  const mapRequesterProfile = (profile: {
+    nickname?: string
+    age?: number | null
+    gender?: string | null
+    region?: string | null
+    mbti?: string | null
+    intro?: string | null
+    interestTags?: string[] | null
+    clarityScore?: number | null
+  }): UserProfileData => {
+    const region = profile.region ? REGION_CODE_TO_LABEL[profile.region] || profile.region : ""
     return {
-      nickname: dto.nickname,
-      temperature: dto.clarityScore ?? 0,
-      age: dto.age,
-      gender: dto.gender?.toLowerCase() === "female" ? "female" : "male",
+      nickname: profile.nickname ?? undefined,
+      temperature: profile.clarityScore ?? 0,
+      age: profile.age ?? undefined,
+      gender: profile.gender ? profile.gender.toLowerCase() : undefined,
       region,
-      mbti: dto.mbti ?? undefined,
-      bio: dto.intro ?? undefined,
-      interests: dto.interestTags ?? [],
+      mbti: profile.mbti ?? undefined,
+      bio: profile.intro ?? undefined,
+      interests: profile.interestTags ?? [],
     }
   }
 
@@ -121,16 +129,22 @@ export function MatchRequestToaster() {
       const payload = data as {
         requestId?: string
         request_id?: string
-        requesterUserId?: string
-        requester_user_id?: string
+        requesterProfile?: {
+          nickname?: string
+          age?: number | null
+          gender?: string | null
+          region?: string | null
+          mbti?: string | null
+          intro?: string | null
+          interestTags?: string[] | null
+          clarityScore?: number | null
+        }
       }
       const requestId = payload?.requestId ?? payload?.request_id
-      const requesterUserId = payload?.requesterUserId ?? payload?.requester_user_id
       if (process.env.NODE_ENV === "development") {
         console.log("[MatchRequestToaster] one-on-one-requested 수신", {
           payload,
           requestId,
-          requesterUserId,
           pathname: pathnameRef.current,
         })
       }
@@ -145,17 +159,7 @@ export function MatchRequestToaster() {
         return
       }
 
-      if (requesterUserId) {
-        matchApi
-          .getOnlineUsers(50)
-          .then((res) => {
-            const matched = (res.onlineUsers ?? []).find((user) => user.id === requesterUserId)
-            setRequesterProfile(matched ? mapOnlineUserToProfile(matched) : null)
-          })
-          .catch(() => setRequesterProfile(null))
-      } else {
-        setRequesterProfile(null)
-      }
+      setRequesterProfile(payload?.requesterProfile ? mapRequesterProfile(payload.requesterProfile) : null)
 
       setIsProfileOpen(false)
       setPendingRequestId(requestId)

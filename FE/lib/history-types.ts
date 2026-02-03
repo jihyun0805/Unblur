@@ -13,6 +13,7 @@ export interface HistoryItem {
   birthDate?: string
   bio?: string
   mbti?: string
+  loveDna?: string
   interests?: string[]
   isOnline: boolean
   isBlocked?: boolean
