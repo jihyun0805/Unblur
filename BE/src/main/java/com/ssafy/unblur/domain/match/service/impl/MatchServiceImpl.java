@@ -378,6 +378,7 @@ public class MatchServiceImpl implements MatchService {
         Set<UUID> connectedUserIds = sseService.getConnectedUserIds();
         List<User> oppositeGenderUsers = userRepository.findAllById(connectedUserIds).stream()
                 .filter(user -> user.getGender() == oppositeGender)
+                .filter(User::isActive)
                 .filter(user -> loveDna == null || loveDna.equals(user.getLoveDna()))
                 .toList();
 
