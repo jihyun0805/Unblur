@@ -1,9 +1,11 @@
 export interface HistoryItem {
   id: string
+  partnerId?: string
   date: string
   partnerNickname: string
   duration: string
   rounds: number
+  roundSummaries?: string[]
   partnerTemp: number
   age?: number
   gender?: string
@@ -12,4 +14,6 @@ export interface HistoryItem {
   bio?: string
   mbti?: string
   interests?: string[]
+  isOnline: boolean
+  isBlocked?: boolean
 }

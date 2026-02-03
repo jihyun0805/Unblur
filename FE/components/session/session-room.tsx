@@ -6,11 +6,22 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useToast } from "@/hooks/use-toast"
 import { Mic, MicOff, PhoneOff, MessageCircle, Gamepad2, BookOpen, Clock, X, Lightbulb, AlertCircle } from "lucide-react"
 import { BalanceGameOverlay } from "@/components/session/balance-game-overlay"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { RoundVoteModal } from "@/components/session/round-vote-modal"
 import { RatingModal } from "@/components/session/rating-modal"
 import { ConfirmLeaveModal } from "@/components/session/confirm-leave-modal"
 import { EndCallConfirmModal } from "@/components/session/end-call-confirm-modal"
 import { QuestionBankModal, getRoundQuestions } from "@/components/session/question-bank-modal"
+import BeautyFilter from "@/components/matching/beauty-filter"
 import { useAuth } from "@/contexts/auth-context"
 import { useWebRTC } from "@/hooks/use-webrtc"
 import { useChat } from "@/hooks/use-chat"
@@ -28,6 +39,7 @@ const ROUND_TIMES = [300, 300, 600, Number.POSITIVE_INFINITY] // seconds (1라�
 const BLUR_LEVELS = [20, 10, 5, 0] // px
 const ROUND_NAMES = ["1라운드", "2라운드", "3라운드", "최종 라운드"]
 const BLUR_LABELS = ["블라인드", "강한 블러", "약간 블러", "완전 공개"]
+const BEAUTY_STORAGE_KEY = "beauty_filter_settings"
 
 export function SessionRoom({ 
   sessionId, 
@@ -41,6 +53,9 @@ export function SessionRoom({
   const [timeLeft, setTimeLeft] = useState(ROUND_TIMES[0])
   const [showChat, setShowChat] = useState(false)
   const [showGame, setShowGame] = useState(false)
+  const [showBalanceInviteDialog, setShowBalanceInviteDialog] = useState(false)
+  const [balanceInviteFromUserId, setBalanceInviteFromUserId] = useState<string | null>(null)
+  const balanceInviteTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [showVote, setShowVote] = useState(false)
   const [showRating, setShowRating] = useState(false)
   const [showConfirmLeave, setShowConfirmLeave] = useState(false)
@@ -52,6 +67,11 @@ export function SessionRoom({
   const [showIceBreaker, setShowIceBreaker] = useState(false)
   const [currentIceBreaker, setCurrentIceBreaker] = useState("")
   const [silenceTimer, setSilenceTimer] = useState(0)
+  const [beautyFilter, setBeautyFilter] = useState({
+    enabled: false,
+    smoothness: 50,
+    lipIntensity: 67,
+  })
   const { toast } = useToast()
   const { user } = useAuth()
   const lastIceBreakerRef = useRef("")
@@ -73,6 +93,7 @@ export function SessionRoom({
     toggleVideo,
     isVideoEnabled,
     sendVote,
+    signalingClient,
   } = useWebRTC({
     sessionId,
     userId: user?.id ?? "",
@@ -143,6 +164,74 @@ export function SessionRoom({
   useEffect(() => {
     if (showChat) chatMarkAsRead()
   }, [showChat, chatMarkAsRead])
+
+  // 밸런스 게임 메시지 수신 처리 (오버레이가 열리지 않았을 때도 수신)
+  useEffect(() => {
+    if (!signalingClient || !user?.id) return
+
+    const handleMessage = (message: import("@/lib/webrtc-signaling").SignalingMessage) => {
+      if ("sessionId" in message && message.sessionId !== sessionId) return
+
+      if (process.env.NODE_ENV === "development") {
+        console.log("[BalanceGame] 메시지 수신:", message.type, message)
+      }
+
+      switch (message.type) {
+        case "balance-invite":
+          // 초대 받음 - 확인 다이얼로그 표시
+          if (message.fromUserId !== user.id) {
+            console.log("[BalanceGame] 초대 받음, 확인 다이얼로그 표시")
+            // 기존 타임아웃 정리
+            if (balanceInviteTimeoutRef.current) {
+              clearTimeout(balanceInviteTimeoutRef.current)
+            }
+            setBalanceInviteFromUserId(message.fromUserId)
+            setShowBalanceInviteDialog(true)
+            // 10초 타임아웃 설정
+            balanceInviteTimeoutRef.current = setTimeout(() => {
+              if (signalingClient && user?.id) {
+                signalingClient.sendBalanceResponse(sessionId, user.id, false)
+                setShowBalanceInviteDialog(false)
+                setBalanceInviteFromUserId(null)
+              }
+            }, 10000)
+          }
+          break
+        case "balance-start":
+          // 게임 시작 - 오버레이가 닫혀있으면 열기
+          if (balanceInviteTimeoutRef.current) {
+            clearTimeout(balanceInviteTimeoutRef.current)
+            balanceInviteTimeoutRef.current = null
+          }
+          if (!showGame) {
+            console.log("[BalanceGame] 게임 시작, 오버레이 열기")
+            setShowGame(true)
+            setShowBalanceInviteDialog(false)
+          }
+          break
+        case "balance-declined":
+          // 거절됨 - 다이얼로그 및 게임 오버레이 닫기
+          if (balanceInviteTimeoutRef.current) {
+            clearTimeout(balanceInviteTimeoutRef.current)
+            balanceInviteTimeoutRef.current = null
+          }
+          setShowBalanceInviteDialog(false)
+          setBalanceInviteFromUserId(null)
+          // 게임 오버레이도 닫기 (초대 대기 중이었다면)
+          setShowGame(false)
+          break
+      }
+    }
+
+    const unsubscribe = signalingClient.onMessage(handleMessage)
+    return () => {
+      unsubscribe()
+      if (balanceInviteTimeoutRef.current) {
+        clearTimeout(balanceInviteTimeoutRef.current)
+        balanceInviteTimeoutRef.current = null
+      }
+    }
+  }, [signalingClient, sessionId, user?.id, showGame])
 
   // 로컬 스트림을 비디오 요소에 설정
   useEffect(() => {
@@ -313,6 +402,26 @@ export function SessionRoom({
 
   const blurLevel = BLUR_LEVELS[currentRound]
   const blurLabel = BLUR_LABELS[currentRound]
+  const isBeautyActive = beautyFilter.enabled && blurLevel === 0 && isVideoEnabled
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(BEAUTY_STORAGE_KEY)
+      if (!raw) return
+      const parsed = JSON.parse(raw) as {
+        enabled?: boolean
+        smoothness?: number
+        lipIntensity?: number
+      }
+      setBeautyFilter((prev) => ({
+        enabled: parsed.enabled ?? prev.enabled,
+        smoothness: Number.isFinite(parsed.smoothness) ? Number(parsed.smoothness) : prev.smoothness,
+        lipIntensity: Number.isFinite(parsed.lipIntensity) ? Number(parsed.lipIntensity) : prev.lipIntensity,
+      }))
+    } catch {
+      // ignore corrupted storage
+    }
+  }, [])
   const isTimeWarning = timeLeft <= 60 && timeLeft > 0
 
   return (
@@ -454,14 +563,31 @@ export function SessionRoom({
                 autoPlay
                 playsInline
                 muted
-                className="w-full h-full object-cover transition-all duration-1000 -scale-x-100"
+                className={`absolute inset-0 w-full h-full object-cover transition-all duration-1000 -scale-x-100 ${
+                  isBeautyActive ? "hidden" : ""
+                }`}
                 style={{ filter: `blur(${blurLevel}px)`, display: localStream ? "block" : "none" }}
               />
+              {localStream && isBeautyActive && (
+                <div className="absolute inset-0">
+                  <BeautyFilter
+                    stream={localStream}
+                    blurLevel={blurLevel}
+                    smoothness={beautyFilter.smoothness}
+                    lipIntensity={beautyFilter.lipIntensity}
+                  />
+                </div>
+              )}
               {localStream ? (
                 <>
                   <div className="absolute bottom-4 left-4 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-sm">
                     <span className="text-white text-sm">나</span>
                   </div>
+                  {isBeautyActive && (
+                    <div className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-pink-500/80 backdrop-blur-sm">
+                      <span className="text-white text-xs">뷰티 필터 ON</span>
+                    </div>
+                  )}
                   {!isVideoEnabled && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/50">
                       <div className="text-white text-sm">카메라 꺼짐</div>
@@ -560,8 +686,59 @@ export function SessionRoom({
         </div>
       )}
 
+      {/* 밸런스 게임 초대 확인 다이얼로그 */}
+      <AlertDialog open={showBalanceInviteDialog} onOpenChange={setShowBalanceInviteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>밸런스 게임 초대</AlertDialogTitle>
+            <AlertDialogDescription>
+              상대방이 밸런스 게임을 함께 하자고 초대했어요. 참가하시겠습니까?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                if (balanceInviteTimeoutRef.current) {
+                  clearTimeout(balanceInviteTimeoutRef.current)
+                  balanceInviteTimeoutRef.current = null
+                }
+                if (signalingClient && user?.id) {
+                  signalingClient.sendBalanceResponse(sessionId, user.id, false)
+                }
+                setShowBalanceInviteDialog(false)
+                setBalanceInviteFromUserId(null)
+              }}
+            >
+              거절
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (balanceInviteTimeoutRef.current) {
+                  clearTimeout(balanceInviteTimeoutRef.current)
+                  balanceInviteTimeoutRef.current = null
+                }
+                if (signalingClient && user?.id) {
+                  signalingClient.sendBalanceResponse(sessionId, user.id, true)
+                  setShowGame(true)
+                }
+                setShowBalanceInviteDialog(false)
+                setBalanceInviteFromUserId(null)
+              }}
+            >
+              참가하기
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Game Overlay */}
-      {showGame && <BalanceGameOverlay onClose={() => setShowGame(false)} />}
+      <BalanceGameOverlay
+        open={showGame}
+        onOpenChange={setShowGame}
+        sessionId={sessionId}
+        userId={user?.id ?? ""}
+        signalingClient={signalingClient}
+      />
 
       {/* Round Vote Modal (BE 연동: sendVote 전달 시 서버 투표, 미전달 시 로컬 시뮬레이션) */}
       <RoundVoteModal
@@ -606,7 +783,12 @@ export function SessionRoom({
         onClose={() => setShowQuestionBank(false)}
       />
 
-      <RatingModal open={showRating} onComplete={handleRatingComplete} partnerNickname="상대방" />
+      <RatingModal
+        open={showRating}
+        onComplete={handleRatingComplete}
+        partnerNickname="상대방"
+        conferenceId={sessionId}
+      />
     </div>
   )
 }

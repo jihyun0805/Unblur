@@ -12,6 +12,11 @@ export type SignalingMessage =
   | { type: "vote-confirm-request"; conferenceId: string; message?: string }
   | { type: "partner-voted"; conferenceId: string; message?: string }
   | { type: "conference-ended"; conferenceId: string; message?: string }
+  | { type: "balance-invite"; conferenceId: string; fromUserId: string; sessionId: string }
+  | { type: "balance-declined"; conferenceId: string; fromUserId: string; sessionId: string }
+  | { type: "balance-start"; conferenceId: string; questionId: string; category: string; question: string; optionA: string; optionB: string; sessionId: string }
+  | { type: "balance-selected"; conferenceId: string; userId: string; sessionId: string }
+  | { type: "balance-result"; conferenceId: string; questionId: string; category: string; question: string; optionA: string; optionB: string; sameChoice: boolean; selections: Array<{ userId: string; choice: string }>; sessionId: string }
 
 export type SignalingMessageHandler = (message: SignalingMessage) => void
 
@@ -24,6 +29,9 @@ export interface WebRTCSignalingClient {
   sendAnswer(sdp: RTCSessionDescriptionInit, conferenceId: string, userId: string): void
   sendIceCandidate(candidate: RTCIceCandidateInit, conferenceId: string, userId: string): void
   sendVote(conferenceId: string, userId: string, vote: VoteChoice): void
+  sendBalanceInvite(conferenceId: string, userId: string): void
+  sendBalanceResponse(conferenceId: string, userId: string, accepted: boolean): void
+  sendBalanceSelect(conferenceId: string, userId: string, choice: "A" | "B"): void
   onMessage(handler: SignalingMessageHandler): () => void
   isConnected(): boolean
 }
@@ -39,6 +47,14 @@ interface ServerMessage {
   roundNumber?: number
   isUnlimited?: boolean
   roundEndsAt?: number | null
+  fromUserId?: string
+  questionId?: string
+  category?: string
+  question?: string
+  optionA?: string
+  optionB?: string
+  sameChoice?: boolean
+  selections?: Array<{ userId: string; choice: string }>
 }
 
 function normalizeWsUrl(input: string): string {
@@ -191,6 +207,45 @@ export class WebSocketSignalingClient implements WebRTCSignalingClient {
     if (raw.type === "conference-ended") {
       return { type: "conference-ended", conferenceId: cid, message: raw.message }
     }
+    // 밸런스 게임 이벤트
+    if (raw.type === "balance-invite") {
+      if (process.env.NODE_ENV === "development") {
+        console.log("[WebRTC] balance-invite 메시지 수신:", raw)
+      }
+      return { type: "balance-invite", conferenceId: cid, fromUserId: raw.fromUserId ?? "", sessionId }
+    }
+    if (raw.type === "balance-declined") {
+      return { type: "balance-declined", conferenceId: cid, fromUserId: raw.fromUserId ?? "", sessionId }
+    }
+    if (raw.type === "balance-start") {
+      return {
+        type: "balance-start",
+        conferenceId: cid,
+        questionId: raw.questionId ?? "",
+        category: raw.category ?? "",
+        question: raw.question ?? "",
+        optionA: raw.optionA ?? "",
+        optionB: raw.optionB ?? "",
+        sessionId,
+      }
+    }
+    if (raw.type === "balance-selected") {
+      return { type: "balance-selected", conferenceId: cid, userId: raw.userId ?? "", sessionId }
+    }
+    if (raw.type === "balance-result") {
+      return {
+        type: "balance-result",
+        conferenceId: cid,
+        questionId: raw.questionId ?? "",
+        category: raw.category ?? "",
+        question: raw.question ?? "",
+        optionA: raw.optionA ?? "",
+        optionB: raw.optionB ?? "",
+        sameChoice: raw.sameChoice ?? false,
+        selections: raw.selections ?? [],
+        sessionId,
+      }
+    }
     return null
   }
 
@@ -254,6 +309,18 @@ export class WebSocketSignalingClient implements WebRTCSignalingClient {
     this.send({ type: "vote", conferenceId, userId, vote })
   }
 
+  sendBalanceInvite(conferenceId: string, userId: string): void {
+    this.send({ type: "balance-invite", conferenceId, userId })
+  }
+
+  sendBalanceResponse(conferenceId: string, userId: string, accepted: boolean): void {
+    this.send({ type: "balance-response", conferenceId, userId, accepted })
+  }
+
+  sendBalanceSelect(conferenceId: string, userId: string, choice: "A" | "B"): void {
+    this.send({ type: "balance-select", conferenceId, userId, choice })
+  }
+
   onMessage(handler: SignalingMessageHandler): () => void {
     this.messageHandlers.add(handler)
     return () => {
@@ -313,6 +380,18 @@ export class MockSignalingClient implements WebRTCSignalingClient {
 
   sendVote(_conferenceId: string, _userId: string, vote: VoteChoice): void {
     console.log("[WebRTC] Mock: vote sent", { vote })
+  }
+
+  sendBalanceInvite(_conferenceId: string, _userId: string): void {
+    console.log("[WebRTC] Mock: balance invite sent")
+  }
+
+  sendBalanceResponse(_conferenceId: string, _userId: string, accepted: boolean): void {
+    console.log("[WebRTC] Mock: balance response sent", { accepted })
+  }
+
+  sendBalanceSelect(_conferenceId: string, _userId: string, choice: "A" | "B"): void {
+    console.log("[WebRTC] Mock: balance select sent", { choice })
   }
 
   onMessage(handler: SignalingMessageHandler): () => void {

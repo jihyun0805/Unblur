@@ -1,5 +1,6 @@
 package com.ssafy.unblur.common.config;
 
+import com.ssafy.unblur.common.security.IdempotencyFilter;
 import com.ssafy.unblur.common.security.InternalTokenFilter;
 import com.ssafy.unblur.common.security.handler.CustomAccessDeniedHandler;
 import com.ssafy.unblur.common.security.handler.CustomAuthenticationEntryPoint;
@@ -29,6 +30,7 @@ public class SecurityConfig {
     private final CustomAuthenticationEntryPoint authenticationEntryPoint;
     private final CustomAccessDeniedHandler accessDeniedHandler;
     private final InternalTokenFilter internalTokenFilter;
+    private final IdempotencyFilter idempotencyFilter;
 
     /** ASYNC 디스패치(SSE 이벤트 전송 등)에서 SecurityContext 복원용 요청 스코프 리포지토리 */
     private final RequestAttributeSecurityContextRepository requestRepo =
@@ -85,6 +87,7 @@ public class SecurityConfig {
                 )
                 .addFilterBefore(internalTokenFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(new JWTFilter(jwtUtil), InternalTokenFilter.class)
+                .addFilterAfter(idempotencyFilter, JWTFilter.class)
                 .build();
     }
 }
