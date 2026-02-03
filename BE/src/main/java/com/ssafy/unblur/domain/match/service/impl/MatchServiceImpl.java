@@ -226,6 +226,12 @@ public class MatchServiceImpl implements MatchService {
             throw new BaseException(ErrorCode.MATCH_TARGET_OFFLINE);
         }
 
+        // 대상 사용자가 이미 다른 1:1 요청을 받은 경우
+        if (matchQueueService.existsWaitingRecipient(targetUserId, MatchType.ONE_ON_ONE)) {
+            log.warn("1:1 매칭 대상이 이미 요청 수신 중. userId={}, targetUserId={}", userId, targetUserId);
+            throw new BaseException(ErrorCode.MATCH_TARGET_ALREADY_REQUESTED);
+        }
+
         User requester = userRepository.findById(userId)
                 .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
 
