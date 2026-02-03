@@ -14,6 +14,7 @@ import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestClient;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 
 import java.io.IOException;
@@ -48,7 +49,8 @@ public class AiSummaryPipelineService {
         FileMeta meta = parseFilename(filename);
         Path tempFile = null;
         try {
-            log.info("AI pipeline start: bucket={}, key={}", bucket, decodedKey);
+            log.info("AI 파이프라인 시작: conferenceId={}, round={}, bucket={}, key={}",
+                    meta.conferenceId(), meta.roundNumber(), bucket, decodedKey);
             tempFile = Files.createTempFile("ai-summary-", "-" + filename);
             downloadFromMinio(bucket, decodedKey, tempFile);
             String transcript = transcribe(tempFile);
@@ -59,7 +61,8 @@ public class AiSummaryPipelineService {
                         .orElseThrow(() -> new BaseException(ErrorCode.CONFERENCE_NOT_FOUND));
                 round.updateSummary(summary);
             });
-            log.info("AI pipeline done: conferenceId={}, round={}", meta.conferenceId(), meta.roundNumber());
+            log.info("AI 요약 완료: conferenceId={}, round={}", meta.conferenceId(), meta.roundNumber());
+            deleteFromMinio(bucket, decodedKey);
         } catch (IOException e) {
             log.error("AI pipeline IO error", e);
             throw new BaseException(ErrorCode.INTERNAL_SERVER_ERROR);
@@ -70,6 +73,7 @@ public class AiSummaryPipelineService {
             if (tempFile != null) {
                 try {
                     Files.deleteIfExists(tempFile);
+                    log.info("임시 파일 삭제 완료: file={}", tempFile.getFileName());
                 } catch (IOException ignored) {
                 }
             }
@@ -83,6 +87,19 @@ public class AiSummaryPipelineService {
                 .build();
         try (InputStream in = s3Client.getObject(request)) {
             Files.copy(in, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        }
+    }
+
+    private void deleteFromMinio(String bucket, String objectKey) {
+        try {
+            DeleteObjectRequest request = DeleteObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(objectKey)
+                    .build();
+            s3Client.deleteObject(request);
+            log.info("MinIO 객체 삭제 완료: bucket={}, key={}", bucket, objectKey);
+        } catch (Exception e) {
+            log.warn("MinIO 객체 삭제 실패: bucket={}, key={}, error={}", bucket, objectKey, e.toString());
         }
     }
 
@@ -208,4 +225,3 @@ public class AiSummaryPipelineService {
         }
     }
 }
-
