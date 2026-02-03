@@ -68,27 +68,22 @@ export function HistoryPage() {
   const { user } = useAuth()
   const pageSize = 5
   const [currentPage, setCurrentPage] = useState(1)
-  const { history, summary, totalPages, isLoading, error, refetch, blockPartner, unblockPartner, blockedIds } =
-    useHistory({ page: currentPage - 1, size: pageSize })
   const [selectedChat, setSelectedChat] = useState<HistoryItem | null>(null)
   const [selectedProfile, setSelectedProfile] = useState<HistoryItem | null>(null)
   const [isProfileLoading, setIsProfileLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
-
-  const filteredHistory = useMemo(() => {
-    const trimmed = searchTerm.trim().toLowerCase()
-    if (!trimmed) return history
-    return history.filter((item) => item.partnerNickname.toLowerCase().includes(trimmed))
-  }, [history, searchTerm])
+  const [debouncedSearch, setDebouncedSearch] = useState("")
+  const { history, summary, totalPages, isLoading, error, refetch, blockPartner, unblockPartner, blockedIds } =
+    useHistory({ page: currentPage - 1, size: pageSize, search: debouncedSearch })
 
   const sortedHistory = useMemo(() => {
-    return [...filteredHistory].sort((a, b) => {
+    return [...history].sort((a, b) => {
       const aBlocked = blockedIds.includes(a.id)
       const bBlocked = blockedIds.includes(b.id)
       if (aBlocked === bBlocked) return 0
       return aBlocked ? 1 : -1
     })
-  }, [filteredHistory, blockedIds])
+  }, [history, blockedIds])
 
   const handleProfileClick = async (item: HistoryItem) => {
     setSelectedProfile(item)
@@ -125,6 +120,13 @@ export function HistoryPage() {
   }, [searchTerm])
 
   useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm)
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [searchTerm])
+
+  useEffect(() => {
     if (currentPage > totalPages) {
       setCurrentPage(totalPages)
     }
@@ -132,7 +134,7 @@ export function HistoryPage() {
 
   if (isLoading) {
     return (
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6">
         <HistoryLoading />
       </div>
     )
@@ -140,7 +142,7 @@ export function HistoryPage() {
 
   if (error) {
     return (
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6">
         <HistoryError onRetry={refetch} />
       </div>
     )
@@ -148,7 +150,7 @@ export function HistoryPage() {
 
   return (
     <>
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6">
         <HistoryPageHeader />
         <HistorySummary
           totalCount={summary.totalMatches}
@@ -166,7 +168,7 @@ export function HistoryPage() {
           />
         </div>
 
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 gap-3">
           {pagedHistory.map((item) => (
             <HistoryItemCard
               key={item.id}
@@ -180,11 +182,11 @@ export function HistoryPage() {
           ))}
         </div>
 
-        {history.length === 0 && <HistoryEmptyState />}
-        {history.length > 0 && filteredHistory.length === 0 && (
+        {history.length === 0 && !searchTerm && <HistoryEmptyState />}
+        {history.length === 0 && searchTerm && (
           <div className="py-8 text-center text-sm text-muted-foreground">검색 결과가 없습니다.</div>
         )}
-        {!searchTerm && totalPages > 1 && (
+        {totalPages > 1 && (
           <Pagination className="mt-6">
             <PaginationContent>
               <PaginationItem>

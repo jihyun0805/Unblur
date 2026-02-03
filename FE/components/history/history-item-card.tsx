@@ -48,11 +48,11 @@ export function HistoryItemCard({ item, onProfileClick, onChatClick, onBlock, on
 
   return (
     <div
-      className={`p-4 rounded-xl flex items-center gap-3 sm:gap-4 ${
+      className={`p-4 rounded-xl flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 ${
         isBlocked ? "bg-muted/40 opacity-70" : "bg-card"
       }`}
     >
-      <div className="flex flex-col items-center justify-center flex-shrink-0">
+      <div className="flex items-center justify-center flex-shrink-0">
         <div className="relative w-12 h-12">
           <div className="w-full h-full rounded-full bg-muted flex items-center justify-center overflow-hidden border border-border">
             <User className="w-6 h-6 text-muted-foreground" />
@@ -62,7 +62,7 @@ export function HistoryItemCard({ item, onProfileClick, onChatClick, onBlock, on
           )}
         </div>
       </div>
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 w-full">
         <div className="flex items-center gap-2">
           <button
             onClick={() => onProfileClick(item)}
@@ -89,7 +89,7 @@ export function HistoryItemCard({ item, onProfileClick, onChatClick, onBlock, on
           </span>
         </div>
       </div>
-      <div className="flex items-center gap-2 flex-shrink-0">
+      <div className="flex items-center justify-between sm:justify-end gap-2 flex-shrink-0 w-full sm:w-auto">
         <Button
           variant="outline"
           size="sm"
@@ -97,11 +97,15 @@ export function HistoryItemCard({ item, onProfileClick, onChatClick, onBlock, on
           className="flex items-center gap-1 text-green-600 border-green-600 hover:bg-green-50"
         >
           <MessageCircle className="w-4 h-4" />
-          <span className="hidden sm:inline">채팅</span>
+          <span>채팅</span>
         </Button>
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-0"
+            >
               <MoreVertical className="w-4 h-4" />
             </Button>
           </DropdownMenuTrigger>
