@@ -70,11 +70,6 @@ export function HistoryItemCard({ item, onProfileClick, onChatClick, onBlock, on
           >
             {item.partnerNickname}
           </button>
-          <span
-            className={`text-xs ${item.isOnline ? "text-green-600" : "text-muted-foreground"}`}
-          >
-            {item.isOnline ? "온라인" : "오프라인"}
-          </span>
           {isBlocked && (
             <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">차단됨</span>
           )}
