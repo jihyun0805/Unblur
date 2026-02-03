@@ -4,6 +4,7 @@ import com.ssafy.unblur.common.service.SseService;
 import com.ssafy.unblur.common.service.event.SseEventType;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
@@ -102,5 +103,26 @@ public class InMemorySseServiceImpl implements SseService {
             emitter.complete();
             log.info("SSE 연결 종료(disconnect). userId={}, total={}", userId, emitters.size());
         }
+    }
+
+    /**
+     * 연결 유지를 위한 하트비트 전송하는 스케줄러
+     */
+    @Scheduled(fixedRateString = "${sse.heartbeat-interval-ms:15000}")
+    public void heartbeat() {
+        if (emitters.isEmpty()) {
+            return;
+        }
+
+        // 모든 연결에 하트비트 전송
+        emitters.forEach((userId, emitter) -> {
+            try {
+                emitter.send(SseEmitter.event().name("ping").data("ok"));
+
+            } catch (IOException ex) {
+                emitters.remove(userId, emitter);
+                log.warn("SSE 하트비트 실패. userId={}, error={}", userId, ex.toString());
+            }
+        });
     }
 }
