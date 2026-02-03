@@ -103,6 +103,7 @@ export function SessionRoom({
     remoteVideoMuted,
     remoteAudioMuted,
     sendVote,
+    leaveSession,
     signalingClient,
   } = useWebRTC({
     sessionId,
@@ -858,10 +859,12 @@ export function SessionRoom({
         onConfirm={() => {
           setShowEndConfirm(false)
           if (externalShowEndConfirm) {
-            onExternalCancelLeave?.()
+            onExternalConfirmLeave?.()
+            setPendingExternalLeave(!!onExternalConfirmLeave)
+            setShowRating(true)
+          } else {
+            leaveSession()
           }
-          setPendingExternalLeave(!!onExternalConfirmLeave && externalShowEndConfirm)
-          setShowRating(true)
         }}
       />
 

@@ -49,6 +49,7 @@ export interface UseWebRTCReturn {
   /** 상대방 오디오 트랙이 mute 상태(데이터 미수신)인지 */
   remoteAudioMuted: boolean
   sendVote: (vote: VoteChoice) => void
+  leaveSession: () => void
   signalingClient: WebRTCSignalingClient | null
 }
 
@@ -94,10 +95,12 @@ export function useWebRTC({
   const onRoundStartedRef = useRef(onRoundStarted)
   const onVoteConfirmRequestRef = useRef(onVoteConfirmRequest)
   const onConferenceEndedRef = useRef(onConferenceEnded)
+  const onDisconnectedRef = useRef(onDisconnected)
   onRoundTimeUpRef.current = onRoundTimeUp
   onRoundStartedRef.current = onRoundStarted
   onVoteConfirmRequestRef.current = onVoteConfirmRequest
   onConferenceEndedRef.current = onConferenceEnded
+  onDisconnectedRef.current = onDisconnected
   const [localStream, setLocalStream] = useState<MediaStream | null>(null)
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null)
   const [isConnected, setIsConnected] = useState(false)
@@ -556,6 +559,32 @@ export function useWebRTC({
     [sessionId, userId]
   )
 
+  const leaveSession = useCallback(() => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((t) => t.stop())
+      unregisterStream(localStreamRef.current)
+      localStreamRef.current = null
+    }
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close()
+      peerConnectionRef.current = null
+    }
+    if (signalingClientRef.current) {
+      signalingClientRef.current.disconnect()
+      signalingClientRef.current = null
+    }
+    remoteStreamRef.current = null
+    setSignalingReady(false)
+    setHasJoined(false)
+    setLocalStream(null)
+    setRemoteStream(null)
+    setRemoteVideoMuted(false)
+    setRemoteAudioMuted(false)
+    setIsConnected(false)
+    setIsConnecting(false)
+    onDisconnectedRef.current?.()
+  }, [])
+
   return {
     localStream,
     remoteStream,
@@ -570,6 +599,7 @@ export function useWebRTC({
     remoteVideoMuted,
     remoteAudioMuted,
     sendVote,
+    leaveSession,
     signalingClient: signalingClientRef.current,
   }
 }
