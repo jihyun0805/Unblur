@@ -1,307 +1,84 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useRef, useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
-import { Heart, Loader2, X } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Loader2, Clock } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
+import type { WebRTCSignalingClient, SignalingMessage } from "@/lib/webrtc-signaling"
 
 interface BalanceGameOverlayProps {
-  onClose: () => void
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  sessionId: string
+  userId: string
+  signalingClient: WebRTCSignalingClient | null
 }
-
-const QUESTIONS = [
-  {
-    section: "1. 요즘 감성 밸런스 (Z세대/밈 감성)",
-    question: "카톡 프사 안 바꿈 vs 프사 자주 바꿈",
-    optionA: "카톡 프사 안 바꿈",
-    optionB: "프사 자주 바꿈",
-  },
-  {
-    section: "1. 요즘 감성 밸런스 (Z세대/밈 감성)",
-    question: "인스타 안 올림 vs 스토리 매일 올림",
-    optionA: "인스타 안 올림",
-    optionB: "스토리 매일 올림",
-  },
-  {
-    section: "1. 요즘 감성 밸런스 (Z세대/밈 감성)",
-    question: "사진 보정 과함 vs 보정 거의 없음",
-    optionA: "사진 보정 과함",
-    optionB: "보정 거의 없음",
-  },
-  {
-    section: "1. 요즘 감성 밸런스 (Z세대/밈 감성)",
-    question: "셀카 안 찍음 vs 셀카 장인",
-    optionA: "셀카 안 찍음",
-    optionB: "셀카 장인",
-  },
-  {
-    section: "1. 요즘 감성 밸런스 (Z세대/밈 감성)",
-    question: "SNS 눈팅만 vs 댓글 요정",
-    optionA: "SNS 눈팅만",
-    optionB: "댓글 요정",
-  },
-  {
-    section: "2. 스타일 & 패션 밸런스",
-    question: "무채톤 올블랙 vs 컬러 포인트 필수",
-    optionA: "무채톤 올블랙",
-    optionB: "컬러 포인트 필수",
-  },
-  {
-    section: "2. 스타일 & 패션 밸런스",
-    question: "편한 게 최고 vs 불편해도 스타일",
-    optionA: "편한 게 최고",
-    optionB: "불편해도 스타일",
-  },
-  {
-    section: "2. 스타일 & 패션 밸런스",
-    question: "꾸안꾸 vs 꾸꾸꾸",
-    optionA: "꾸안꾸",
-    optionB: "꾸꾸꾸",
-  },
-  {
-    section: "2. 스타일 & 패션 밸런스",
-    question: "운동화만 신기 vs 상황별 신발",
-    optionA: "운동화만 신기",
-    optionB: "상황별 신발",
-  },
-  {
-    section: "2. 스타일 & 패션 밸런스",
-    question: "가방 하나 돌려쓰기 vs 코디별 가방",
-    optionA: "가방 하나 돌려쓰기",
-    optionB: "코디별 가방",
-  },
-  {
-    section: "3. 성격 드러나는 밸런스",
-    question: "생각 많고 말 적음 vs 생각 적고 말 많음",
-    optionA: "생각 많고 말 적음",
-    optionB: "생각 적고 말 많음",
-  },
-  {
-    section: "3. 성격 드러나는 밸런스",
-    question: "눈치 빠른 편 vs 솔직한 편",
-    optionA: "눈치 빠른 편",
-    optionB: "솔직한 편",
-  },
-  {
-    section: "3. 성격 드러나는 밸런스",
-    question: "완벽하려다 미룸 vs 대충이라도 바로 함",
-    optionA: "완벽하려다 미룸",
-    optionB: "대충이라도 바로 함",
-  },
-  {
-    section: "3. 성격 드러나는 밸런스",
-    question: "혼자 있어야 충전 vs 사람 있어야 충전",
-    optionA: "혼자 있어야 충전",
-    optionB: "사람 있어야 충전",
-  },
-  {
-    section: "3. 성격 드러나는 밸런스",
-    question: "결정 오래 vs 결정 빠름",
-    optionA: "결정 오래",
-    optionB: "결정 빠름",
-  },
-  {
-    section: "4. 생활 습관 밸런스 (공감 폭발)",
-    question: "알람 10개 vs 알람 1개",
-    optionA: "알람 10개",
-    optionB: "알람 1개",
-  },
-  {
-    section: "4. 생활 습관 밸런스 (공감 폭발)",
-    question: "미루다 몰아서 vs 조금씩 꾸준히",
-    optionA: "미루다 몰아서",
-    optionB: "조금씩 꾸준히",
-  },
-  {
-    section: "4. 생활 습관 밸런스 (공감 폭발)",
-    question: "방은 더러운데 머릿속 정리됨 vs 방은 깨끗한데 머릿속 복잡",
-    optionA: "방은 더러운데 머릿속 정리됨",
-    optionB: "방은 깨끗한데 머릿속 복잡",
-  },
-  {
-    section: "4. 생활 습관 밸런스 (공감 폭발)",
-    question: "집 오면 바로 눕기 vs 집 오면 할 일 다 하고 눕기",
-    optionA: "집 오면 바로 눕기",
-    optionB: "집 오면 할 일 다 하고 눕기",
-  },
-  {
-    section: "4. 생활 습관 밸런스 (공감 폭발)",
-    question: "야식 포기 못함 vs 야식 안 먹음",
-    optionA: "야식 포기 못함",
-    optionB: "야식 안 먹음",
-  },
-  {
-    section: "5. 음식 취향 밸런스 (무조건 터짐)",
-    question: "평생 같은 메뉴 vs 매번 새로운 메뉴",
-    optionA: "평생 같은 메뉴",
-    optionB: "매번 새로운 메뉴",
-  },
-  {
-    section: "5. 음식 취향 밸런스 (무조건 터짐)",
-    question: "맛집 줄 서기 vs 근처 아무 데나",
-    optionA: "맛집 줄 서기",
-    optionB: "근처 아무 데나",
-  },
-  {
-    section: "5. 음식 취향 밸런스 (무조건 터짐)",
-    question: "양 많고 평범 vs 양 적고 맛집",
-    optionA: "양 많고 평범",
-    optionB: "양 적고 맛집",
-  },
-  {
-    section: "5. 음식 취향 밸런스 (무조건 터짐)",
-    question: "단짠 러버 vs 담백파",
-    optionA: "단짠 러버",
-    optionB: "담백파",
-  },
-  {
-    section: "5. 음식 취향 밸런스 (무조건 터짐)",
-    question: "배불러도 디저트 vs 디저트는 배 따로",
-    optionA: "배불러도 디저트",
-    optionB: "디저트는 배 따로",
-  },
-  {
-    section: "6. 여행 & 여가 밸런스",
-    question: "여행 일정 빼곡 vs 발 닿는 대로",
-    optionA: "여행 일정 빼곡",
-    optionB: "발 닿는 대로",
-  },
-  {
-    section: "6. 여행 & 여가 밸런스",
-    question: "사진 100장 vs 사진 거의 안 찍음",
-    optionA: "사진 100장",
-    optionB: "사진 거의 안 찍음",
-  },
-  {
-    section: "6. 여행 & 여가 밸런스",
-    question: "힐링 여행 vs 관광 풀코스",
-    optionA: "힐링 여행",
-    optionB: "관광 풀코스",
-  },
-  {
-    section: "6. 여행 & 여가 밸런스",
-    question: "혼자 여행 vs 여럿이 여행",
-    optionA: "혼자 여행",
-    optionB: "여럿이 여행",
-  },
-  {
-    section: "6. 여행 & 여가 밸런스",
-    question: "숙소 중요 vs 밖에서 노는 게 중요",
-    optionA: "숙소 중요",
-    optionB: "밖에서 노는 게 중요",
-  },
-  {
-    section: "7. 디지털 & 미디어 밸런스",
-    question: "유튜브 알고리즘 신뢰 vs 직접 검색",
-    optionA: "유튜브 알고리즘 신뢰",
-    optionB: "직접 검색",
-  },
-  {
-    section: "7. 디지털 & 미디어 밸런스",
-    question: "영상 배속 필수 vs 정속 시청",
-    optionA: "영상 배속 필수",
-    optionB: "정속 시청",
-  },
-  {
-    section: "7. 디지털 & 미디어 밸런스",
-    question: "넷플릭스 정주행 vs 짧은 영상 무한 스크롤",
-    optionA: "넷플릭스 정주행",
-    optionB: "짧은 영상 무한 스크롤",
-  },
-  {
-    section: "7. 디지털 & 미디어 밸런스",
-    question: "댓글 먼저 봄 vs 영상만 봄",
-    optionA: "댓글 먼저 봄",
-    optionB: "영상만 봄",
-  },
-  {
-    section: "7. 디지털 & 미디어 밸런스",
-    question: "플레이리스트 있음 vs 그때그때 검색",
-    optionA: "플레이리스트 있음",
-    optionB: "그때그때 검색",
-  },
-  {
-    section: "8. 극단 밸런스 (웃음 담당)",
-    question: "평생 같은 노래 vs 평생 랜덤 노래",
-    optionA: "평생 같은 노래",
-    optionB: "평생 랜덤 노래",
-  },
-  {
-    section: "8. 극단 밸런스 (웃음 담당)",
-    question: "여름에 패딩 vs 겨울에 반팔",
-    optionA: "여름에 패딩",
-    optionB: "겨울에 반팔",
-  },
-  {
-    section: "8. 극단 밸런스 (웃음 담당)",
-    question: "사진 찍힐 때마다 눈 감기 vs 항상 어색한 포즈",
-    optionA: "사진 찍힐 때마다 눈 감기",
-    optionB: "항상 어색한 포즈",
-  },
-  {
-    section: "8. 극단 밸런스 (웃음 담당)",
-    question: "웃음 참기 불가 vs 리액션 로봇",
-    optionA: "웃음 참기 불가",
-    optionB: "리액션 로봇",
-  },
-  {
-    section: "8. 극단 밸런스 (웃음 담당)",
-    question: "말하다가 결론 없음 vs 결론만 말함",
-    optionA: "말하다가 결론 없음",
-    optionB: "결론만 말함",
-  },
-]
 
 const TIME_LIMIT_SECONDS = 10
 const START_LIMIT_SECONDS = 10
 
-export function BalanceGameOverlay({ onClose }: BalanceGameOverlayProps) {
-  const questions = useMemo(() => {
-    const shuffled = [...QUESTIONS]
-    for (let i = shuffled.length - 1; i > 0; i -= 1) {
-      const j = Math.floor(Math.random() * (i + 1))
-      ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
-    }
-    return shuffled
-  }, [])
-  const [currentQuestion, setCurrentQuestion] = useState(0)
+type GameState = "idle" | "inviting" | "starting" | "started" | "result"
+
+export function BalanceGameOverlay({
+  open,
+  onOpenChange,
+  sessionId,
+  userId,
+  signalingClient,
+}: BalanceGameOverlayProps) {
+  const { toast } = useToast()
+  const [gameState, setGameState] = useState<GameState>("idle")
+  const [currentQuestion, setCurrentQuestion] = useState<{
+    questionId: string
+    category: string
+    question: string
+    optionA: string
+    optionB: string
+  } | null>(null)
   const [myChoice, setMyChoice] = useState<"A" | "B" | "NONE" | null>(null)
   const [partnerChoice, setPartnerChoice] = useState<"A" | "B" | "NONE" | null>(null)
-  const [isWaiting, setIsWaiting] = useState(false)
-  const [showResult, setShowResult] = useState(false)
-  const [gameStarted, setGameStarted] = useState(false)
-  const [myReady, setMyReady] = useState(false)
-  const [partnerReady, setPartnerReady] = useState(false)
   const [timeLeft, setTimeLeft] = useState(TIME_LIMIT_SECONDS)
   const [startTimeLeft, setStartTimeLeft] = useState(START_LIMIT_SECONDS)
+  const [sameChoice, setSameChoice] = useState<boolean | null>(null)
+
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const startTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const partnerAcceptRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const startIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const myReadyRef = useRef(false)
-  const partnerReadyRef = useRef(false)
-  const onCloseRef = useRef(onClose)
+  const resultTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const myChoiceRef = useRef<"A" | "B" | "NONE" | null>(null)
   const partnerChoiceRef = useRef<"A" | "B" | "NONE" | null>(null)
+  const gameStateRef = useRef<GameState>(gameState)
+  const selectionStartTimeRef = useRef<number | null>(null)
+  const pendingResultRef = useRef<{
+    questionId: string
+    category: string
+    question: string
+    optionA: string
+    optionB: string
+    sameChoice: boolean
+    selections: Array<{ userId: string; choice: string }>
+  } | null>(null)
+  const selectionSentRef = useRef<boolean>(false)
 
-  const question = questions[currentQuestion]
+  useEffect(() => {
+    myChoiceRef.current = myChoice
+  }, [myChoice])
 
-  const handleChoice = (choice: "A" | "B") => {
-    setMyChoice(choice)
-    setIsWaiting(true)
+  useEffect(() => {
+    partnerChoiceRef.current = partnerChoice
+  }, [partnerChoice])
 
-    // Simulate partner choosing
-    setTimeout(() => {
-      const partnerPick = Math.random() > 0.5 ? "A" : "B"
-      setPartnerChoice(partnerPick)
-      if (myChoiceRef.current) {
-        setShowResult(true)
-        setIsWaiting(false)
-      }
-    }, 1500)
-  }
+  useEffect(() => {
+    gameStateRef.current = gameState
+  }, [gameState])
 
-  const clearTimers = () => {
+  useEffect(() => {
+    gameStateRef.current = gameState
+  }, [gameState])
+
+  const clearTimers = useCallback(() => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current)
       timeoutRef.current = null
@@ -314,55 +91,191 @@ export function BalanceGameOverlay({ onClose }: BalanceGameOverlayProps) {
       clearTimeout(startTimeoutRef.current)
       startTimeoutRef.current = null
     }
-    if (partnerAcceptRef.current) {
-      clearTimeout(partnerAcceptRef.current)
-      partnerAcceptRef.current = null
-    }
     if (startIntervalRef.current) {
       clearInterval(startIntervalRef.current)
       startIntervalRef.current = null
     }
-  }
-
-  useEffect(() => clearTimers, [])
-
-  useEffect(() => {
-    myReadyRef.current = myReady
-    partnerReadyRef.current = partnerReady
-  }, [myReady, partnerReady])
-
-  useEffect(() => {
-    myChoiceRef.current = myChoice
-    partnerChoiceRef.current = partnerChoice
-  }, [myChoice, partnerChoice])
-
-  useEffect(() => {
-    if (!gameStarted && myReady && partnerReady) {
-      startGame()
+    if (resultTimeoutRef.current) {
+      clearTimeout(resultTimeoutRef.current)
+      resultTimeoutRef.current = null
     }
-  }, [gameStarted, myReady, partnerReady])
+  }, [])
 
+  const displayResult = useCallback(
+    (resultData: {
+      questionId: string
+      category: string
+      question: string
+      optionA: string
+      optionB: string
+      sameChoice: boolean
+      selections: Array<{ userId: string; choice: string }>
+    }) => {
+      setGameState("result")
+      setCurrentQuestion({
+        questionId: resultData.questionId,
+        category: resultData.category,
+        question: resultData.question,
+        optionA: resultData.optionA,
+        optionB: resultData.optionB,
+      })
+      setSameChoice(resultData.sameChoice)
+
+      // 선택 결과 파싱
+      const mySelection = resultData.selections.find((s) => s.userId === userId)
+      const partnerSelection = resultData.selections.find((s) => s.userId !== userId)
+
+      if (mySelection) {
+        const choice = mySelection.choice === "OPTION_A" ? "A" : mySelection.choice === "OPTION_B" ? "B" : "NONE"
+        setMyChoice(choice)
+      }
+
+      if (partnerSelection) {
+        const choice =
+          partnerSelection.choice === "OPTION_A" ? "A" : partnerSelection.choice === "OPTION_B" ? "B" : "NONE"
+        setPartnerChoice(choice)
+      }
+
+      pendingResultRef.current = null
+      clearTimers()
+    },
+    [userId, clearTimers]
+  )
+
+  // Dialog가 닫힐 때 상태 초기화
   useEffect(() => {
-    onCloseRef.current = onClose
-  }, [onClose])
+    if (!open) {
+      setGameState("idle")
+      setCurrentQuestion(null)
+      setMyChoice(null)
+      setPartnerChoice(null)
+      setSameChoice(null)
+      pendingResultRef.current = null
+      selectionStartTimeRef.current = null
+      selectionSentRef.current = false
+      clearTimers()
+    }
+  }, [open, clearTimers])
 
-  const startGame = () => {
-    setGameStarted(true)
-    setCurrentQuestion(0)
+  // WebSocket 메시지 수신 처리
+  useEffect(() => {
+    if (!signalingClient || !open) return
+
+    const handleMessage = (message: SignalingMessage) => {
+      if ("sessionId" in message && message.sessionId !== sessionId) return
+
+      switch (message.type) {
+        case "balance-declined":
+          // 상대방이 거절함 - 초대 대기 상태 종료
+          console.log("[BalanceGame] 거절 메시지 수신, 현재 상태:", gameStateRef.current)
+          if (gameStateRef.current === "inviting") {
+            setGameState("idle")
+            clearTimers()
+            toast({
+              title: "게임 초대 거절",
+              description: "상대가 거절했습니다.",
+              variant: "default",
+            })
+            // 약간의 딜레이 후 Dialog 닫기 (toast가 보이도록)
+            setTimeout(() => {
+              onOpenChange(false)
+            }, 500)
+          }
+          break
+
+        case "balance-start":
+          // 게임 시작
+          setGameState("started")
+          setCurrentQuestion({
+            questionId: message.questionId,
+            category: message.category,
+            question: message.question,
+            optionA: message.optionA,
+            optionB: message.optionB,
+          })
     setMyChoice(null)
     setPartnerChoice(null)
-    setShowResult(false)
-    setIsWaiting(false)
-  }
+          setTimeLeft(TIME_LIMIT_SECONDS)
+          selectionSentRef.current = false
+          startSelectionTimer()
+          break
 
-  useEffect(() => {
-    clearTimers()
-    if (!gameStarted || showResult) {
-      return
+        case "balance-selected":
+          // 상대방이 선택 완료 (UI에서 표시하지 않음)
+          break
+
+        case "balance-result":
+          // 결과 수신 - 10초가 지날 때까지 대기 후 표시
+          // select는 10초 타이머에서 보내므로 여기서는 결과만 저장
+          const resultData = {
+            questionId: message.questionId,
+            category: message.category,
+            question: message.question,
+            optionA: message.optionA,
+            optionB: message.optionB,
+            sameChoice: message.sameChoice,
+            selections: message.selections,
+          }
+          pendingResultRef.current = resultData
+
+          // 선택 시작 시간부터 경과 시간 계산
+          const elapsed = selectionStartTimeRef.current
+            ? Math.floor((Date.now() - selectionStartTimeRef.current) / 1000)
+            : 0
+          const remainingTime = Math.max(0, TIME_LIMIT_SECONDS - elapsed)
+
+          console.log("[BalanceGame] 결과 수신, 경과 시간:", elapsed, "남은 시간:", remainingTime)
+
+          // 남은 시간만큼 대기 후 결과 표시
+          if (resultTimeoutRef.current) {
+            clearTimeout(resultTimeoutRef.current)
+          }
+
+          if (remainingTime > 0) {
+            resultTimeoutRef.current = setTimeout(() => {
+              if (pendingResultRef.current) {
+                displayResult(pendingResultRef.current)
+                pendingResultRef.current = null
+              }
+            }, remainingTime * 1000)
+          } else {
+            displayResult(resultData)
+            pendingResultRef.current = null
+          }
+          break
+      }
     }
 
+    const unsubscribe = signalingClient.onMessage(handleMessage)
+    return () => {
+      unsubscribe()
+      clearTimers()
+    }
+  }, [signalingClient, sessionId, userId, open, displayResult, clearTimers, onOpenChange, toast])
+
+  const startInviteTimer = () => {
+    clearTimers()
+    setStartTimeLeft(START_LIMIT_SECONDS)
+    const startedAt = Date.now()
+
+    startIntervalRef.current = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startedAt) / 1000)
+      setStartTimeLeft(Math.max(0, START_LIMIT_SECONDS - elapsed))
+    }, 200)
+
+    startTimeoutRef.current = setTimeout(() => {
+      // 타임아웃 시 종료
+      setGameState("idle")
+      clearTimers()
+      onOpenChange(false)
+    }, START_LIMIT_SECONDS * 1000)
+  }
+
+  const startSelectionTimer = () => {
+    clearTimers()
     setTimeLeft(TIME_LIMIT_SECONDS)
     const startedAt = Date.now()
+    selectionStartTimeRef.current = startedAt
 
     intervalRef.current = setInterval(() => {
       const elapsed = Math.floor((Date.now() - startedAt) / 1000)
@@ -370,241 +283,303 @@ export function BalanceGameOverlay({ onClose }: BalanceGameOverlayProps) {
     }, 200)
 
     timeoutRef.current = setTimeout(() => {
-      setIsWaiting(false)
-      setMyChoice((prev) => prev ?? "NONE")
-      setPartnerChoice((prev) => prev ?? "NONE")
-      setShowResult(true)
+      // 10초가 지나면 결과 표시
+      // 타임아웃 시 NONE 처리 (서버에서 처리하지만 UI 업데이트)
+      if (myChoiceRef.current === null) {
+        setMyChoice("NONE")
+      }
+      if (partnerChoiceRef.current === null) {
+        setPartnerChoice("NONE")
+      }
+      // 10초가 지나면 결과 표시 (pendingResult가 있으면)
+      if (pendingResultRef.current) {
+        displayResult(pendingResultRef.current)
+        pendingResultRef.current = null
+      }
     }, TIME_LIMIT_SECONDS * 1000)
+  }
 
-    return clearTimers
-  }, [currentQuestion, gameStarted, showResult])
+  const handleInvite = () => {
+    if (!signalingClient) return
+    setGameState("inviting")
+    signalingClient.sendBalanceInvite(sessionId, userId)
+    startInviteTimer()
+  }
 
-  useEffect(() => {
-    if (!gameStarted || showResult) {
-      return
-    }
-
-    if (myChoice && partnerChoice) {
-      clearTimers()
-      setShowResult(true)
-      setIsWaiting(false)
-    }
-  }, [gameStarted, myChoice, partnerChoice, showResult])
-
-  useEffect(() => {
-    if (gameStarted) {
-      if (startTimeoutRef.current) {
-        clearTimeout(startTimeoutRef.current)
-        startTimeoutRef.current = null
-      }
-      if (startIntervalRef.current) {
-        clearInterval(startIntervalRef.current)
-        startIntervalRef.current = null
-      }
-      return
-    }
-
-    setStartTimeLeft(START_LIMIT_SECONDS)
-    const startedAt = Date.now()
-
-    if (!startIntervalRef.current) {
-      startIntervalRef.current = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - startedAt) / 1000)
-        setStartTimeLeft(Math.max(0, START_LIMIT_SECONDS - elapsed))
-      }, 200)
-    }
-
-    if (!startTimeoutRef.current) {
-      startTimeoutRef.current = setTimeout(() => {
-        if (myReadyRef.current && partnerReadyRef.current) {
-          startGame()
-        } else {
-          onCloseRef.current()
-        }
-      }, START_LIMIT_SECONDS * 1000)
-    }
-
-    return () => {
-      if (startTimeoutRef.current) {
-        clearTimeout(startTimeoutRef.current)
-        startTimeoutRef.current = null
-      }
-      if (startIntervalRef.current) {
-        clearInterval(startIntervalRef.current)
-        startIntervalRef.current = null
-      }
-    }
-  }, [gameStarted])
-
-  const handleNext = () => {
-    if (currentQuestion < QUESTIONS.length - 1) {
-      setCurrentQuestion((prev) => prev + 1)
-      setMyChoice(null)
-      setPartnerChoice(null)
-      setShowResult(false)
-      setIsWaiting(false)
-    } else {
-      onClose()
+  const handleChoice = (choice: "A" | "B") => {
+    if (!signalingClient || selectionSentRef.current) return
+    setMyChoice(choice)
+    // 선택하면 바로 전송
+    try {
+      signalingClient.sendBalanceSelect(sessionId, userId, choice)
+      selectionSentRef.current = true
+      console.log("[BalanceGame] 선택 전송:", choice)
+    } catch (error) {
+      console.error("[BalanceGame] 선택 전송 실패:", error)
     }
   }
 
-  const isMatch = myChoice !== null && myChoice !== "NONE" && myChoice === partnerChoice
-  const isNoChoice = myChoice === "NONE"
+  const handleClose = () => {
+    clearTimers()
+    onOpenChange(false)
+  }
 
   useEffect(() => {
-    if (!showResult) {
-      return
-    }
+    return clearTimers
+  }, [])
 
-    const closeTimer = setTimeout(() => {
-      onCloseRef.current()
-    }, 10000)
-
-    return () => {
-      clearTimeout(closeTimer)
-    }
-  }, [showResult])
+  const isMatch = sameChoice === true
+  const isNoChoice = myChoice === "NONE"
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="w-full max-w-lg mx-4 bg-background rounded-2xl overflow-hidden">
-        <div className="p-4 border-b border-border flex items-center justify-between">
-          <h3 className="font-semibold">밸런스 게임</h3>
-          {(showResult || !gameStarted) && (
-            <button onClick={onClose} aria-label="닫기">
-              <X className="w-5 h-5 text-muted-foreground" />
-            </button>
-          )}
-        </div>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg" showCloseButton={gameState === "idle" || gameState === "result"}>
+        <DialogHeader>
+          <DialogTitle>밸런스 게임</DialogTitle>
+        </DialogHeader>
 
-        <div className="p-6">
-          {!gameStarted ? (
-            <div className="space-y-6">
-              <div className="mb-1">
-                <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
-                  <span>남은 시간</span>
+        <div className="space-y-6">
+          {/* 초기 화면 - 게임 초대 */}
+          {gameState === "idle" && (
+            <>
+              <div className="space-y-2 text-center">
+                <p className="text-sm text-muted-foreground">상대방에게 게임 초대를 보내세요.</p>
+              </div>
+              <Button variant="default" className="w-full" onClick={handleInvite} disabled={!signalingClient}>
+                게임 초대하기
+              </Button>
+            </>
+          )}
+
+          {/* 초대 대기 중 */}
+          {gameState === "inviting" && (
+            <>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>상대방의 응답을 기다리는 중...</span>
+                  <div className="flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
                   <span>{startTimeLeft}초</span>
+                  </div>
                 </div>
-                <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
                   <div
                     className="h-full bg-primary transition-[width] duration-200"
                     style={{ width: `${((START_LIMIT_SECONDS - startTimeLeft) / START_LIMIT_SECONDS) * 100}%` }}
                   />
                 </div>
-              </div>
-              <div className="space-y-2 text-center">
-                <h4 className="text-xl font-bold">게임을 시작할까요?</h4>
-                <p className="text-sm text-muted-foreground">
-                  10초 동안 상대 또는 내가 선택하지 않으면 자동으로 종료돼요.
+                <p className="text-sm text-center text-muted-foreground">
+                  10초 동안 응답이 없으면 자동으로 종료돼요.
                 </p>
               </div>
-              <Button
-                variant={myReady ? "default" : "outline"}
-                className={`w-full ${myReady ? "bg-primary text-primary-foreground" : ""}`}
-                onClick={() => {
-                  setMyReady(true)
-                  if (!partnerAcceptRef.current) {
-                    partnerAcceptRef.current = setTimeout(() => {
-                      setPartnerReady(true)
-                    }, 1500)
-                  }
-                }}
-                disabled={myReady}
-              >
-                시작하기
-              </Button>
+            </>
+          )}
+
+          {/* 게임 시작 중 */}
+          {gameState === "starting" && (
+            <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span>게임 시작 중...</span>
             </div>
-          ) : (
-            !showResult && (
-            <div className="mb-5">
-              <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
-                <span>남은 시간</span>
-                <span>{timeLeft}초</span>
+          )}
+
+          {/* 게임 진행 중 - 질문 표시 */}
+          {gameState === "started" && currentQuestion && (
+            <>
+              {/* 카테고리 표시 */}
+              <div className="rounded-xl border border-border px-4 py-2 bg-muted/50">
+                <p className="text-xs text-muted-foreground">{currentQuestion.category}</p>
               </div>
-              <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+
+              {/* 질문 */}
+              <div className="rounded-xl border border-border px-4 py-4 text-center">
+                <p className="text-lg font-semibold leading-relaxed">{currentQuestion.question}</p>
+              </div>
+
+              {/* 타이머 */}
+              {!partnerChoice && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>남은 시간</span>
+                    <div className="flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      <span>{timeLeft}초</span>
+                    </div>
+                  </div>
+                  <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
                 <div
                   className="h-full bg-primary transition-[width] duration-200"
                   style={{ width: `${((TIME_LIMIT_SECONDS - timeLeft) / TIME_LIMIT_SECONDS) * 100}%` }}
                 />
               </div>
             </div>
-          ))}
-          {gameStarted && <h4 className="text-xl font-bold text-center mb-6">{question.question}</h4>}
+              )}
 
-          {gameStarted && !showResult ? (
+              {/* 선택지 */}
+              {!partnerChoice ? (
             <div className="space-y-3">
               <Button
                 variant={myChoice === "A" ? "default" : "outline"}
-                className={`w-full py-6 text-left justify-start ${myChoice === "A" ? "bg-primary text-primary-foreground" : ""}`}
-                onClick={() => !isWaiting && handleChoice("A")}
-                disabled={isWaiting}
-              >
-                <span className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center mr-3 flex-shrink-0">
+                    className={`w-full py-6 text-left justify-start transition-all ${
+                      myChoice === "A" ? "bg-primary text-primary-foreground border-primary" : ""
+                    }`}
+                    onClick={() => handleChoice("A")}
+                    disabled={selectionSentRef.current}
+                  >
+                    <span className="w-8 h-8 rounded-full bg-primary/20 dark:bg-primary/30 flex items-center justify-center mr-3 flex-shrink-0 font-semibold">
                   A
                 </span>
-                {question.optionA}
+                    <span className="flex-1">{currentQuestion.optionA}</span>
               </Button>
               <Button
                 variant={myChoice === "B" ? "default" : "outline"}
-                className={`w-full py-6 text-left justify-start ${myChoice === "B" ? "bg-primary text-primary-foreground" : ""}`}
-                onClick={() => !isWaiting && handleChoice("B")}
-                disabled={isWaiting}
-              >
-                <span className="w-8 h-8 rounded-full bg-secondary/20 flex items-center justify-center mr-3 flex-shrink-0">
+                    className={`w-full py-6 text-left justify-start transition-all ${
+                      myChoice === "B" ? "bg-primary text-primary-foreground border-primary" : ""
+                    }`}
+                    onClick={() => handleChoice("B")}
+                    disabled={selectionSentRef.current}
+                  >
+                    <span className="w-8 h-8 rounded-full bg-secondary/20 dark:bg-secondary/30 flex items-center justify-center mr-3 flex-shrink-0 font-semibold">
                   B
                 </span>
-                {question.optionB}
+                    <span className="flex-1">{currentQuestion.optionB}</span>
               </Button>
 
-              {isWaiting && (
-                <div className="flex items-center justify-center gap-2 py-4 text-muted-foreground">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  상대방 선택 대기 중...
-                </div>
-              )}
             </div>
-          ) : gameStarted ? (
+              ) : (
+                // 양쪽 모두 선택 완료 - 결과 미리보기
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div
-                  className={`p-4 rounded-xl text-center ${
+                      className={`p-4 rounded-xl text-center border-2 transition-all ${
                     myChoice === "A"
-                      ? "bg-pink-50 border-2 border-pink-200"
+                          ? "bg-pink-50 dark:bg-pink-950/30 border-pink-200 dark:border-pink-800"
                       : myChoice === "B"
-                        ? "bg-sky-50 border-2 border-sky-200"
-                        : "bg-card"
-                  }`}
-                >
-                  <p className="text-base text-muted-foreground mb-1">나의 선택</p>
-                  <p className="text-lg font-semibold">{myChoice === "NONE" || myChoice === null ? "선택 안함" : myChoice}</p>
+                            ? "bg-sky-50 dark:bg-sky-950/30 border-sky-200 dark:border-sky-800"
+                            : "bg-card border-border"
+                      }`}
+                    >
+                      <p className="text-xs text-muted-foreground mb-2">나의 선택</p>
+                      <p className="text-2xl font-bold mb-1">{myChoice === "NONE" || myChoice === null ? "❌" : myChoice}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {myChoice === "A"
+                          ? currentQuestion.optionA
+                          : myChoice === "B"
+                            ? currentQuestion.optionB
+                            : "선택 안함"}
+                      </p>
                 </div>
                 <div
-                  className={`p-4 rounded-xl text-center ${
+                      className={`p-4 rounded-xl text-center border-2 transition-all ${
                     partnerChoice === "A"
-                      ? "bg-pink-50 border-2 border-pink-200"
+                          ? "bg-pink-50 dark:bg-pink-950/30 border-pink-200 dark:border-pink-800"
                       : partnerChoice === "B"
-                        ? "bg-sky-50 border-2 border-sky-200"
-                        : "bg-card"
-                  }`}
-                >
-                  <p className="text-base text-muted-foreground mb-1">상대방 선택</p>
-                  <p className="text-lg font-semibold">
-                    {partnerChoice === "NONE" || partnerChoice === null ? "선택 안함" : partnerChoice}
+                            ? "bg-sky-50 dark:bg-sky-950/30 border-sky-200 dark:border-sky-800"
+                            : "bg-card border-border"
+                      }`}
+                    >
+                      <p className="text-xs text-muted-foreground mb-2">상대방 선택</p>
+                      <p className="text-2xl font-bold mb-1">
+                        {partnerChoice === "NONE" || partnerChoice === null ? "❌" : partnerChoice}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {partnerChoice === "A"
+                          ? currentQuestion.optionA
+                          : partnerChoice === "B"
+                            ? currentQuestion.optionB
+                            : "선택 안함"}
                   </p>
                 </div>
               </div>
-              {!isNoChoice && (
-                <div className="text-center text-sm text-muted-foreground">
-                  {isMatch
-                    ? "같은 걸 선택했어요. 이 주제로 대화를 나눠보세요!"
-                    : "서로 다른 의견이에요. 이 주제로 대화를 나눠보세요!"}
                 </div>
               )}
+            </>
+          )}
 
+          {/* 게임 결과 */}
+          {gameState === "result" && currentQuestion && (
+            <>
+              {/* 카테고리 */}
+              <div className="rounded-xl border border-border px-4 py-2 bg-muted/50">
+                <p className="text-xs text-muted-foreground">{currentQuestion.category}</p>
+              </div>
+
+              {/* 질문 */}
+              <div className="rounded-xl border border-border px-4 py-4 text-center">
+                <p className="text-lg font-semibold leading-relaxed">{currentQuestion.question}</p>
+              </div>
+
+              {/* 결과 카드 */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div
+                    className={`p-4 rounded-xl text-center border-2 transition-all ${
+                      myChoice === "A"
+                        ? "bg-pink-50 dark:bg-pink-950/30 border-pink-200 dark:border-pink-800"
+                        : myChoice === "B"
+                          ? "bg-sky-50 dark:bg-sky-950/30 border-sky-200 dark:border-sky-800"
+                          : "bg-card border-border"
+                    }`}
+                  >
+                    <p className="text-xs text-muted-foreground mb-2">나의 선택</p>
+                    <p className="text-2xl font-bold mb-1">{myChoice === "NONE" || myChoice === null ? "❌" : myChoice}</p>
+                    <p className="text-xs text-muted-foreground line-clamp-2">
+                      {myChoice === "A"
+                        ? currentQuestion.optionA
+                        : myChoice === "B"
+                          ? currentQuestion.optionB
+                          : "선택 안함"}
+                    </p>
             </div>
-          ) : null}
+                  <div
+                    className={`p-4 rounded-xl text-center border-2 transition-all ${
+                      partnerChoice === "A"
+                        ? "bg-pink-50 dark:bg-pink-950/30 border-pink-200 dark:border-pink-800"
+                        : partnerChoice === "B"
+                          ? "bg-sky-50 dark:bg-sky-950/30 border-sky-200 dark:border-sky-800"
+                          : "bg-card border-border"
+                    }`}
+                  >
+                    <p className="text-xs text-muted-foreground mb-2">상대방 선택</p>
+                    <p className="text-2xl font-bold mb-1">
+                      {partnerChoice === "NONE" || partnerChoice === null ? "❌" : partnerChoice}
+                    </p>
+                    <p className="text-xs text-muted-foreground line-clamp-2">
+                      {partnerChoice === "A"
+                        ? currentQuestion.optionA
+                        : partnerChoice === "B"
+                          ? currentQuestion.optionB
+                          : "선택 안함"}
+                    </p>
         </div>
       </div>
+
+                {/* 결과 메시지 */}
+                {!isNoChoice && (
+                  <div
+                    className={`p-4 rounded-xl text-center border-2 ${
+                      isMatch
+                        ? "bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800"
+                        : "bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800"
+                    }`}
+                  >
+                    <p className="text-base font-semibold mb-1">{isMatch ? "🎉 같은 선택이에요!" : "💭 다른 의견이에요!"}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {isMatch
+                        ? "이 주제로 대화를 나눠보세요!"
+                        : "서로의 의견을 들어보며 대화를 나눠보세요!"}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <Button variant="default" className="w-full" onClick={handleClose}>
+                닫기
+              </Button>
+            </>
+          )}
     </div>
+      </DialogContent>
+    </Dialog>
   )
 }

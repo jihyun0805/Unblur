@@ -1,3 +1,4 @@
+import { toast } from "@/hooks/use-toast"
 import { reissueToken } from "./api/auth"
 
 const AUTH_TOKEN_KEY = "auth_token"
@@ -71,6 +72,13 @@ export const apiFetch = async (
     credentials: "include", // 쿠키 포함
   })
 
+  if (response.status === 409) {
+    toast({
+      title: "요청이 처리되지 않았어요. 잠시 후 다시 시도해 주세요.",
+      variant: "destructive",
+    })
+  }
+
   // 401 에러 발생 시 토큰 재발급 시도
   if (response.status === 401 && !retried) {
     try {
@@ -97,6 +105,12 @@ export const apiFetch = async (
       }
       if (retryResponse.status === 403) {
         throw new Error("AUTH_FORBIDDEN")
+      }
+      if (retryResponse.status === 409) {
+        toast({
+          title: "요청이 처리되지 않았어요. 잠시 후 다시 시도해 주세요.",
+          variant: "destructive",
+        })
       }
 
       if (!retryResponse.ok) {

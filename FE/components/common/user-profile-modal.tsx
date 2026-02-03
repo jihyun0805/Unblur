@@ -14,15 +14,17 @@ export interface UserProfileData {
   bio?: string
   mbti?: string
   interests?: string[]
+  roundSummaries?: string[]
 }
 
 interface UserProfileModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   profile: UserProfileData
+  isLoading?: boolean
 }
 
-export function UserProfileModal({ open, onOpenChange, profile }: UserProfileModalProps) {
+export function UserProfileModal({ open, onOpenChange, profile, isLoading = false }: UserProfileModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md bg-background max-h-[90vh] overflow-y-auto">
@@ -89,6 +91,27 @@ export function UserProfileModal({ open, onOpenChange, profile }: UserProfileMod
                 )}
               </div>
             </div>
+          </div>
+
+          <div className="space-y-3 p-4 rounded-xl bg-card">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold">AI 대화 요약</p>
+              <span className="text-xs text-muted-foreground">라운드별 1줄 요약</span>
+            </div>
+            {isLoading ? (
+              <p className="text-sm text-muted-foreground">요약을 불러오는 중...</p>
+            ) : profile.roundSummaries && profile.roundSummaries.length > 0 ? (
+              <div className="space-y-2">
+                {profile.roundSummaries.map((summary, index) => (
+                  <div key={`${index + 1}-${summary}`} className="text-sm text-foreground">
+                    <span className="text-xs text-muted-foreground mr-2">{`라운드 ${index + 1}`}</span>
+                    {summary}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">요약이 없습니다.</p>
+            )}
           </div>
         </div>
       </DialogContent>

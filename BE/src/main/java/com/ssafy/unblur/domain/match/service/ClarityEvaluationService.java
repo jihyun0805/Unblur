@@ -51,8 +51,8 @@ public class ClarityEvaluationService {
         Conference conference = conferenceRepository.findById(conferenceId)
                 .orElseThrow(() -> new BaseException(ErrorCode.CONFERENCE_NOT_FOUND));
 
-        // 컨퍼런스 상태 확인
-        if (conference.getStatus() != ConferenceStatus.COMPLETED) {
+        // 컨퍼런스 상태 확인: 진행 중/완료 상태에서만 평가 허용
+        if (conference.getStatus() == ConferenceStatus.WAITING) {
             throw new BaseException(ErrorCode.CONFERENCE_NOT_COMPLETED);
         }
 

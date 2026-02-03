@@ -27,6 +27,7 @@ export default function MainRouteLayout({ children }: { children: React.ReactNod
   }, [user, isLoading, router])
 
   const isSessionOrMbti = pathname?.startsWith("/session") || pathname?.startsWith("/test")
+  const hideFloatingTestButton = pathname?.startsWith("/history")
   const handleLogout = async () => {
     try {
       disconnect({ skipServerNotify: true })
@@ -68,7 +69,9 @@ export default function MainRouteLayout({ children }: { children: React.ReactNod
       {isSessionOrMbti ? (
         pathname?.startsWith("/test") ? <BackgroundLayout>{children}</BackgroundLayout> : children
       ) : (
-        <MainLayout onLogout={() => setShowLogoutConfirm(true)}>{children}</MainLayout>
+        <MainLayout onLogout={() => setShowLogoutConfirm(true)} hideFloatingTestButton={hideFloatingTestButton}>
+          {children}
+        </MainLayout>
       )}
 
       <Dialog open={showLogoutConfirm} onOpenChange={setShowLogoutConfirm}>

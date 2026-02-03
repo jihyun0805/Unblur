@@ -36,6 +36,7 @@ export interface UseWebRTCReturn {
   toggleVideo: () => void
   isVideoEnabled: boolean
   sendVote: (vote: VoteChoice) => void
+  signalingClient: WebRTCSignalingClient | null
 }
 
 // const ICE_SERVERS: RTCConfiguration = {
@@ -407,5 +408,6 @@ export function useWebRTC({
     toggleVideo,
     isVideoEnabled,
     sendVote,
+    signalingClient: signalingClientRef.current,
   }
 }
