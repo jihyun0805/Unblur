@@ -4,6 +4,7 @@ import com.ssafy.unblur.common.response.BaseResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -21,11 +22,12 @@ public class GlobalExceptionHandler {
     private static final String REQUEST_LOG_FORMAT = "[{}] {} {} - {}";
 
     /**
-     * 애플리케이션 표준 예외 응답 생성하는 메서드
+     * ?좏뵆由ъ??댁뀡 ?쒖? ?덉쇅 ?묐떟 ?앹꽦?섎뒗 硫붿꽌??
      */
     @ExceptionHandler(BaseException.class)
     public ResponseEntity<BaseResponse> handleUserException(BaseException e, HttpServletRequest request) {
         HttpStatus httpStatus = e.getHttpStatus();
+        setErrorMdc(e.getErrorCode(), httpStatus);
 
         if (httpStatus.is5xxServerError()) {
             logError(e.getErrorCode(), request, e.getMessage(), e);
@@ -40,20 +42,20 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 입력 검증/바인딩/파싱 실패 예외 응답 생성.
+     * ?낅젰 寃利?諛붿씤???뚯떛 ?ㅽ뙣 ?덉쇅 ?묐떟 ?앹꽦.
      * <p>
-     * 입력 문제를 {@link ErrorCode#INVALID_INPUT_VALUE}로 통일하여 400 응답을 반환
+     * ?낅젰 臾몄젣瑜?{@link ErrorCode#INVALID_INPUT_VALUE}濡??듭씪?섏뿬 400 ?묐떟??諛섑솚
      * </p>
-     * <p><b>로그 예시</b></p>
+     * <p><b>濡쒓렇 ?덉떆</b></p>
      * <ul>
-     *   <li>{@link BindException}: {@code [COMMON-002] POST /api/v1/users - email: 이메일 형식이 아닙니다, age: 0 이상이어야 합니다}</li>
-     *   <li>{@link HttpMessageNotReadableException}: {@code [COMMON-002] POST /api/v1/users - 요청 본문 형식을 확인해주세요.}</li>
-     *   <li>{@link HandlerMethodValidationException}: {@code [COMMON-002] GET /api/v1/users/me - 잘못된 입력 값입니다.} (또는 스프링 기본 메시지)</li>
+     *   <li>{@link BindException}: {@code [COMMON-002] POST /api/v1/users - email: ?대찓???뺤떇???꾨떃?덈떎, age: 0 ?댁긽?댁뼱???⑸땲??</li>
+     *   <li>{@link HttpMessageNotReadableException}: {@code [COMMON-002] POST /api/v1/users - ?붿껌 蹂몃Ц ?뺤떇???뺤씤?댁＜?몄슂.}</li>
+     *   <li>{@link HandlerMethodValidationException}: {@code [COMMON-002] GET /api/v1/users/me - ?섎せ???낅젰 媛믪엯?덈떎.} (?먮뒗 ?ㅽ봽留?湲곕낯 硫붿떆吏)</li>
      * </ul>
      *
-     * @param e       처리 대상 예외
-     * @param request 요청 정보
-     * @return 입력 오류 안내를 포함한 400 응답
+     * @param e       泥섎━ ????덉쇅
+     * @param request ?붿껌 ?뺣낫
+     * @return ?낅젰 ?ㅻ쪟 ?덈궡瑜??ы븿??400 ?묐떟
      */
     @ExceptionHandler({
             BindException.class,
@@ -64,6 +66,7 @@ public class GlobalExceptionHandler {
     })
     public ResponseEntity<BaseResponse> handleInvalidInput(Exception e, HttpServletRequest request) {
         String logDetail = summarizeInvalidInput(e);
+        setErrorMdc(ErrorCode.INVALID_INPUT_VALUE, HttpStatus.BAD_REQUEST);
         logInfo(request, logDetail);
 
         BaseResponse response = BaseResponse.onFailure(ErrorCode.INVALID_INPUT_VALUE);
@@ -74,6 +77,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<BaseResponse> handleAccessDenied(AccessDeniedException e, HttpServletRequest request) {
+        setErrorMdc(ErrorCode.ACCESS_DENIED, ErrorCode.ACCESS_DENIED.getHttpStatus());
         logWarn(ErrorCode.ACCESS_DENIED, request, e.getMessage());
 
         BaseResponse response = BaseResponse.onFailure(ErrorCode.ACCESS_DENIED);
@@ -87,6 +91,7 @@ public class GlobalExceptionHandler {
             org.hibernate.exception.ConstraintViolationException.class
     })
     public ResponseEntity<BaseResponse> handleDataIntegrityViolation(Exception e, HttpServletRequest request) {
+        setErrorMdc(ErrorCode.INTERNAL_SERVER_ERROR, HttpStatus.INTERNAL_SERVER_ERROR);
         logError(ErrorCode.INTERNAL_SERVER_ERROR, request, e.getMessage(), e);
 
         BaseResponse response = BaseResponse.onFailure(ErrorCode.INTERNAL_SERVER_ERROR);
@@ -96,21 +101,22 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 예기치 못한 예외의 공통 응답 생성.
+     * ?덇린移?紐삵븳 ?덉쇅??怨듯넻 ?묐떟 ?앹꽦.
      * <p>
-     * 사전에 분류되지 않은 모든 예외를 {@link ErrorCode#INTERNAL_SERVER_ERROR}로 처리하고 500 응답을 반환
+     * ?ъ쟾??遺꾨쪟?섏? ?딆? 紐⑤뱺 ?덉쇅瑜?{@link ErrorCode#INTERNAL_SERVER_ERROR}濡?泥섎━?섍퀬 500 ?묐떟??諛섑솚
      * </p>
-     * <p><b>로그 예시</b></p>
+     * <p><b>濡쒓렇 ?덉떆</b></p>
      * <p>
-     * {@code [COMMON-001] GET /api/v1/users/me - 예외 메시지} (stacktrace 포함)
+     * {@code [COMMON-001] GET /api/v1/users/me - ?덉쇅 硫붿떆吏} (stacktrace ?ы븿)
      * </p>
      *
-     * @param e       처리 대상 예외
-     * @param request 요청 정보
-     * @return 500 응답
+     * @param e       泥섎━ ????덉쇅
+     * @param request ?붿껌 ?뺣낫
+     * @return 500 ?묐떟
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<BaseResponse> handleException(Exception e, HttpServletRequest request) {
+        setErrorMdc(ErrorCode.INTERNAL_SERVER_ERROR, HttpStatus.INTERNAL_SERVER_ERROR);
         logError(ErrorCode.INTERNAL_SERVER_ERROR, request, e.getMessage(), e);
 
         BaseResponse response = BaseResponse.onFailure(ErrorCode.INTERNAL_SERVER_ERROR);
@@ -120,28 +126,28 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 입력 오류 예외를 로그용 요약 문자열로 변환.
+     * ?낅젰 ?ㅻ쪟 ?덉쇅瑜?濡쒓렇???붿빟 臾몄옄?대줈 蹂??
      * <p>
-     * 응답에는 상세 오류를 포함하지 않으므로, 운영/디버깅을 위해 로그에 남길 최소 정보만 추출
+     * ?묐떟?먮뒗 ?곸꽭 ?ㅻ쪟瑜??ы븿?섏? ?딆쑝誘濡? ?댁쁺/?붾쾭源낆쓣 ?꾪빐 濡쒓렇???④만 理쒖냼 ?뺣낫留?異붿텧
      * </p>
      *
-     * @param e 처리 대상 예외
-     * @return 요약 문자열(없으면 null)
+     * @param e 泥섎━ ????덉쇅
+     * @return ?붿빟 臾몄옄???놁쑝硫?null)
      */
     private static String summarizeInvalidInput(Exception e) {
         if (e instanceof BindException bindException) {
             return bindException.getBindingResult().getFieldErrors().stream()
                     .map(fieldError -> fieldError.getField() + ": " + fieldError.getDefaultMessage())
                     .reduce((left, right) -> left + ", " + right)
-                    .orElse("잘못된 입력 값입니다.");
+                    .orElse("?섎せ???낅젰 媛믪엯?덈떎.");
         }
 
         if (e instanceof HttpMessageNotReadableException) {
-            return "요청 본문 형식을 확인해주세요.";
+            return "?붿껌 蹂몃Ц ?뺤떇???뺤씤?댁＜?몄슂.";
         }
 
         String message = e.getMessage();
-        return (message == null || message.isBlank()) ? "잘못된 입력 값입니다." : message;
+        return (message == null || message.isBlank()) ? "?섎せ???낅젰 媛믪엯?덈떎." : message;
     }
 
     private static void logInfo(HttpServletRequest request, String detail) {
@@ -154,5 +160,10 @@ public class GlobalExceptionHandler {
 
     private static void logError(ErrorCode errorCode, HttpServletRequest request, String detail, Throwable throwable) {
         log.error(REQUEST_LOG_FORMAT, errorCode.getCode(), request.getMethod(), request.getRequestURI(), detail, throwable);
+    }
+
+    private static void setErrorMdc(ErrorCode errorCode, HttpStatus status) {
+        MDC.put("status", String.valueOf(status.value()));
+        MDC.put("errorCode", errorCode.getCode());
     }
 }
