@@ -58,6 +58,7 @@ function mapOnlineUserToMatched(dto: OnlineUserDto): MatchedUser {
       mbti: dto.mbti ?? undefined,
       bio: dto.intro ?? undefined,
       interests: dto.interestTags ?? [],
+      loveDna: dto.loveDna ?? undefined,
     },
   }
 }
