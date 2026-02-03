@@ -66,7 +66,11 @@ public interface ConferenceHistoryApiDocs {
     })
     @Parameter(name = "page", description = "페이지 번호 (0부터 시작)", example = "0")
     @Parameter(name = "size", description = "페이지 크기", example = "20")
-    ResponseEntity<BaseResponse<ConferenceHistoryResponseDto>> getMyConferenceHistory(@Parameter(hidden = true) Pageable pageable);
+    @Parameter(name = "search", description = "상대방 닉네임 검색(부분 일치, 대소문자 무시, 앞뒤 공백 제거)")
+    ResponseEntity<BaseResponse<ConferenceHistoryResponseDto>> getMyConferenceHistory(
+            String search,
+            @Parameter(hidden = true) Pageable pageable
+    );
 
     @Operation(summary = "상대 프로필 조회", description = "대화 이력에서 상대 프로필을 조회합니다.")
     @ApiResponse(responseCode = "200", description = "상대 프로필 조회 성공")

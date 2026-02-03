@@ -50,6 +50,35 @@ public interface ConferenceParticipantRepository extends JpaRepository<Conferenc
     @EntityGraph(attributePaths = {"conference"})
     Page<ConferenceParticipant> findByUserOrderByConferenceCreatedAtDesc(User user, Pageable pageable);
 
+    @EntityGraph(attributePaths = {"conference"})
+    @Query(
+            value = """
+                    select distinct cp
+                    from ConferenceParticipant cp
+                    join ConferenceParticipant partner on partner.conference = cp.conference
+                    join partner.user partnerUser
+                    where cp.user = :user
+                      and partnerUser.id <> :userId
+                      and lower(partnerUser.nickname) like concat('%', :keyword, '%')
+                    order by cp.conference.createdAt desc
+                    """,
+            countQuery = """
+                    select count(distinct cp)
+                    from ConferenceParticipant cp
+                    join ConferenceParticipant partner on partner.conference = cp.conference
+                    join partner.user partnerUser
+                    where cp.user = :user
+                      and partnerUser.id <> :userId
+                      and lower(partnerUser.nickname) like concat('%', :keyword, '%')
+                    """
+    )
+    Page<ConferenceParticipant> findByUserAndPartnerNicknameContainsIgnoreCase(
+            @Param("user") User user,
+            @Param("userId") UUID userId,
+            @Param("keyword") String keyword,
+            Pageable pageable
+    );
+
     @EntityGraph(attributePaths = {"conference", "user"})
     List<ConferenceParticipant> findByConferenceIdIn(List<UUID> conferenceIds);
 
