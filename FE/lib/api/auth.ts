@@ -1,4 +1,5 @@
 import { apiFetch, setAuthToken, resolveApiUrl, getAuthToken } from "@/lib/api"
+import { ApiError, parseApiError } from "@/lib/error-codes"
 
 /**
  * 한글 지역명을 영문 코드로 변환
@@ -151,9 +152,14 @@ export async function login(email: string, password: string, remember = false): 
   if (!response.ok) {
     try {
       const errorData: BaseResponse<unknown> = await response.json()
-      throw new Error(errorData.message || `로그인 실패: ${response.status}`)
-    } catch (parseError) {
-      throw new Error(`로그인 실패: ${response.status}`)
+      throw new ApiError(
+        errorData.errorCode ?? `HTTP_${response.status}`,
+        errorData.message ?? "로그인에 실패했습니다.",
+        response.status
+      )
+    } catch (e) {
+      if (e instanceof ApiError) throw e
+      throw new ApiError(`HTTP_${response.status}`, `로그인 실패: ${response.status}`, response.status)
     }
   }
 
@@ -164,7 +170,11 @@ export async function login(email: string, password: string, remember = false): 
   const baseResponse: BaseResponse<LoginResponse> = await response.json()
   
   if (!baseResponse.isSuccess || !baseResponse.data) {
-    throw new Error(baseResponse.message || "로그인에 실패했습니다")
+    throw new ApiError(
+      baseResponse.errorCode ?? "COMMON-002",
+      baseResponse.message ?? "로그인에 실패했습니다.",
+      baseResponse.statusCode
+    )
   }
 
   // 헤더의 토큰이 있으면 우선 사용, 없으면 응답 body의 토큰 사용
@@ -195,16 +205,25 @@ export async function signup(data: SignupRequest): Promise<SignupResponse> {
   if (!response.ok) {
     try {
       const errorData: BaseResponse<unknown> = await response.json()
-      throw new Error(errorData.message || `회원가입 실패: ${response.status}`)
-    } catch (parseError) {
-      throw new Error(`회원가입 실패: ${response.status}`)
+      throw new ApiError(
+        errorData.errorCode ?? `HTTP_${response.status}`,
+        errorData.message ?? "회원가입에 실패했습니다.",
+        response.status
+      )
+    } catch (e) {
+      if (e instanceof ApiError) throw e
+      throw new ApiError(`HTTP_${response.status}`, `회원가입 실패: ${response.status}`, response.status)
     }
   }
 
   const baseResponse: BaseResponse<SignupResponse> = await response.json()
-  
+
   if (!baseResponse.isSuccess || !baseResponse.data) {
-    throw new Error(baseResponse.message || "회원가입에 실패했습니다")
+    throw new ApiError(
+      baseResponse.errorCode ?? "COMMON-002",
+      baseResponse.message ?? "회원가입에 실패했습니다.",
+      baseResponse.statusCode
+    )
   }
 
   return baseResponse.data
@@ -225,13 +244,27 @@ export async function checkEmail(email: string): Promise<boolean> {
   })
 
   if (!response.ok) {
-    throw new Error(`이메일 확인 실패: ${response.status}`)
+    try {
+      const errorData: BaseResponse<unknown> = await response.json()
+      throw new ApiError(
+        errorData.errorCode ?? `HTTP_${response.status}`,
+        errorData.message ?? "이메일 확인에 실패했습니다.",
+        response.status
+      )
+    } catch (e) {
+      if (e instanceof ApiError) throw e
+      throw new ApiError(`HTTP_${response.status}`, `이메일 확인 실패: ${response.status}`, response.status)
+    }
   }
 
   const baseResponse: BaseResponse<boolean> = await response.json()
-  
+
   if (!baseResponse.isSuccess) {
-    throw new Error(baseResponse.message || "이메일 확인에 실패했습니다")
+    throw new ApiError(
+      baseResponse.errorCode ?? "COMMON-002",
+      baseResponse.message ?? "이메일 확인에 실패했습니다.",
+      baseResponse.statusCode
+    )
   }
 
   return baseResponse.data
@@ -252,53 +285,82 @@ export async function checkNickname(nickname: string): Promise<boolean> {
   })
 
   if (!response.ok) {
-    throw new Error(`닉네임 확인 실패: ${response.status}`)
+    try {
+      const errorData: BaseResponse<unknown> = await response.json()
+      throw new ApiError(
+        errorData.errorCode ?? `HTTP_${response.status}`,
+        errorData.message ?? "닉네임 확인에 실패했습니다.",
+        response.status
+      )
+    } catch (e) {
+      if (e instanceof ApiError) throw e
+      throw new ApiError(`HTTP_${response.status}`, `닉네임 확인 실패: ${response.status}`, response.status)
+    }
   }
 
   const baseResponse: BaseResponse<boolean> = await response.json()
-  
+
   if (!baseResponse.isSuccess) {
-    throw new Error(baseResponse.message || "닉네임 확인에 실패했습니다")
+    throw new ApiError(
+      baseResponse.errorCode ?? "COMMON-002",
+      baseResponse.message ?? "닉네임 확인에 실패했습니다.",
+      baseResponse.statusCode
+    )
   }
 
   return baseResponse.data
 }
+
+let reissuePromise: Promise<LoginResponse> | null = null
 
 /**
  * 토큰 재발급 API
  * @returns 새로운 액세스 토큰
  */
 export async function reissueToken(): Promise<LoginResponse> {
-  const response = await fetch(resolveApiUrl("/api/v1/auth/reissue"), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    credentials: "include", // 쿠키에서 refresh_token 읽음
-  })
-
-  if (!response.ok) {
-    throw new Error(`토큰 재발급 실패: ${response.status}`)
+  if (reissuePromise) {
+    return reissuePromise
   }
 
-  // 응답 헤더에서 Authorization 토큰 추출
-  const authHeader = response.headers.get("Authorization")
-  const token = authHeader?.replace("Bearer ", "") || ""
+  reissuePromise = (async () => {
+    try {
+      const response = await fetch(resolveApiUrl("/api/v1/auth/reissue"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include", // 쿠키에서 refresh_token 읽음
+      })
 
-  const baseResponse: BaseResponse<LoginResponse> = await response.json()
-  
-  if (!baseResponse.isSuccess || !baseResponse.data) {
-    throw new Error(baseResponse.message || "토큰 재발급에 실패했습니다")
-  }
+      if (!response.ok) {
+        const err = await parseApiError(response)
+        throw err
+      }
 
-  // 헤더의 토큰이 있으면 우선 사용, 없으면 응답 body의 토큰 사용
-  const accessToken = token || baseResponse.data.accessToken
-  
-  if (accessToken) {
-    setAuthToken(accessToken)
-  }
+      // 응답 헤더에서 Authorization 토큰 추출
+      const authHeader = response.headers.get("Authorization")
+      const token = authHeader?.replace("Bearer ", "") || ""
 
-  return baseResponse.data
+      const baseResponse: BaseResponse<LoginResponse> = await response.json()
+
+      if (!baseResponse.isSuccess || !baseResponse.data) {
+        throw new Error(baseResponse.message || "토큰 재발급에 실패했습니다")
+      }
+
+      // 헤더의 토큰이 있으면 우선 사용, 없으면 응답 body의 토큰 사용
+      const accessToken = token || baseResponse.data.accessToken
+
+      if (accessToken) {
+        setAuthToken(accessToken)
+      }
+
+      return baseResponse.data
+    } finally {
+      reissuePromise = null
+    }
+  })()
+
+  return reissuePromise
 }
 
 /**

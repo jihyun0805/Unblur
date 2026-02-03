@@ -1,29 +1,33 @@
 import { toast } from "@/hooks/use-toast"
 import { reissueToken } from "./api/auth"
+import { ApiError, parseApiError, AUTH_FORBIDDEN_MESSAGE, ERROR_CODE_CATEGORY } from "./error-codes"
 
 const AUTH_TOKEN_KEY = "auth_token"
 const AUTH_REMEMBER_KEY = "auth_remember"
-const USER_KEY = "user"
+export const USER_KEY = "user"
 
 let memoryToken: string | null = null
 
 export const getAuthToken = () => {
   if (memoryToken) return memoryToken
-  const remember = localStorage.getItem(AUTH_REMEMBER_KEY) === "1"
-  return remember ? localStorage.getItem(AUTH_TOKEN_KEY) : null
+  // 전체 새로고침 시에도 복원: localStorage에서 토큰 읽기
+  const stored = typeof window !== "undefined" ? localStorage.getItem(AUTH_TOKEN_KEY) : null
+  if (stored) memoryToken = stored
+  return stored
 }
 
 export const setAuthToken = (token: string, options?: { remember?: boolean }) => {
   memoryToken = token
-  const remember = options?.remember ?? localStorage.getItem(AUTH_REMEMBER_KEY) === "1"
-  if (remember) {
+  // 로그인/재발급 시 항상 localStorage에 저장 → 전체 새로고침 시 복원
+  if (typeof window !== "undefined") {
     localStorage.setItem(AUTH_TOKEN_KEY, token)
-    localStorage.setItem(AUTH_REMEMBER_KEY, "1")
-  } else {
-    localStorage.removeItem(AUTH_TOKEN_KEY)
-    localStorage.removeItem(AUTH_REMEMBER_KEY)
+    const remember = options?.remember ?? localStorage.getItem(AUTH_REMEMBER_KEY) === "1"
+    localStorage.setItem(AUTH_REMEMBER_KEY, remember ? "1" : "0")
   }
 }
+
+/** 토큰 만료/무효로 인한 로그아웃 시 AuthProvider가 구독하는 이벤트 이름 */
+export const AUTH_EXPIRED_EVENT = "auth:expired"
 
 export const clearAuthToken = () => {
   memoryToken = null
@@ -32,12 +36,22 @@ export const clearAuthToken = () => {
   localStorage.removeItem(USER_KEY)
 }
 
+/** 인증 만료로 토큰 정리 + 로그아웃 알림 (401/refresh 실패 시에만 사용) */
+const clearAuthAndNotify = () => {
+  clearAuthToken()
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT))
+  }
+}
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
 const IDEMPOTENCY_HEADER = "Idempotency-Key"
 const IDEMPOTENT_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"])
 
 export type ApiFetchInit = RequestInit & {
   idempotencyKey?: string
+  /** 401 시 토큰 정리/로그아웃 알림 생략 (세션 종료 후 평가 등 비즈니스 401용) */
+  skipAuthClearOn401?: boolean
 }
 
 /**
@@ -63,7 +77,7 @@ export const apiFetch = async (
   retried = false
 ): Promise<Response> => {
   const token = getAuthToken()
-  const { idempotencyKey, ...restInit } = init
+  const { idempotencyKey, skipAuthClearOn401, ...restInit } = init
   const headers = new Headers(restInit.headers)
 
   if (token) {
@@ -85,72 +99,61 @@ export const apiFetch = async (
     credentials: "include", // 쿠키 포함
   })
 
-  if (response.status === 409) {
-    toast({
-      title: "요청이 처리되지 않았어요. 잠시 후 다시 시도해 주세요.",
-      variant: "destructive",
-    })
-  }
-
   // 401 에러 발생 시 토큰 재발급 시도
   if (response.status === 401 && !retried) {
     try {
-      // 토큰 재발급 시도
       await reissueToken()
-      
-      // 재발급 성공 시 원래 요청 재시도 (한 번만)
       const newToken = getAuthToken()
       const newHeaders = new Headers(restInit.headers)
-      
-      if (newToken) {
-        newHeaders.set("Authorization", `Bearer ${newToken}`)
-      }
-
+      if (newToken) newHeaders.set("Authorization", `Bearer ${newToken}`)
       if (idempotencyKey && IDEMPOTENT_METHODS.has(method)) {
         newHeaders.set(IDEMPOTENCY_HEADER, idempotencyKey)
       }
-
       const retryResponse = await fetch(url, {
         ...restInit,
         headers: newHeaders,
         credentials: "include",
       })
-
       if (retryResponse.status === 401) {
-        clearAuthToken()
-        throw new Error("AUTH_FORBIDDEN")
+        if (!skipAuthClearOn401) clearAuthAndNotify()
+        throw new Error(AUTH_FORBIDDEN_MESSAGE)
       }
       if (retryResponse.status === 403) {
-        throw new Error("AUTH_FORBIDDEN")
+        throw new Error(AUTH_FORBIDDEN_MESSAGE)
       }
-      if (retryResponse.status === 409) {
-        toast({
-          title: "요청이 처리되지 않았어요. 잠시 후 다시 시도해 주세요.",
-          variant: "destructive",
-        })
-      }
-
       if (!retryResponse.ok) {
-        throw new Error(`API_ERROR_${retryResponse.status}`)
+        const err = await parseApiError(retryResponse)
+        toast({ title: err.message, variant: "destructive" })
+        throw err
       }
-
       return retryResponse
-    } catch (reissueError) {
-      clearAuthToken()
-      throw new Error("AUTH_FORBIDDEN")
+    } catch (e) {
+      if (e instanceof ApiError) {
+        // AUTH-003/004 등 토큰 무효·만료는 reissue 실패로 예상 가능 → 토스트 없이 로그인 필요 처리
+        if (ERROR_CODE_CATEGORY[e.errorCode] === "auth_required") {
+          if (!skipAuthClearOn401) clearAuthAndNotify()
+          throw new Error(AUTH_FORBIDDEN_MESSAGE)
+        }
+        throw e
+      }
+      if (e instanceof Error && e.message === AUTH_FORBIDDEN_MESSAGE) throw e
+      if (!skipAuthClearOn401) clearAuthAndNotify()
+      throw new Error(AUTH_FORBIDDEN_MESSAGE)
     }
   }
 
   if (response.status === 401) {
-    clearAuthToken()
-    throw new Error("AUTH_FORBIDDEN")
+    if (!skipAuthClearOn401) clearAuthAndNotify()
+    throw new Error(AUTH_FORBIDDEN_MESSAGE)
   }
   if (response.status === 403) {
-    throw new Error("AUTH_FORBIDDEN")
+    throw new Error(AUTH_FORBIDDEN_MESSAGE)
   }
 
   if (!response.ok) {
-    throw new Error(`API_ERROR_${response.status}`)
+    const err = await parseApiError(response)
+    toast({ title: err.message, variant: "destructive" })
+    throw err
   }
 
   return response
