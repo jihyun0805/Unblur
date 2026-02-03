@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
+import { flushSync } from "react-dom"
 import { createSignalingClient, type SignalingMessage, type VoteChoice, type WebRTCSignalingClient } from "@/lib/webrtc-signaling"
 import { registerStream, unregisterStream } from "@/lib/media-streams"
 import {
@@ -43,6 +44,10 @@ export interface UseWebRTCReturn {
   isMuted: boolean
   toggleVideo: () => void
   isVideoEnabled: boolean
+  /** 상대방 비디오 트랙이 mute 상태(데이터 미수신)인지 */
+  remoteVideoMuted: boolean
+  /** 상대방 오디오 트랙이 mute 상태(데이터 미수신)인지 */
+  remoteAudioMuted: boolean
   sendVote: (vote: VoteChoice) => void
   signalingClient: WebRTCSignalingClient | null
 }
@@ -100,6 +105,8 @@ export function useWebRTC({
   const [error, setError] = useState<string | null>(null)
   const [isMuted, setIsMuted] = useState(false)
   const [isVideoEnabled, setIsVideoEnabled] = useState(true)
+  const [remoteVideoMuted, setRemoteVideoMuted] = useState(false)
+  const [remoteAudioMuted, setRemoteAudioMuted] = useState(false)
   const [signalingReady, setSignalingReady] = useState(false)
   const [hasJoined, setHasJoined] = useState(false)
 
@@ -187,9 +194,28 @@ export function useWebRTC({
       localStreamRef.current.getTracks().forEach((track) => pc.addTrack(track, localStreamRef.current!))
     }
 
+    const attachRemoteTrackMuteListeners = (track: MediaStreamTrack) => {
+      const onMute = () => {
+        if (track.kind === "video") setRemoteVideoMuted(true)
+        else if (track.kind === "audio") setRemoteAudioMuted(true)
+      }
+      const onUnmute = () => {
+        if (track.kind === "video") setRemoteVideoMuted(false)
+        else if (track.kind === "audio") setRemoteAudioMuted(false)
+      }
+      track.addEventListener("mute", onMute)
+      track.addEventListener("unmute", onUnmute)
+      if (track.muted) onMute()
+      return () => {
+        track.removeEventListener("mute", onMute)
+        track.removeEventListener("unmute", onUnmute)
+      }
+    }
+
     pc.ontrack = (event) => {
       const track = event.track
       console.log("[WebRTC] Received remote track", track.kind)
+      attachRemoteTrackMuteListeners(track)
       let stream = remoteStreamRef.current
       if (!stream) {
         stream = new MediaStream()
@@ -216,7 +242,6 @@ export function useWebRTC({
     pc.onconnectionstatechange = () => {
       setIsConnected(pc.connectionState === "connected")
       setIsConnecting(pc.connectionState === "connecting")
-      if (pc.connectionState === "failed" || pc.connectionState === "disconnected") setError("연결이 끊어졌습니다")
     }
     pc.oniceconnectionstatechange = () => {
       if (pc.iceConnectionState === "failed") pc.restartIce()
@@ -270,6 +295,26 @@ export function useWebRTC({
           }
         }
 
+        // 오디오만 재획득 시 기존 스트림에 트랙만 교체해 비디오 요소 srcObject를 바꾸지 않음 → 깜빡임 방지
+        if (!isVideo && currentStream) {
+          currentStream.getAudioTracks().forEach((t) => {
+            currentStream.removeTrack(t)
+            t.stop()
+          })
+          currentStream.addTrack(newTrack)
+          newTrack.addEventListener(
+            "ended",
+            () => {
+              setIsMuted(true)
+              syncLocalStreamWithoutEndedTracks()
+            },
+            { once: true }
+          )
+          setIsMuted(false)
+          setError((prev) => (prev?.includes("마이크") ? prev.replace(/마이크[^.]*\.?/g, "").trim() || null : prev))
+          return
+        }
+
         const otherTracks =
           currentStream?.getTracks().filter((t) => t.readyState !== "ended" && t.kind !== kind) ?? []
         const nextStream = new MediaStream([...otherTracks, newTrack])
@@ -292,7 +337,7 @@ export function useWebRTC({
         console.error("[WebRTC] reacquireMedia failed:", kind, err)
       }
     },
-    [sessionId, userId, localVideoRef, attachTrackEndedListeners]
+    [sessionId, userId, localVideoRef, attachTrackEndedListeners, syncLocalStreamWithoutEndedTracks]
   )
 
   const createAnswer = useCallback(
@@ -327,6 +372,19 @@ export function useWebRTC({
           pc.setRemoteDescription(new RTCSessionDescription(message.sdp))
             .then(() => {
               drainPendingIceCandidates(pc)
+              const attachRemoteTrackMuteListeners = (track: MediaStreamTrack) => {
+                const onMute = () => {
+                  if (track.kind === "video") setRemoteVideoMuted(true)
+                  else if (track.kind === "audio") setRemoteAudioMuted(true)
+                }
+                const onUnmute = () => {
+                  if (track.kind === "video") setRemoteVideoMuted(false)
+                  else if (track.kind === "audio") setRemoteAudioMuted(false)
+                }
+                track.addEventListener("mute", onMute)
+                track.addEventListener("unmute", onUnmute)
+                if (track.muted) onMute()
+              }
               const collect = () => {
                 const conn = peerConnectionRef.current
                 if (!conn) return
@@ -337,7 +395,10 @@ export function useWebRTC({
                 }
                 conn.getReceivers().forEach((r) => {
                   const track = r.track
-                  if (track && !stream!.getTracks().some((t) => t.id === track.id)) stream!.addTrack(track)
+                  if (track && !stream!.getTracks().some((t) => t.id === track.id)) {
+                    stream!.addTrack(track)
+                    attachRemoteTrackMuteListeners(track)
+                  }
                 })
                 if (stream.getTracks().length > 0) {
                   setRemoteStream(stream)
@@ -373,7 +434,6 @@ export function useWebRTC({
           break
         case "disconnected":
           setIsConnected(false)
-          setError("상대방과의 연결이 끊어졌습니다")
           signalingClientRef.current?.disconnect()
           signalingClientRef.current = null
           onDisconnected?.()
@@ -467,26 +527,27 @@ export function useWebRTC({
       setHasJoined(false)
       setLocalStream(null)
       setRemoteStream(null)
+      setRemoteVideoMuted(false)
+      setRemoteAudioMuted(false)
       setIsConnected(false)
       setIsConnecting(false)
     }
   }, [enabled, sessionId, userId, initLocalStream, createPeerConnection, createOffer, useMock, wsUrl])
 
   const toggleMute = useCallback(() => {
-    setIsMuted((prev) => {
-      const next = !prev
-      localStreamRef.current?.getAudioTracks().forEach((t) => { t.enabled = !next })
-      return next
-    })
+    const next = !isMutedRef.current
+    localStreamRef.current?.getAudioTracks().forEach((t) => { t.enabled = !next })
+    flushSync(() => setIsMuted(next))
   }, [])
 
   const toggleVideo = useCallback(() => {
-    setIsVideoEnabled((prev) => {
-      const next = !prev
-      localStreamRef.current?.getVideoTracks().forEach((t) => { t.enabled = next })
-      return next
-    })
-  }, [])
+    const next = !isVideoEnabledRef.current
+    localStreamRef.current?.getVideoTracks().forEach((t) => { t.enabled = next })
+    flushSync(() => setIsVideoEnabled(next))
+    if (localVideoRef.current && localStreamRef.current) {
+      localVideoRef.current.srcObject = localStreamRef.current
+    }
+  }, [localVideoRef])
 
   const sendVote = useCallback(
     (vote: VoteChoice) => {
@@ -506,6 +567,8 @@ export function useWebRTC({
     isMuted,
     toggleVideo,
     isVideoEnabled,
+    remoteVideoMuted,
+    remoteAudioMuted,
     sendVote,
     signalingClient: signalingClientRef.current,
   }

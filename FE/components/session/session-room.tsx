@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback, type MutableRefObject } from "react"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useToast } from "@/hooks/use-toast"
@@ -92,6 +92,8 @@ export function SessionRoom({
     isMuted,
     toggleVideo,
     isVideoEnabled,
+    remoteVideoMuted,
+    remoteAudioMuted,
     sendVote,
     signalingClient,
   } = useWebRTC({
@@ -233,10 +235,21 @@ export function SessionRoom({
     }
   }, [signalingClient, sessionId, user?.id, showGame])
 
-  // 로컬 스트림을 비디오 요소에 설정
+  // 로컬 스트림을 비디오 요소에 설정 (ref 부착 시 + localStream 변경 시 모두 동기화)
+  const setLocalVideoRef = useCallback(
+    (el: HTMLVideoElement | null) => {
+      (localVideoRef as MutableRefObject<HTMLVideoElement | null>).current = el
+      if (el && localStream) {
+        el.srcObject = localStream
+        el.play().catch(() => {})
+      }
+    },
+    [localStream]
+  )
   useEffect(() => {
     if (localStream && localVideoRef.current) {
       localVideoRef.current.srcObject = localStream
+      localVideoRef.current.play().catch(() => {})
     }
   }, [localStream])
 
@@ -510,7 +523,7 @@ export function SessionRoom({
         <div className={`flex-1 p-4 transition-all duration-300 ${showChat ? "pr-2" : ""}`}>
           <div className="h-full max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Partner Video - 블러 적용 */}
-            <div className="relative rounded-2xl overflow-hidden bg-[#2a2a2a]">
+            <div className="relative rounded-2xl overflow-hidden bg-[#2a2a2a] min-h-0">
               {remoteStream ? (
                 <>
                   <video
@@ -520,9 +533,17 @@ export function SessionRoom({
                     className="w-full h-full object-cover transition-all duration-1000 -scale-x-100"
                     style={{ filter: `blur(${blurLevel}px)` }}
                   />
-                  <div className="absolute bottom-4 left-4 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-sm">
+                  <div className="absolute bottom-4 left-4 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-sm flex items-center gap-2">
                     <span className="text-white text-sm">상대방</span>
+                    {remoteAudioMuted && (
+                      <span className="text-xs text-white/90 bg-red-500/70 px-2 py-0.5 rounded">마이크 꺼짐</span>
+                    )}
                   </div>
+                  {remoteVideoMuted && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/50 transition-opacity duration-200">
+                      <div className="text-white text-sm">상대방 카메라 꺼짐</div>
+                    </div>
+                  )}
                   {blurLevel > 0 && (
                     <div className="absolute top-4 right-4 px-3 py-1.5 rounded-full bg-primary/80 backdrop-blur-sm">
                       <span className="text-primary-foreground text-xs">{blurLabel}</span>
@@ -557,9 +578,9 @@ export function SessionRoom({
             </div>
 
             {/* My Video - 나도 블러 적용 */}
-            <div className="relative rounded-2xl overflow-hidden bg-[#2a2a2a]">
+            <div className="relative rounded-2xl overflow-hidden bg-[#2a2a2a] min-h-0">
               <video
-                ref={localVideoRef}
+                ref={setLocalVideoRef}
                 autoPlay
                 playsInline
                 muted
