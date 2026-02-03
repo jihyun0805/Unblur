@@ -91,6 +91,9 @@ public class MatchEventPublisherImpl implements MatchEventPublisher {
 
         } catch (IOException e) {
             log.error("WebSocket 메시지 전송 실패: {}", e.getMessage());
+        } catch (IllegalStateException e) {
+            // 세션이 이미 닫힌 경우(새로고침/탭 닫기 등) 무시
+            log.debug("WebSocket 세션 이미 종료됨, 전송 생략. sessionId={}", session.getId());
         }
     }
 }
