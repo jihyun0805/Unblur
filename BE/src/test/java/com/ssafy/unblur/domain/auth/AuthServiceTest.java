@@ -1,6 +1,7 @@
 package com.ssafy.unblur.domain.auth;
 
-import com.ssafy.unblur.domain.auth.dto.SignupDto;
+
+import com.ssafy.unblur.domain.auth.dto.request.SignupRequestDto;
 import com.ssafy.unblur.domain.auth.model.Gender;
 import com.ssafy.unblur.domain.auth.model.User;
 import com.ssafy.unblur.domain.auth.repository.UserRepository;
@@ -53,8 +54,8 @@ class AuthServiceTest {
     @Autowired
     UserRepository userRepository;
 
-    private SignupDto createSignupDto(String email, String password, String nickname) {
-        return SignupDto.builder()
+    private SignupRequestDto createSignupDto(String email, String password, String nickname) {
+        return SignupRequestDto.builder()
                 .email(email)
                 .password(password)
                 .nickname(nickname)
@@ -68,7 +69,7 @@ class AuthServiceTest {
     void signUpTest() {
         // given: 회원가입 데이터가 주어졌을 때
         String rawPassword = "test1234!";
-        SignupDto dto = createSignupDto("signup@ssafy.com", rawPassword, "테스트유저");
+        SignupRequestDto dto = createSignupDto("signup@ssafy.com", rawPassword, "테스트유저");
 
         // when: 회원가입을 실행하면
         authService.signUp(dto);
@@ -83,7 +84,7 @@ class AuthServiceTest {
     @DisplayName("이메일 중복 확인 요청")
     void isEmailDuplicateTest() {
         // given: 중복된 이메일의 사용자가 존재할 때
-        SignupDto dto = createSignupDto("EmailDup@ssafy.com", "test1234!", "user1");
+        SignupRequestDto dto = createSignupDto("EmailDup@ssafy.com", "test1234!", "user1");
         authService.signUp(dto);
 
         // when: 사용하려는 이메일이 DB에 있는지 확인한다면
@@ -99,11 +100,11 @@ class AuthServiceTest {
     @DisplayName("중복 이메일 가입 시 예외 발생")
     void duplicateEmailTest() {
         // given: 중복된 이메일의 사용자가 존재할 때
-        SignupDto dto1 = createSignupDto("same@ssafy.com", "test1234!", "user2");
+        SignupRequestDto dto1 = createSignupDto("same@ssafy.com", "test1234!", "user2");
         authService.signUp(dto1);
 
         // when: 중복된 이메일을 사용하여 회원가입을 시도한다면
-        SignupDto dto2 = createSignupDto("same@ssafy.com", "test1234!", "user3");
+        SignupRequestDto dto2 = createSignupDto("same@ssafy.com", "test1234!", "user3");
 
         // then: DuplicateEmailException 예외가 발생한다
         BaseException ex = Assertions.assertThrows(BaseException.class, () -> {
@@ -116,7 +117,7 @@ class AuthServiceTest {
     @DisplayName("닉네임 중복 확인 요청")
     void isNicknameDuplicateTest() {
         // given: 중복된 닉네임의 사용자가 존재할 때
-        SignupDto dto = createSignupDto("nicktest@ssafy.com", "test1234!", "test");
+        SignupRequestDto dto = createSignupDto("nicktest@ssafy.com", "test1234!", "test");
         authService.signUp(dto);
 
         // when: 사용하려는 닉네임이 DB에 있는지 확인한다면
@@ -132,11 +133,11 @@ class AuthServiceTest {
     @DisplayName("중복 닉네임 가입 시 예외 발생")
     void duplicateNicknameTest() {
         // given: 중복된 닉네임의 사용자가 존재할 때
-        SignupDto dto1 = createSignupDto("test1@ssafy.com", "test1234!", "kitty");
+        SignupRequestDto dto1 = createSignupDto("test1@ssafy.com", "test1234!", "kitty");
         authService.signUp(dto1);
 
         // when: 중복된 닉네임을 사용하여 회원가입을 시도한다면
-        SignupDto dto2 = createSignupDto("test2@ssafy.com", "test1234!", "kitty");
+        SignupRequestDto dto2 = createSignupDto("test2@ssafy.com", "test1234!", "kitty");
 
         // then: DuplicateNicknameException 예외가 발생한다
         BaseException ex = Assertions.assertThrows(BaseException.class, () -> {

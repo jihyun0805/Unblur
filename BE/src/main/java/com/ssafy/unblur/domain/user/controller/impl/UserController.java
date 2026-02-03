@@ -2,17 +2,25 @@ package com.ssafy.unblur.domain.user.controller.impl;
 
 import com.ssafy.unblur.common.response.BaseResponse;
 import com.ssafy.unblur.domain.user.controller.UserApiDocs;
-import com.ssafy.unblur.domain.user.dto.response.UserProfileResponseDto;
-import com.ssafy.unblur.domain.user.dto.request.UserProfileUpdateRequestDto;
-import com.ssafy.unblur.domain.user.dto.response.UserSurveyResponseDto;
-import com.ssafy.unblur.domain.user.dto.request.UserSurveyUpdateRequestDto;
 import com.ssafy.unblur.domain.user.dto.LoveDnaUpdateRequest;
+import com.ssafy.unblur.domain.user.dto.request.UserProfileUpdateRequestDto;
+import com.ssafy.unblur.domain.user.dto.request.UserSurveyUpdateRequestDto;
+import com.ssafy.unblur.domain.user.dto.response.UserProfileResponseDto;
+import com.ssafy.unblur.domain.user.dto.response.UserSurveyResponseDto;
 import com.ssafy.unblur.domain.user.service.UserService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
 
@@ -44,7 +52,7 @@ public class UserController implements UserApiDocs {
 
     @Override
     @PatchMapping("/me")
-    public ResponseEntity<BaseResponse<UserProfileResponseDto>> updateMyProfile(@RequestBody UserProfileUpdateRequestDto dto) {
+    public ResponseEntity<BaseResponse<UserProfileResponseDto>> updateMyProfile(@Valid @RequestBody UserProfileUpdateRequestDto dto) {
         UserProfileResponseDto updatedProfile = userService.updateMyProfile(dto);
         return ResponseEntity.ok(
                 BaseResponse.onSuccess("프로필 수정 성공", updatedProfile)
@@ -74,7 +82,7 @@ public class UserController implements UserApiDocs {
     public ResponseEntity<BaseResponse<UserProfileResponseDto>> updateLoveDna(@RequestBody LoveDnaUpdateRequest request) {
         UserProfileResponseDto updatedProfile = userService.updateLoveDna(request);
         return ResponseEntity.ok(
-                BaseResponse.onSuccess("연애 성향 유형 수정 성공", updatedProfile)
+                BaseResponse.onSuccess("호감 매칭 유형 수정 성공", updatedProfile)
         );
     }
 
