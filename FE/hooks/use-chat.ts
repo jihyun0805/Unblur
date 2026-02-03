@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { useChatContext } from "@/contexts/chat-context"
 import { useAuth } from "@/contexts/auth-context"
 import * as chatApi from "@/lib/api/chat"
-import type { ChatMessage, ChatMessageResponseDto, ChatReadEventDto } from "@/lib/chat-types"
+import type { ChatMessage, ChatMessageResponseDto } from "@/lib/chat-types"
 
 interface UseChatOptions {
   conferenceId: string
@@ -13,7 +13,7 @@ interface UseChatOptions {
   /** true일 때만 채팅 API 호출(회의 입장 완료 후). 미설정 시 true로 동작 */
   canLoadMessages?: boolean
   pageSize?: number // 페이지 크기
-  /** 채팅 패널이 열려 있으면 true. 열린 상태에서 상대 메시지 수신 시 즉시 읽음 처리 */
+  /** 채팅 패널이 열려 있으면 true */
   panelOpen?: boolean
 }
 
@@ -26,9 +26,11 @@ interface UseChatReturn {
   currentPage: number
   /** 읽지 않은 메시지 개수 (상대가 보낸 메시지 중 아직 읽지 않은 것) */
   unreadCount: number
+  /** 마지막 읽은 시각 (미확인 배지용) */
+  lastReadAt: Date | null
   sendMessage: (content: string) => Promise<void>
   loadMoreMessages: () => Promise<void>
-  markAsRead: () => Promise<void>
+  markAsRead: () => void
   refreshMessages: () => Promise<void>
 }
 
@@ -48,7 +50,7 @@ export function useChat({
   pageSize = 100,
   panelOpen = false,
 }: UseChatOptions): UseChatReturn {
-  const { subscribe, unsubscribe, connectionState } = useChatContext()
+  const { subscribe, unsubscribe } = useChatContext()
   const { user } = useAuth()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -59,13 +61,10 @@ export function useChat({
   /** 마지막으로 읽은 시각 (미확인 배지용, 패널 닫혀 있어도 유지) */
   const [lastReadAt, setLastReadAt] = useState<Date | null>(null)
 
-  const readDebounceTimerRef = useRef<NodeJS.Timeout | null>(null)
   const lastReadAtRef = useRef<Date | null>(null)
   const isLoadingRef = useRef(false)
 
-  // 메시지 핸들러 ref (의존성 배열 최적화)
   const messageHandlerRef = useRef<((message: ChatMessageResponseDto) => void) | null>(null)
-  const readEventHandlerRef = useRef<((event: ChatReadEventDto) => void) | null>(null)
   const messagesRef = useRef<ChatMessage[]>(messages)
   messagesRef.current = messages
 
@@ -96,11 +95,6 @@ export function useChat({
     [user]
   )
 
-  /**
-   * 메시지 수신 핸들러
-   */
-  const markAsReadRef = useRef<() => Promise<void>>(null as any)
-
   const handleMessage = useCallback(
     (dto: ChatMessageResponseDto) => {
       const message = convertToChatMessage(dto)
@@ -112,29 +106,9 @@ export function useChat({
         )
         return newMessages
       })
-      // 패널이 열려 있을 때 상대 메시지 수신 시 즉시 읽음 처리 (카카오톡처럼)
-      if (panelOpen && !message.isMine) {
-        markAsReadRef.current?.()
-      }
     },
-    [convertToChatMessage, panelOpen]
+    [convertToChatMessage]
   )
-
-  /**
-   * 읽음 이벤트 핸들러
-   * 상대방이 읽음 이벤트를 보냈을 때 = 상대가 채팅창을 읽었다는 의미이므로,
-   * 해당 시점까지의 내 메시지는 모두 읽음으로 처리한다.
-   * lastReadAt과 createdAt 비교 시 타임존/서버 시각 차이로 누락되는 것을 막기 위해,
-   * 상대방 읽음 이벤트 수신 시에는 내 메시지 전부를 읽음으로 갱신한다.
-   */
-  const handleReadEvent = useCallback((event: ChatReadEventDto) => {
-    if (event.readerId === user?.id) return
-    setMessages((prev) =>
-      prev.map((msg) =>
-        msg.isMine ? { ...msg, isReadByPartner: true } : msg
-      )
-    )
-  }, [user])
 
   /**
    * 메시지 목록 로드
@@ -217,12 +191,9 @@ export function useChat({
         const response = await chatApi.sendChatMessage(conferenceId, content.trim())
         const message = convertToChatMessage(response)
 
-        // 전송된 메시지를 목록에 추가
         setMessages((prev) => {
           const exists = prev.some((m) => m.id === message.id)
-          if (exists) {
-            return prev
-          }
+          if (exists) return prev
           return [...prev, message].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
         })
       } catch (err: any) {
@@ -237,41 +208,23 @@ export function useChat({
   )
 
   /**
-   * 읽음 처리 (디바운싱).
-   * messagesRef를 사용해 디바운스 콜백에서 항상 최신 메시지 기준으로 판단 (스테일 클로저 방지).
+   * 읽음 처리: 로컬 lastReadAt 갱신 + 서버 API 호출 (새로고침 후에도 빨간점 유지 제거)
+   * lastReadAt은 null로 보내 서버에서 LocalDateTime.now() 사용 (타임존/파싱 이슈 방지)
    */
-  const markAsRead = useCallback(async () => {
-    if (readDebounceTimerRef.current) {
-      clearTimeout(readDebounceTimerRef.current)
-    }
-
-    readDebounceTimerRef.current = setTimeout(async () => {
-      try {
-        const now = new Date()
-        const currentMessages = messagesRef.current
-        const lastRead = lastReadAtRef.current
-
-        const unreadMessages = currentMessages.filter(
-          (msg) => !msg.isMine && (!lastRead || msg.createdAt > lastRead)
-        )
-        if (unreadMessages.length > 0) {
-          await chatApi.markAsRead(conferenceId, now.toISOString())
-          lastReadAtRef.current = now
-          setLastReadAt(now)
-        }
-      } catch (err: any) {
-        console.error("읽음 처리 실패:", err)
-      }
-    }, 1000)
+  const markAsRead = useCallback(() => {
+    const now = new Date()
+    lastReadAtRef.current = now
+    setLastReadAt(now)
+    chatApi.markAsRead(conferenceId, null).catch((err) => {
+      console.warn("[Chat] 읽음 처리 API 실패:", err)
+    })
   }, [conferenceId])
 
   useEffect(() => {
     messageHandlerRef.current = handleMessage
-    readEventHandlerRef.current = handleReadEvent
-    markAsReadRef.current = markAsRead
-  }, [handleMessage, handleReadEvent, markAsRead])
+  }, [handleMessage])
 
-  // WebSocket 구독
+  // WebSocket 구독 (메시지만 구독, 읽음 이벤트 미구독)
   useEffect(() => {
     if (!enabled || !conferenceId) return
 
@@ -279,11 +232,7 @@ export function useChat({
       messageHandlerRef.current?.(dto)
     }
 
-    const readEventHandler = (event: ChatReadEventDto) => {
-      readEventHandlerRef.current?.(event)
-    }
-
-    const unsubscribeFn = subscribe(conferenceId, messageHandler, readEventHandler)
+    const unsubscribeFn = subscribe(conferenceId, messageHandler)
 
     // cleanup: 구독 해제 (연결은 유지)
     return () => {
@@ -313,19 +262,8 @@ export function useChat({
     if (lastLoadedConferenceIdRef.current === conferenceId) return
 
     lastLoadedConferenceIdRef.current = conferenceId
-    lastReadAtRef.current = null
-    setLastReadAt(null)
     loadMessages(0, false).catch(() => {})
   }, [autoLoadMessages, canLoadMessages, enabled, conferenceId, user?.id, loadMessages])
-
-  // 컴포넌트 언마운트 시 디바운스 타이머 정리
-  useEffect(() => {
-    return () => {
-      if (readDebounceTimerRef.current) {
-        clearTimeout(readDebounceTimerRef.current)
-      }
-    }
-  }, [])
 
   const unreadCount = messages.filter(
     (m) => !m.isMine && (!lastReadAt || m.createdAt > lastReadAt)
@@ -339,6 +277,7 @@ export function useChat({
     hasMore,
     currentPage,
     unreadCount,
+    lastReadAt,
     sendMessage,
     loadMoreMessages,
     markAsRead,

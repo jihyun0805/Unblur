@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2, User, X } from "lucide-react"
+import { Loader2, X } from "lucide-react"
 import { SURVEY_QUESTIONS } from "@/lib/survey-questions"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -18,6 +18,7 @@ import { StepProgress } from "@/components/auth/register/step-progress"
 import { RadioGroupField } from "@/components/auth/register/radio-group-field"
 import { CheckboxGroupField } from "@/components/auth/register/checkbox-group-field"
 import { getMySurvey, updateMyProfile, updateMySurvey } from "@/lib/api/user"
+import { getLoveDnaImage } from "@/lib/profile-image"
 
 const MBTI_TYPES = [
   "INTJ", "INTP", "ENTJ", "ENTP",
@@ -44,7 +45,6 @@ export function ProfilePage() {
   const [editingSurvey, setEditingSurvey] = useState(false)
   const [surveyStep, setSurveyStep] = useState(1)
   const SURVEY_TOTAL_STEPS = 4
-  const [testResultCode, setTestResultCode] = useState("")
   // birthDate 파싱 (예: "1995-03-15" -> year, month, day)
   const parseBirthDate = (birthDate?: string) => {
     if (!birthDate) return { year: "", month: "", day: "" }
@@ -177,11 +177,6 @@ export function ProfilePage() {
     }
   }, [showDeleteConfirm])
 
-  useEffect(() => {
-    if (typeof window === "undefined") return
-    const stored = localStorage.getItem("loveTestResult") || sessionStorage.getItem("loveTestResult") || ""
-    setTestResultCode(stored)
-  }, [])
 
   const checkNickname = async () => {
     if (basicData.nickname.trim().length < 2) {
@@ -512,13 +507,7 @@ export function ProfilePage() {
     .filter((option) => surveyData.interests.includes(option.value))
     .map((option) => option.label)
 
-  const getTestResultImage = (code?: string) => {
-    if (!code) return null
-    const normalized = code.trim().toUpperCase()
-    if (!/^[EI][FT][PS][DA]$/.test(normalized)) return null
-    return `/test/results/${normalized}.PNG`
-  }
-  const testResultImage = getTestResultImage(testResultCode)
+  const profileImage = getLoveDnaImage(user?.loveDna)
 
   return (
     <>
@@ -534,17 +523,11 @@ export function ProfilePage() {
             <CardContent className="p-5">
               {/* 상단: 아바타 + 닉네임/온도 + 수정 버튼 */}
               <div className="flex items-center gap-4 pb-4">
-                {testResultImage ? (
-                  <img
-                    src={testResultImage}
-                    alt={`${user?.mbti} 테스트 결과 이미지`}
-                    className="w-14 h-14 rounded-full object-cover bg-card flex-shrink-0"
-                  />
-                ) : (
-                  <div className="w-14 h-14 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-                    <User className="w-7 h-7 text-primary-foreground" />
-                  </div>
-                )}
+                <img
+                  src={profileImage}
+                  alt={`${user?.nickname ?? "사용자"} 프로필 이미지`}
+                  className="w-14 h-14 rounded-full object-cover bg-card flex-shrink-0"
+                />
                 <div className="flex-1">
                   <h2 className="text-xl font-bold">{user?.nickname}</h2>
                   <div className="flex items-center gap-1.5 mt-0.5">

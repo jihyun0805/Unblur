@@ -8,6 +8,7 @@ import com.ssafy.unblur.domain.match.dto.response.MatchingQueueResponse;
 import com.ssafy.unblur.domain.match.dto.response.OneOnOneMatchResponse;
 import com.ssafy.unblur.domain.match.dto.response.OneOnOneMatchedResponse;
 import com.ssafy.unblur.domain.match.dto.response.OnlineUserListResponse;
+import com.ssafy.unblur.domain.auth.model.LoveDna;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -639,6 +640,7 @@ public interface MatchApiDocs {
     )
     ResponseEntity<BaseResponse<OnlineUserListResponse>> getOnlineUsers(
             @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails,
-            @Parameter(description = "최대 반환 개수", example = "3") @RequestParam(defaultValue = "3") int limit
+            @Parameter(description = "최대 반환 개수", example = "3") @RequestParam(defaultValue = "3") int limit,
+            @Parameter(description = "LoveDna 필터", example = "EFPD") @RequestParam(required = false) LoveDna loveDna
     );
 }

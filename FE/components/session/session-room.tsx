@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback, type MutableRefObject } from "react"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useToast } from "@/hooks/use-toast"
@@ -40,6 +40,10 @@ const BLUR_LEVELS = [20, 10, 5, 0] // px
 const ROUND_NAMES = ["1라운드", "2라운드", "3라운드", "최종 라운드"]
 const BLUR_LABELS = ["블라인드", "강한 블러", "약간 블러", "완전 공개"]
 const BEAUTY_STORAGE_KEY = "beauty_filter_settings"
+/** 마이크 침묵 후 랜덤 질문을 띄우기까지 필요한 시간(초) */
+const SILENCE_THRESHOLD_SECONDS = 20
+/** 이 값 이하면 침묵으로 간주 (0~255, 환경소음 수준) */
+const SILENCE_VOLUME_THRESHOLD = 15
 
 export function SessionRoom({ 
   sessionId, 
@@ -75,6 +79,10 @@ export function SessionRoom({
   const { toast } = useToast()
   const { user } = useAuth()
   const lastIceBreakerRef = useRef("")
+  const showIceBreakerRef = useRef(showIceBreaker)
+  const audioContextRef = useRef<AudioContext | null>(null)
+  const analyserRef = useRef<AnalyserNode | null>(null)
+  const volumeRef = useRef(0)
 
   // WebRTC 비디오 refs (useWebRTC보다 먼저 선언)
   const localVideoRef = useRef<HTMLVideoElement | null>(null)
@@ -92,7 +100,10 @@ export function SessionRoom({
     isMuted,
     toggleVideo,
     isVideoEnabled,
+    remoteVideoMuted,
+    remoteAudioMuted,
     sendVote,
+    leaveSession,
     signalingClient,
   } = useWebRTC({
     sessionId,
@@ -165,6 +176,15 @@ export function SessionRoom({
     if (showChat) chatMarkAsRead()
   }, [showChat, chatMarkAsRead])
 
+  // 채팅 패널을 닫을 때 읽음 처리 
+  const prevShowChatRef = useRef(false)
+  useEffect(() => {
+    if (prevShowChatRef.current && !showChat) {
+      chatMarkAsRead()
+    }
+    prevShowChatRef.current = showChat
+  }, [showChat, chatMarkAsRead])
+
   // 밸런스 게임 메시지 수신 처리 (오버레이가 열리지 않았을 때도 수신)
   useEffect(() => {
     if (!signalingClient || !user?.id) return
@@ -233,10 +253,21 @@ export function SessionRoom({
     }
   }, [signalingClient, sessionId, user?.id, showGame])
 
-  // 로컬 스트림을 비디오 요소에 설정
+  // 로컬 스트림을 비디오 요소에 설정 (ref 부착 시 + localStream 변경 시 모두 동기화)
+  const setLocalVideoRef = useCallback(
+    (el: HTMLVideoElement | null) => {
+      (localVideoRef as MutableRefObject<HTMLVideoElement | null>).current = el
+      if (el && localStream) {
+        el.srcObject = localStream
+        el.play().catch(() => {})
+      }
+    },
+    [localStream]
+  )
   useEffect(() => {
     if (localStream && localVideoRef.current) {
       localVideoRef.current.srcObject = localStream
+      localVideoRef.current.play().catch(() => {})
     }
   }, [localStream])
 
@@ -292,32 +323,91 @@ export function SessionRoom({
 
   }, [hasRoundStarted, currentRound, showVote, showRating, showConfirmLeave, timeLeft])
 
-  // Silence detection - 5초 이상 정적 시 질문 카드 표시
+  // 마이크 음량 샘플링 (침묵 감지용)
+  useEffect(() => {
+    const stream = localStream
+    const audioTrack = stream?.getAudioTracks()[0]
+    if (!stream || !audioTrack || !hasRoundStarted) {
+      volumeRef.current = 0
+      return
+    }
+    try {
+      const ctx = new AudioContext()
+      const source = ctx.createMediaStreamSource(stream)
+      const analyser = ctx.createAnalyser()
+      analyser.fftSize = 256
+      analyser.smoothingTimeConstant = 0.8
+      source.connect(analyser)
+      audioContextRef.current = ctx
+      analyserRef.current = analyser
+
+      const dataArray = new Uint8Array(analyser.frequencyBinCount)
+      const sampleInterval = setInterval(() => {
+        if (analyserRef.current && audioContextRef.current?.state === "running") {
+          analyserRef.current.getByteFrequencyData(dataArray)
+          const sum = dataArray.reduce((a, b) => a + b, 0)
+          volumeRef.current = dataArray.length > 0 ? sum / dataArray.length : 0
+        }
+      }, 200)
+
+      return () => {
+        clearInterval(sampleInterval)
+        try {
+          source.disconnect()
+          ctx.close()
+        } catch {
+          // ignore
+        }
+        audioContextRef.current = null
+        analyserRef.current = null
+        volumeRef.current = 0
+      }
+    } catch {
+      volumeRef.current = 0
+      return () => {}
+    }
+  }, [localStream, hasRoundStarted])
+
+  useEffect(() => {
+    showIceBreakerRef.current = showIceBreaker
+  }, [showIceBreaker])
+
   useEffect(() => {
     if (!hasRoundStarted) return
+    if (currentRound >= 3 || showVote || showRating || showConfirmLeave) return
+
     const interval = setInterval(() => {
-      setSilenceTimer((prev) => {
-        if (prev >= 5 && !showIceBreaker) {
-          const questions = getRoundQuestions(currentRound)
-          let randomQuestion = questions[Math.floor(Math.random() * questions.length)]
-          if (questions.length > 1) {
-            let guard = 0
-            while (randomQuestion === lastIceBreakerRef.current && guard < 10) {
-              randomQuestion = questions[Math.floor(Math.random() * questions.length)]
-              guard += 1
+      if (showIceBreakerRef.current) return
+      const ctx = audioContextRef.current
+      const measuring = ctx?.state === "running"
+      const isSilent = isMuted || (measuring && volumeRef.current < SILENCE_VOLUME_THRESHOLD)
+      if (isSilent) {
+        setSilenceTimer((prev) => {
+          if (prev >= SILENCE_THRESHOLD_SECONDS) {
+            const questions = getRoundQuestions(currentRound)
+            if (questions.length === 0) return 0
+            let randomQuestion = questions[Math.floor(Math.random() * questions.length)]
+            if (questions.length > 1) {
+              let guard = 0
+              while (randomQuestion === lastIceBreakerRef.current && guard < 10) {
+                randomQuestion = questions[Math.floor(Math.random() * questions.length)]
+                guard += 1
+              }
             }
+            setCurrentIceBreaker(randomQuestion)
+            lastIceBreakerRef.current = randomQuestion
+            setShowIceBreaker(true)
+            return 0
           }
-          setCurrentIceBreaker(randomQuestion)
-          lastIceBreakerRef.current = randomQuestion
-          setShowIceBreaker(true)
-          return 0
-        }
-        return prev + 1
-      })
+          return prev + 1
+        })
+      } else {
+        setSilenceTimer(0)
+      }
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [hasRoundStarted, showIceBreaker, currentRound])
+  }, [hasRoundStarted, currentRound, showVote, showRating, showConfirmLeave, isMuted])
 
 
   const formatTime = (seconds: number) => {
@@ -510,7 +600,7 @@ export function SessionRoom({
         <div className={`flex-1 p-4 transition-all duration-300 ${showChat ? "pr-2" : ""}`}>
           <div className="h-full max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Partner Video - 블러 적용 */}
-            <div className="relative rounded-2xl overflow-hidden bg-[#2a2a2a]">
+            <div className="relative rounded-2xl overflow-hidden bg-[#2a2a2a] min-h-0">
               {remoteStream ? (
                 <>
                   <video
@@ -520,9 +610,17 @@ export function SessionRoom({
                     className="w-full h-full object-cover transition-all duration-1000 -scale-x-100"
                     style={{ filter: `blur(${blurLevel}px)` }}
                   />
-                  <div className="absolute bottom-4 left-4 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-sm">
+                  <div className="absolute bottom-4 left-4 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-sm flex items-center gap-2">
                     <span className="text-white text-sm">상대방</span>
+                    {remoteAudioMuted && (
+                      <span className="text-xs text-white/90 bg-red-500/70 px-2 py-0.5 rounded">마이크 꺼짐</span>
+                    )}
                   </div>
+                  {remoteVideoMuted && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/50 transition-opacity duration-200">
+                      <div className="text-white text-sm">상대방 카메라 꺼짐</div>
+                    </div>
+                  )}
                   {blurLevel > 0 && (
                     <div className="absolute top-4 right-4 px-3 py-1.5 rounded-full bg-primary/80 backdrop-blur-sm">
                       <span className="text-primary-foreground text-xs">{blurLabel}</span>
@@ -559,7 +657,7 @@ export function SessionRoom({
             {/* My Video - 나도 블러 적용 */}
             <div className="relative rounded-2xl overflow-hidden bg-[#2a2a2a] hidden md:block">
               <video
-                ref={localVideoRef}
+                ref={setLocalVideoRef}
                 autoPlay
                 playsInline
                 muted
@@ -770,10 +868,12 @@ export function SessionRoom({
         onConfirm={() => {
           setShowEndConfirm(false)
           if (externalShowEndConfirm) {
-            onExternalCancelLeave?.()
+            onExternalConfirmLeave?.()
+            setPendingExternalLeave(!!onExternalConfirmLeave)
+            setShowRating(true)
+          } else {
+            leaveSession()
           }
-          setPendingExternalLeave(!!onExternalConfirmLeave && externalShowEndConfirm)
-          setShowRating(true)
         }}
       />
 
