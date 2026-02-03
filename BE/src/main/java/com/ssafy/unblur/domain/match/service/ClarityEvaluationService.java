@@ -53,7 +53,7 @@ public class ClarityEvaluationService {
 
         // 컨퍼런스 상태 확인: 진행 중/완료 상태에서만 평가 허용
         if (conference.getStatus() == ConferenceStatus.WAITING) {
-            throw new BaseException(ErrorCode.CONFERENCE_NOT_COMPLETED);
+            throw new BaseException(ErrorCode.CONFERENCE_NOT_IN_EVALUATION_STATE);
         }
 
         // 평가자가 해당 컨퍼런스 참가자인지 확인

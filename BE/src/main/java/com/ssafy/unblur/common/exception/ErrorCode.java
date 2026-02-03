@@ -51,6 +51,7 @@ public enum ErrorCode {
     CONFERENCE_ALREADY_COMPLETED(HttpStatus.CONFLICT, "CONF-003", "이미 종료된 세션입니다."),
     CONFERENCE_MAX_ROUND_REACHED(HttpStatus.CONFLICT, "CONF-004", "최대 라운드에 도달했습니다."),
     CONFERENCE_NOT_COMPLETED(HttpStatus.CONFLICT, "CONF-005", "아직 종료되지 않은 세션입니다."),
+    CONFERENCE_NOT_IN_EVALUATION_STATE(HttpStatus.CONFLICT, "CONF-006", "선명도 평가가 가능한 상태가 아닙니다."),
 
     CLARITY_EVALUATION_ALREADY_EXISTS(HttpStatus.CONFLICT, "EVAL-001", "이미 선명도 평가를 완료했습니다."),
 
