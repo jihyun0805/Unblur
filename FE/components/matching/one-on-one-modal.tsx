@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { UserProfileModal, UserProfileData } from "@/components/common/user-profile-modal"
 import * as matchApi from "@/lib/api/match"
 import type { OnlineUserDto } from "@/lib/api/match"
+import { isConflictError } from "@/lib/error-codes"
 import { getLoveDnaImage } from "@/lib/profile-image"
 
 export interface MatchedUser {
@@ -74,8 +75,6 @@ export function OneOnOneModal({ open, onOpenChange, onRequestChat }: OneOnOneMod
   const { user } = useAuth()
   const [matchedUsers, setMatchedUsers] = useState<MatchedUser[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const isConflictError = (err: unknown) =>
-    err instanceof Error && err.message?.includes("API_ERROR_409")
 
   useEffect(() => {
     if (!open) return
