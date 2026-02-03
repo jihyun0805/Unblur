@@ -50,6 +50,7 @@ export interface UseWebRTCReturn {
   remoteAudioMuted: boolean
   sendVote: (vote: VoteChoice) => void
   leaveSession: () => void
+  replaceVideoTrack: (processedStream: MediaStream | null) => void
   signalingClient: WebRTCSignalingClient | null
 }
 
@@ -546,6 +547,8 @@ export function useWebRTC({
   const toggleVideo = useCallback(() => {
     const next = !isVideoEnabledRef.current
     localStreamRef.current?.getVideoTracks().forEach((t) => { t.enabled = next })
+    const sender = peerConnectionRef.current?.getSenders().find((s) => s.track?.kind === "video")
+    if (sender?.track) sender.track.enabled = next
     flushSync(() => setIsVideoEnabled(next))
     if (localVideoRef.current && localStreamRef.current) {
       localVideoRef.current.srcObject = localStreamRef.current
@@ -585,6 +588,24 @@ export function useWebRTC({
     onDisconnectedRef.current?.()
   }, [])
 
+  const replaceVideoTrack = useCallback((processedStream: MediaStream | null) => {
+    const pc = peerConnectionRef.current
+    if (!pc) return
+
+    const sender = pc.getSenders().find((s) => s.track?.kind === "video")
+    const fallbackTrack = localStreamRef.current?.getVideoTracks()[0] ?? null
+    const nextTrack = processedStream?.getVideoTracks()[0] ?? fallbackTrack
+    if (!nextTrack) return
+
+    nextTrack.enabled = isVideoEnabledRef.current
+    if (sender) {
+      sender.replaceTrack(nextTrack).catch((err) => console.error("[WebRTC] replaceTrack failed:", err))
+      return
+    }
+
+    pc.addTrack(nextTrack, processedStream ?? localStreamRef.current ?? new MediaStream())
+  }, [])
+
   return {
     localStream,
     remoteStream,
@@ -600,6 +621,7 @@ export function useWebRTC({
     remoteAudioMuted,
     sendVote,
     leaveSession,
+    replaceVideoTrack,
     signalingClient: signalingClientRef.current,
   }
 }
