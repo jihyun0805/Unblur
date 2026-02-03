@@ -396,10 +396,6 @@ export function BalanceGameOverlay({
           {/* 게임 진행 중 - 질문 표시 */}
           {gameState === "started" && currentQuestion && (
             <>
-              {/* 카테고리 표시 */}
-              <div className="rounded-xl border border-border px-4 py-2 bg-muted/50">
-                <p className="text-xs text-muted-foreground">{currentQuestion.category}</p>
-              </div>
 
               {/* 질문 */}
               <div className="rounded-xl border border-border px-4 py-4 text-center">
