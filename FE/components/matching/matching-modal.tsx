@@ -159,7 +159,10 @@ export function MatchingModal({ open, onOpenChange, onMatchFound }: MatchingModa
       open={open}
       onOpenChange={handleOpenChange}
     >
-      <DialogContent className="sm:max-w-md bg-background">
+      <DialogContent
+        className="sm:max-w-md bg-background"
+        onInteractOutside={(event) => event.preventDefault()}
+      >
         <DialogTitle className="sr-only">빠른 매칭</DialogTitle>
         <div className="py-8 text-center">
           <div className="relative w-32 h-32 mx-auto mb-6">

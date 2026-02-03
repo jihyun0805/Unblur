@@ -36,11 +36,33 @@ public class SurveySimilarityCalculator {
      * 교차 비교 쌍. {@code [selfKey, partnerKey]} 형태로,
      * A.self vs B.partner / B.self vs A.partner 양방향 비교를 수행한다.
      */
-    private static final List<String[]> CROSS_PAIRS = List.of(
-            new String[]{"smokingSelf", "smokingPartner"},
-            new String[]{"drinkingSelf", "drinkingPartner"},
-            new String[]{"religionSelf", "religionPartner"},
-            new String[]{"petSelf", "petPartner"}
+    /**
+     * petPartner 허용 범위.
+     * any → none+have, prefer-none → none만.
+     */
+    private static final Map<String, Set<String>> PET_ALLOWED = Map.of(
+            "any", Set.of("none", "have"),
+            "prefer-none", Set.of("none")
+    );
+
+    /**
+     * drinkingPartner 허용 범위 (계층적).
+     * limit → none+social, buddy → social+lover, any → 전부.
+     */
+    private static final Map<String, Set<String>> DRINKING_ALLOWED = Map.of(
+            "limit", Set.of("none", "social"),
+            "buddy", Set.of("social", "lover"),
+            "any", Set.of("none", "social", "lover")
+    );
+
+    /**
+     * smokingPartner 허용 범위 (계층적).
+     * nonsmoker → nonsmoker만, vape → nonsmoker+vape, any → 전부.
+     */
+    private static final Map<String, Set<String>> SMOKING_ALLOWED = Map.of(
+            "nonsmoker", Set.of("nonsmoker"),
+            "vape", Set.of("nonsmoker", "vape"),
+            "any", Set.of("nonsmoker", "vape", "smoker")
     );
 
     /**
@@ -102,34 +124,66 @@ public class SurveySimilarityCalculator {
             }
         }
 
-        // 8~15: 교차 비교 (A.self vs B.partner + B.self vs A.partner)
-        for (String[] pair : CROSS_PAIRS) {
-            String selfKey = pair[0];
-            String partnerKey = pair[1];
+        // 8~9: 흡연 교차 비교 (계층적 허용 범위)
+        // A.smokingSelf vs B.smokingPartner
+        String aSmokingSelf = toStr(mapA.get("smokingSelf"));
+        String bSmokingPartner = toStr(mapB.get("smokingPartner"));
+        if (aSmokingSelf != null || bSmokingPartner != null) {
+            compared++;
+            if (isSmokingMatch(aSmokingSelf, bSmokingPartner)) matched++;
+        }
+        // B.smokingSelf vs A.smokingPartner
+        String bSmokingSelf = toStr(mapB.get("smokingSelf"));
+        String aSmokingPartner = toStr(mapA.get("smokingPartner"));
+        if (bSmokingSelf != null || aSmokingPartner != null) {
+            compared++;
+            if (isSmokingMatch(bSmokingSelf, aSmokingPartner)) matched++;
+        }
 
-            // A.self vs B.partner
-            Object aSelf = mapA.get(selfKey);
-            Object bPartner = mapB.get(partnerKey);
-            if (aSelf != null || bPartner != null) {
-                compared++;
-                if (hasAnyValue(bPartner)) {
-                    matched++;
-                } else if (aSelf != null && aSelf.equals(bPartner)) {
-                    matched++;
-                }
-            }
+        // 10~11: 음주 교차 비교 (계층적 허용 범위)
+        // A.drinkingSelf vs B.drinkingPartner
+        String aDrinkingSelf = toStr(mapA.get("drinkingSelf"));
+        String bDrinkingPartner = toStr(mapB.get("drinkingPartner"));
+        if (aDrinkingSelf != null || bDrinkingPartner != null) {
+            compared++;
+            if (isDrinkingMatch(aDrinkingSelf, bDrinkingPartner)) matched++;
+        }
+        // B.drinkingSelf vs A.drinkingPartner
+        String bDrinkingSelf = toStr(mapB.get("drinkingSelf"));
+        String aDrinkingPartner = toStr(mapA.get("drinkingPartner"));
+        if (bDrinkingSelf != null || aDrinkingPartner != null) {
+            compared++;
+            if (isDrinkingMatch(bDrinkingSelf, aDrinkingPartner)) matched++;
+        }
 
-            // B.self vs A.partner
-            Object bSelf = mapB.get(selfKey);
-            Object aPartner = mapA.get(partnerKey);
-            if (bSelf != null || aPartner != null) {
-                compared++;
-                if (hasAnyValue(aPartner)) {
-                    matched++;
-                } else if (bSelf != null && bSelf.equals(aPartner)) {
-                    matched++;
-                }
-            }
+        // 12~13: 종교 교차 비교 (respect=무조건 일치, same=양쪽 종교 동일해야 일치)
+        String aReligionSelf = toStr(mapA.get("religionSelf"));
+        String bReligionSelf = toStr(mapB.get("religionSelf"));
+        String aReligionPartner = toStr(mapA.get("religionPartner"));
+        String bReligionPartner = toStr(mapB.get("religionPartner"));
+        // A의 선호 vs B의 종교
+        if (aReligionPartner != null || bReligionSelf != null) {
+            compared++;
+            if (isReligionMatch(aReligionPartner, aReligionSelf, bReligionSelf)) matched++;
+        }
+        // B의 선호 vs A의 종교
+        if (bReligionPartner != null || aReligionSelf != null) {
+            compared++;
+            if (isReligionMatch(bReligionPartner, bReligionSelf, aReligionSelf)) matched++;
+        }
+
+        // 14~15: 반려동물 교차 비교 (계층적 허용 범위)
+        String aPetSelf = toStr(mapA.get("petSelf"));
+        String bPetPartner = toStr(mapB.get("petPartner"));
+        if (aPetSelf != null || bPetPartner != null) {
+            compared++;
+            if (isPetMatch(aPetSelf, bPetPartner)) matched++;
+        }
+        String bPetSelf = toStr(mapB.get("petSelf"));
+        String aPetPartner = toStr(mapA.get("petPartner"));
+        if (bPetSelf != null || aPetPartner != null) {
+            compared++;
+            if (isPetMatch(bPetSelf, aPetPartner)) matched++;
         }
 
         return compared == 0 ? 0.0 : (double) matched / compared;
@@ -165,6 +219,47 @@ public class SurveySimilarityCalculator {
     /**
      * 값을 {@code Set<String>}으로 변환한다. 리스트이면 각 요소를, 단일 값이면 그대로 추가.
      */
+    private String toStr(Object value) {
+        return value == null ? null : value.toString();
+    }
+
+    /**
+     * 흡연 교차 비교. partner 허용 범위에 self 값이 포함되면 일치.
+     */
+    private boolean isSmokingMatch(String selfValue, String partnerPref) {
+        if (selfValue == null || partnerPref == null) return false;
+        Set<String> allowed = SMOKING_ALLOWED.get(partnerPref);
+        return allowed != null && allowed.contains(selfValue);
+    }
+
+    /**
+     * 반려동물 교차 비교. partner 허용 범위에 self 값이 포함되면 일치.
+     */
+    private boolean isPetMatch(String selfValue, String partnerPref) {
+        if (selfValue == null || partnerPref == null) return false;
+        Set<String> allowed = PET_ALLOWED.get(partnerPref);
+        return allowed != null && allowed.contains(selfValue);
+    }
+
+    /**
+     * 종교 교차 비교. respect이면 무조건 일치, same이면 양쪽 종교가 같아야 일치.
+     */
+    private boolean isReligionMatch(String partnerPref, String myReligion, String theirReligion) {
+        if (partnerPref == null) return false;
+        if ("respect".equals(partnerPref)) return true;
+        if ("same".equals(partnerPref)) return myReligion != null && myReligion.equals(theirReligion);
+        return false;
+    }
+
+    /**
+     * 음주 교차 비교. partner 허용 범위에 self 값이 포함되면 일치.
+     */
+    private boolean isDrinkingMatch(String selfValue, String partnerPref) {
+        if (selfValue == null || partnerPref == null) return false;
+        Set<String> allowed = DRINKING_ALLOWED.get(partnerPref);
+        return allowed != null && allowed.contains(selfValue);
+    }
+
     @SuppressWarnings("unchecked")
     private Set<String> toStringSet(Object value) {
         Set<String> set = new HashSet<>();

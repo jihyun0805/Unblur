@@ -28,16 +28,16 @@ export function HistorySummary({
           <p className="text-xs sm:text-sm text-muted-foreground">지금까지의 소개팅 기록</p>
         </div>
       </div>
-      <div className="grid grid-cols-3 gap-2 sm:gap-4">
-        <div className="text-center p-3 sm:p-4 rounded-xl bg-secondary/20">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
+        <div className="text-left sm:text-center p-3 sm:p-4 rounded-xl bg-secondary/20">
           <p className="text-xl sm:text-2xl font-bold text-primary">{totalCount}</p>
           <p className="text-xs text-muted-foreground">매칭 수</p>
         </div>
-        <div className="text-center p-3 sm:p-4 rounded-xl bg-secondary/20">
+        <div className="text-left sm:text-center p-3 sm:p-4 rounded-xl bg-secondary/20">
           <p className="text-xl sm:text-2xl font-bold text-foreground">{totalDuration}</p>
           <p className="text-xs text-muted-foreground">대화 시간</p>
         </div>
-        <div className="text-center p-3 sm:p-4 rounded-xl bg-secondary/20">
+        <div className="text-left sm:text-center p-3 sm:p-4 rounded-xl bg-secondary/20">
           <p className={`text-xl sm:text-2xl font-bold ${getTemperatureColor(temperature)}`}>
             {Math.round(temperature)}%
           </p>

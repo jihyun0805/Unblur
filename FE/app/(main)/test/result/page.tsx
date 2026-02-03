@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ArrowLeft, Share2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/contexts/auth-context"
 import { UserProfileData, UserProfileModal } from "@/components/common/user-profile-modal"
+import { getOnlineUsers, startOneOnOneMatch } from "@/lib/api/match"
+import { getLoveDnaImage } from "@/lib/profile-image"
 
 const getResultLabel = (type: string) => {
   if (!type || type.length !== 4) return ""
@@ -21,115 +23,56 @@ const formatSentences = (text: string) => text.replace(/(\.)\s*/g, "$1\n")
 const getMatchTags = (code: string) => RESULT_CONTENT[code]?.tags || ""
 const isValidCode = (code: string) => code && code.length === 4 && code !== "-"
 
-const mockProfiles: Array<{
+const REGION_CODE_TO_LABEL: Record<string, string> = {
+  SEOUL: "서울",
+  GYEONGGI: "경기",
+  INCHEON: "인천",
+  BUSAN: "부산",
+  DAEGU: "대구",
+  DAEJEON: "대전",
+  GWANGJU: "광주",
+  ULSAN: "울산",
+  SEJONG: "세종",
+  GANGWON: "강원",
+  CHUNGBUK: "충북",
+  CHUNGNAM: "충남",
+  JEONBUK: "전북",
+  JEONNAM: "전남",
+  GYEONGBUK: "경북",
+  GYEONGNAM: "경남",
+  JEJU: "제주",
+}
+
+const mapRegionLabel = (value?: string | null) => {
+  if (!value) return undefined
+  return REGION_CODE_TO_LABEL[value] ?? value
+}
+
+const mapOnlineUserToProfile = (user: {
   id: string
   nickname: string
   age: number
+  gender: string
   region: string
-  code: string
-  isOnline: boolean
-  gender: "male" | "female"
-  profile: UserProfileData
-}> = [
-  {
-    id: "u1",
-    nickname: "민지",
-    age: 26,
-    region: "서울",
-    code: "IFPA",
-    isOnline: true,
-    gender: "female",
-    profile: {
-      nickname: "민지",
-      temperature: 82,
-      age: 26,
-      gender: "female",
-      region: "서울",
-      mbti: "IFPA",
-      bio: "전시회랑 카페 투어 좋아해요.",
-      interests: ["travel", "music", "cafe"],
-    },
-  },
-  {
-    id: "u2",
-    nickname: "준혁",
-    age: 29,
-    region: "부산",
-    code: "EFSD",
-    isOnline: true,
-    gender: "male",
-    profile: {
-      nickname: "준혁",
-      temperature: 76,
-      age: 29,
-      gender: "male",
-      region: "부산",
-      mbti: "EFSD",
-      bio: "바다 산책과 맛집 탐방이 취미예요.",
-      interests: ["travel", "movie", "music"],
-    },
-  },
-  {
-    id: "u3",
-    nickname: "서연",
-    age: 25,
-    region: "인천",
-    code: "ITSA",
-    isOnline: true,
-    gender: "female",
-    profile: {
-      nickname: "서연",
-      temperature: 91,
-      age: 25,
-      gender: "female",
-      region: "인천",
-      mbti: "ITSA",
-      bio: "조용한 대화를 좋아해요.",
-      interests: ["book", "cafe"],
-    },
-  },
-  {
-    id: "u4",
-    nickname: "동현",
-    age: 30,
-    region: "대전",
-    code: "ETPA",
-    isOnline: false,
-    gender: "male",
-    profile: {
-      nickname: "동현",
-      temperature: 64,
-      age: 30,
-      gender: "male",
-      region: "대전",
-      mbti: "ETPA",
-      bio: "러닝이랑 코딩 좋아합니다.",
-      interests: ["exercise", "game"],
-    },
-  },
-  {
-    id: "u5",
-    nickname: "유진",
-    age: 27,
-    region: "광주",
-    code: "ITPD",
-    isOnline: true,
-    gender: "female",
-    profile: {
-      nickname: "유진",
-      temperature: 88,
-      age: 27,
-      gender: "female",
-      region: "광주",
-      mbti: "ITPD",
-      bio: "운동도 하고 드라이브도 좋아요.",
-      interests: ["exercise", "travel"],
-    },
-  },
-]
-
-const pickOnlineByCode = (code: string, gender?: "male" | "female") =>
-  mockProfiles.filter((user) => user.code === code && user.isOnline && (!gender || user.gender === gender))
+  mbti: string
+  intro: string | null
+  interestTags: string[]
+  clarityScore: number
+}, loveDna?: string) => ({
+  id: user.id,
+  nickname: user.nickname,
+  profile: {
+    nickname: user.nickname,
+    temperature: user.clarityScore,
+    age: user.age,
+    gender: user.gender === "MALE" ? "male" : user.gender === "FEMALE" ? "female" : undefined,
+    region: mapRegionLabel(user.region),
+    mbti: user.mbti,
+    bio: user.intro ?? undefined,
+    interests: user.interestTags,
+    loveDna,
+  } satisfies UserProfileData,
+})
 
 const RESULT_CONTENT: Record<
   string,
@@ -472,6 +415,8 @@ export default function MbtiResultPage() {
   const { user } = useAuth()
 
   const [result, setResult] = useState("")
+  const [bestProfiles, setBestProfiles] = useState<Array<{ id: string; nickname: string; profile: UserProfileData }>>([])
+  const [worstProfiles, setWorstProfiles] = useState<Array<{ id: string; nickname: string; profile: UserProfileData }>>([])
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -481,11 +426,14 @@ export default function MbtiResultPage() {
   }, [user?.loveDna])
 
   const resultContent = RESULT_CONTENT[result] || RESULT_CONTENT.DEFAULT
-  const oppositeGender = user?.gender === "male" ? "female" : user?.gender === "female" ? "male" : undefined
-  const bestProfiles = pickOnlineByCode(resultContent.bestMatch.code, oppositeGender)
-  const worstProfiles = pickOnlineByCode(resultContent.worstMatch.code, oppositeGender)
   const modalTitle = listType === "best" ? "온라인 목록" : "온라인 목록"
   const modalProfiles = listType === "best" ? bestProfiles : worstProfiles
+  const listLoveDna =
+    listType === "best"
+      ? resultContent.bestMatch.code
+      : listType === "worst"
+        ? resultContent.worstMatch.code
+        : undefined
   const detailCode =
     detailType === "best"
       ? resultContent.bestMatch.code
@@ -499,6 +447,61 @@ export default function MbtiResultPage() {
       : detailType === "worst"
         ? resultContent.worstMatch.reason
         : ""
+
+  useEffect(() => {
+    let cancelled = false
+
+    const fetchRecommendations = async () => {
+      const nextBest: Array<{ id: string; nickname: string; profile: UserProfileData }> = []
+      const nextWorst: Array<{ id: string; nickname: string; profile: UserProfileData }> = []
+
+      if (isValidCode(resultContent.bestMatch.code)) {
+        try {
+          const response = await getOnlineUsers(5, resultContent.bestMatch.code)
+          if (!cancelled) {
+            response.onlineUsers.forEach((user) =>
+              nextBest.push(mapOnlineUserToProfile(user, resultContent.bestMatch.code))
+            )
+          }
+        } catch (error) {
+          console.error("[TestResult] Failed to load best match users", error)
+        }
+      }
+
+      if (isValidCode(resultContent.worstMatch.code)) {
+        try {
+          const response = await getOnlineUsers(5, resultContent.worstMatch.code)
+          if (!cancelled) {
+            response.onlineUsers.forEach((user) =>
+              nextWorst.push(mapOnlineUserToProfile(user, resultContent.worstMatch.code))
+            )
+          }
+        } catch (error) {
+          console.error("[TestResult] Failed to load other match users", error)
+        }
+      }
+
+      if (!cancelled) {
+        if (
+          isValidCode(resultContent.bestMatch.code) &&
+          isValidCode(resultContent.worstMatch.code) &&
+          resultContent.bestMatch.code !== resultContent.worstMatch.code
+        ) {
+          const bestIds = new Set(nextBest.map((user) => user.id))
+          setBestProfiles(nextBest)
+          setWorstProfiles(nextWorst.filter((user) => !bestIds.has(user.id)))
+        } else {
+          setBestProfiles(nextBest)
+          setWorstProfiles(nextWorst)
+        }
+      }
+    }
+
+    fetchRecommendations()
+    return () => {
+      cancelled = true
+    }
+  }, [resultContent.bestMatch.code, resultContent.worstMatch.code])
 
   const handleShare = async () => {
     if (!result) return
@@ -524,11 +527,21 @@ export default function MbtiResultPage() {
     }
   }
 
-  const handleRequestChat = (nickname: string) => {
-    toast({
-      title: "1:1 매칭 요청",
-      description: `${nickname}님에게 매칭 요청을 보냈습니다.`,
-    })
+  const handleRequestChat = async (targetUserId: string, nickname: string) => {
+    try {
+      await startOneOnOneMatch(targetUserId)
+      toast({
+        title: "1:1 매칭 요청",
+        description: `${nickname}님에게 매칭 요청을 보냈습니다.`,
+      })
+    } catch (error) {
+      console.error("[TestResult] 1:1 매칭 요청 실패", error)
+      toast({
+        title: "매칭 요청 실패",
+        description: "잠시 후 다시 시도해 주세요.",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleOpenList = (type: "best" | "worst") => {
@@ -698,6 +711,7 @@ export default function MbtiResultPage() {
                   <div className="flex items-center gap-3">
                     <div className="relative">
                       <Avatar className="w-12 h-12">
+                        <AvatarImage src={getLoveDnaImage(listLoveDna)} alt={user.nickname} />
                         <AvatarFallback className="bg-primary/20 text-primary">
                           {user.nickname.charAt(0)}
                         </AvatarFallback>
@@ -719,7 +733,7 @@ export default function MbtiResultPage() {
                   </div>
                   <Button
                     size="sm"
-                    onClick={() => handleRequestChat(user.nickname)}
+                    onClick={() => handleRequestChat(user.id, user.nickname)}
                     className="bg-primary text-primary-foreground hover:bg-primary/90"
                   >
                     1:1 매칭 요청

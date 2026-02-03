@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
@@ -27,11 +28,18 @@ public class ConferenceHistoryController implements ConferenceHistoryApiDocs {
 
     @GetMapping
     @Override
-    public ResponseEntity<BaseResponse<ConferenceHistoryResponseDto>> getMyConferenceHistory(Pageable pageable) {
+    public ResponseEntity<BaseResponse<ConferenceHistoryResponseDto>> getMyConferenceHistory(
+            @RequestParam(required = false) String search,
+            Pageable pageable
+    ) {
         String currentUserEmail = SecurityUtil.getCurrentUserEmail()
                 .orElseThrow(() -> new BaseException(ErrorCode.UNAUTHORIZED));
 
-        ConferenceHistoryResponseDto response = conferenceHistoryService.getMyConferenceHistory(currentUserEmail, pageable);
+        ConferenceHistoryResponseDto response = conferenceHistoryService.getMyConferenceHistory(
+                currentUserEmail,
+                search,
+                pageable
+        );
 
         return ResponseEntity.ok(
                 BaseResponse.onSuccess("컨퍼런스 이력 조회에 성공했습니다.", response)

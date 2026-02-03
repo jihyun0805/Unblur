@@ -30,9 +30,20 @@ public class MatchSseController implements MatchSseDocs {
     @Override
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter connect(@AuthenticationPrincipal CustomUserDetails userDetails) {
-        log.info("SSE 구독 요청. userId={}", userDetails.getUserId());
+        try {
+            if (userDetails == null) {
+                throw new IllegalStateException("SSE 사용자 정보가 없습니다.");
+            }
 
-        return sseService.connect(userDetails.getUserId());
+            log.info("SSE 구독 요청. userId={}", userDetails.getUserId());
+            return sseService.connect(userDetails.getUserId());
+
+        } catch (Exception e) {
+            log.warn("SSE 구독 오류. error={}", e.toString());
+            SseEmitter emitter = new SseEmitter(0L);
+            emitter.completeWithError(e);
+            return emitter;
+        }
     }
 
     @Override

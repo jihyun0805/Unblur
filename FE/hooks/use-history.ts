@@ -8,6 +8,7 @@ import { getHistoryList, blockPartner as apiBlockPartner, unblockPartner as apiU
 interface UseHistoryOptions {
   page: number
   size: number
+  search?: string
 }
 
 const EMPTY_SUMMARY: HistorySummaryData = {
@@ -16,7 +17,7 @@ const EMPTY_SUMMARY: HistorySummaryData = {
   myClarityScore: 0,
 }
 
-export function useHistory({ page, size }: UseHistoryOptions) {
+export function useHistory({ page, size, search }: UseHistoryOptions) {
   const [history, setHistory] = useState<HistoryItem[]>([])
   const [summary, setSummary] = useState<HistorySummaryData>(EMPTY_SUMMARY)
   const [totalPages, setTotalPages] = useState(1)
@@ -29,7 +30,7 @@ export function useHistory({ page, size }: UseHistoryOptions) {
     setIsLoading(true)
     setError(null)
     try {
-      const data = await getHistoryList(page, size)
+      const data = await getHistoryList(page, size, search)
       setHistory(data.items)
       setSummary(data.summary)
       setTotalPages(Math.max(1, data.totalPages))
@@ -40,7 +41,7 @@ export function useHistory({ page, size }: UseHistoryOptions) {
     } finally {
       setIsLoading(false)
     }
-  }, [page, size])
+  }, [page, size, search])
 
   useEffect(() => {
     fetchHistory()
@@ -76,6 +77,12 @@ export function useHistory({ page, size }: UseHistoryOptions) {
     }
   }, [history])
 
+  const setItemUnreadCount = useCallback((conferenceId: string, unreadCount: number) => {
+    setHistory((prev) =>
+      prev.map((item) => (item.id === conferenceId ? { ...item, unreadCount } : item))
+    )
+  }, [])
+
   return {
     history,
     summary,
@@ -87,5 +94,6 @@ export function useHistory({ page, size }: UseHistoryOptions) {
     blockPartner,
     unblockPartner,
     blockedIds,
+    setItemUnreadCount,
   }
 }

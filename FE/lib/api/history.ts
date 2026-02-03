@@ -77,8 +77,15 @@ const formatDuration = (minutes: number): string => {
   return `${hours}시간 ${rest}분`
 }
 
-export async function getHistoryList(page: number, size: number): Promise<HistoryListResult> {
-  const response = await apiFetch(`/api/v1/history?page=${page}&size=${size}`)
+export async function getHistoryList(page: number, size: number, search?: string): Promise<HistoryListResult> {
+  const params = new URLSearchParams({
+    page: String(page),
+    size: String(size),
+  })
+  if (search && search.trim().length > 0) {
+    params.set("search", search.trim())
+  }
+  const response = await apiFetch(`/api/v1/history?${params.toString()}`)
   const baseResponse: BaseResponse<ConferenceHistoryResponseDto> = await response.json()
   if (!baseResponse.isSuccess) {
     throw new Error(baseResponse.message || baseResponse.errorCode || "이력 조회에 실패했습니다.")
@@ -96,6 +103,7 @@ export async function getHistoryList(page: number, size: number): Promise<Histor
       partnerTemp: item.clarityScore ?? 0,
       isOnline: item.isOnline ?? false,
       isBlocked: item.isBlocked ?? false,
+      unreadCount: item.unreadCount ?? 0,
     })),
     summary: {
       totalMatches: data.summary.totalMatches,

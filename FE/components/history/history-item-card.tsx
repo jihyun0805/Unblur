@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import {
   AlertDialog,
@@ -19,7 +19,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Calendar, Clock, Layers, MessageCircle, User, MoreVertical } from "lucide-react"
+import { useChat } from "@/hooks/use-chat"
 import type { HistoryItem } from "@/lib/history-types"
+import { getLoveDnaImage } from "@/lib/profile-image"
 
 interface HistoryItemCardProps {
   item: HistoryItem
@@ -28,9 +30,43 @@ interface HistoryItemCardProps {
   onBlock: (item: HistoryItem) => void
   onUnblock: (item: HistoryItem) => void
   isBlocked: boolean
+  /** 이 아이템의 채팅 모달이 열려 있으면 true (빨간점 숨김) */
+  isChatOpen?: boolean
+  /** 채팅 열어서 읽었을 때 목록의 unreadCount를 0으로 갱신 (빨간점 제거) */
+  setItemUnreadCount?: (conferenceId: string, unreadCount: number) => void
 }
 
-export function HistoryItemCard({ item, onProfileClick, onChatClick, onBlock, onUnblock, isBlocked }: HistoryItemCardProps) {
+export function HistoryItemCard({ item, onProfileClick, onChatClick, onBlock, onUnblock, isBlocked, isChatOpen = false, setItemUnreadCount }: HistoryItemCardProps) {
+  const { unreadCount, markAsRead } = useChat({
+    conferenceId: item.id,
+    enabled: true,
+    autoLoadMessages: false,
+    panelOpen: isChatOpen,
+  })
+  const effectiveUnread = Math.max(item.unreadCount ?? 0, unreadCount)
+  const hasUnread = !isChatOpen && effectiveUnread > 0
+  useEffect(() => {
+    if (unreadCount > (item.unreadCount ?? 0)) {
+      setItemUnreadCount?.(item.id, unreadCount)
+    }
+  }, [unreadCount, item.unreadCount, item.id, setItemUnreadCount])
+
+  const wasChatOpenRef = useRef(false)
+  useEffect(() => {
+    if (isChatOpen) {
+      markAsRead()
+      setItemUnreadCount?.(item.id, 0)
+      wasChatOpenRef.current = true
+    } else {
+      // 모달을 닫을 때도 읽음 처리
+      if (wasChatOpenRef.current) {
+        markAsRead()
+        setItemUnreadCount?.(item.id, 0)
+        wasChatOpenRef.current = false
+      }
+    }
+  }, [isChatOpen, markAsRead, item.id, setItemUnreadCount])
+
   const [isBlockConfirmOpen, setIsBlockConfirmOpen] = useState(false)
   const [isUnblockConfirmOpen, setIsUnblockConfirmOpen] = useState(false)
 
@@ -48,21 +84,23 @@ export function HistoryItemCard({ item, onProfileClick, onChatClick, onBlock, on
 
   return (
     <div
-      className={`p-4 rounded-xl flex items-center gap-3 sm:gap-4 ${
+      className={`min-h-[128px] sm:min-h-[96px] p-4 rounded-xl flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 ${
         isBlocked ? "bg-muted/40 opacity-70" : "bg-card"
       }`}
     >
-      <div className="flex flex-col items-center justify-center flex-shrink-0">
+      <div className="flex items-center justify-center flex-shrink-0">
         <div className="relative w-12 h-12">
-          <div className="w-full h-full rounded-full bg-muted flex items-center justify-center overflow-hidden border border-border">
-            <User className="w-6 h-6 text-muted-foreground" />
-          </div>
+          <img
+            src={getLoveDnaImage(item.loveDna)}
+            alt={`${item.partnerNickname} 프로필 이미지`}
+            className="w-full h-full rounded-full object-cover bg-card flex items-center justify-center overflow-hidden border border-border"
+          />
           {item.isOnline && (
             <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-background rounded-full" />
           )}
         </div>
       </div>
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 w-full">
         <div className="flex items-center gap-2">
           <button
             onClick={() => onProfileClick(item)}
@@ -89,19 +127,29 @@ export function HistoryItemCard({ item, onProfileClick, onChatClick, onBlock, on
           </span>
         </div>
       </div>
-      <div className="flex items-center gap-2 flex-shrink-0">
+      <div className="flex items-center justify-between sm:justify-end gap-2 flex-shrink-0 w-full sm:w-auto">
         <Button
           variant="outline"
           size="sm"
           onClick={() => onChatClick(item)}
-          className="flex items-center gap-1 text-green-600 border-green-600 hover:bg-green-50"
+          className="relative flex items-center gap-1 text-green-600 border-green-600 hover:bg-green-50"
         >
           <MessageCircle className="w-4 h-4" />
           <span className="hidden sm:inline">채팅</span>
+          {hasUnread && (
+            <span
+              className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-red-500"
+              aria-label="읽지 않은 메시지 있음"
+            />
+          )}
         </Button>
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-0"
+            >
               <MoreVertical className="w-4 h-4" />
             </Button>
           </DropdownMenuTrigger>

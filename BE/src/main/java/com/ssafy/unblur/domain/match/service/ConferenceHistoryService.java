@@ -45,12 +45,23 @@ public class ConferenceHistoryService {
     private final UserBlockRepository userBlockRepository;
 
     @Transactional(readOnly = true)
-    public ConferenceHistoryResponseDto getMyConferenceHistory(String email, Pageable pageable) {
+    public ConferenceHistoryResponseDto getMyConferenceHistory(String email, String search, Pageable pageable) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
 
-        Page<ConferenceParticipant> page = conferenceParticipantRepository
-                .findByUserOrderByConferenceCreatedAtDesc(user, pageable);
+        String normalizedSearch = search != null ? search.trim() : null;
+        Page<ConferenceParticipant> page;
+        if (normalizedSearch != null && !normalizedSearch.isBlank()) {
+            page = conferenceParticipantRepository.findByUserAndPartnerNicknameContainsIgnoreCase(
+                    user,
+                    user.getId(),
+                    normalizedSearch.toLowerCase(),
+                    pageable
+            );
+        } else {
+            page = conferenceParticipantRepository
+                    .findByUserOrderByConferenceCreatedAtDesc(user, pageable);
+        }
 
         List<UUID> conferenceIds = page.getContent().stream()
                 .map(cp -> cp.getConference().getId())

@@ -3,13 +3,14 @@
 import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Send } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/contexts/auth-context"
 import { UserProfileModal, UserProfileData } from "@/components/common/user-profile-modal"
 import * as matchApi from "@/lib/api/match"
 import type { OnlineUserDto } from "@/lib/api/match"
+import { getLoveDnaImage } from "@/lib/profile-image"
 
 export interface MatchedUser {
   id: string
@@ -57,6 +58,7 @@ function mapOnlineUserToMatched(dto: OnlineUserDto): MatchedUser {
       mbti: dto.mbti ?? undefined,
       bio: dto.intro ?? undefined,
       interests: dto.interestTags ?? [],
+      loveDna: dto.loveDna ?? undefined,
     },
   }
 }
@@ -193,6 +195,7 @@ function UserListItem({
         <div className="flex items-center gap-3">
           <div className="relative">
             <Avatar className="w-12 h-12">
+              <AvatarImage src={getLoveDnaImage(user.profile?.loveDna)} alt={`${user.nickname} 프로필 이미지`} />
               <AvatarFallback className="bg-primary/20 text-primary">
                 {user.nickname.charAt(0)}
               </AvatarFallback>
