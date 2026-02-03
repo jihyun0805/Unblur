@@ -512,11 +512,6 @@ export function BalanceGameOverlay({
           {/* 게임 결과 */}
           {gameState === "result" && currentQuestion && (
             <>
-              {/* 카테고리 */}
-              <div className="rounded-xl border border-border px-4 py-2 bg-muted/50">
-                <p className="text-xs text-muted-foreground">{currentQuestion.category}</p>
-              </div>
-
               {/* 질문 */}
               <div className="rounded-xl border border-border px-4 py-4 text-center">
                 <p className="text-lg font-semibold leading-relaxed">{currentQuestion.question}</p>
