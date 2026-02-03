@@ -4,14 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import { ChatModal } from "./chat-modal"
 import { UserProfileModal } from "@/components/common/user-profile-modal"
 import { Input } from "@/components/ui/input"
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination"
+import { HistoryPagination } from "./history-pagination"
 import { useAuth } from "@/contexts/auth-context"
 import { useHistory } from "@/hooks/use-history"
 import { getPartnerProfile } from "@/lib/api/history"
@@ -114,6 +107,7 @@ export function HistoryPage() {
 
   const safePage = Math.min(currentPage, totalPages)
   const pagedHistory = sortedHistory
+  const emptySlots = Math.max(0, pageSize - pagedHistory.length)
 
   useEffect(() => {
     setCurrentPage(1)
@@ -131,22 +125,6 @@ export function HistoryPage() {
       setCurrentPage(totalPages)
     }
   }, [currentPage, totalPages])
-
-  if (isLoading) {
-    return (
-      <div className="max-w-5xl mx-auto px-4 sm:px-6">
-        <HistoryLoading />
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="max-w-5xl mx-auto px-4 sm:px-6">
-        <HistoryError onRetry={refetch} />
-      </div>
-    )
-  }
 
   return (
     <>
@@ -169,66 +147,49 @@ export function HistoryPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-3">
-          {pagedHistory.map((item) => (
-            <HistoryItemCard
-              key={item.id}
-              item={item}
-              onProfileClick={handleProfileClick}
-              onChatClick={setSelectedChat}
-              onBlock={(target) => blockPartner(target.id, target.partnerId)}
-              onUnblock={(target) => unblockPartner(target.id, target.partnerId)}
-              isBlocked={blockedIds.includes(item.id)}
-            />
-          ))}
+          {isLoading ? (
+            <HistoryLoading />
+          ) : error ? (
+            <HistoryError onRetry={refetch} />
+          ) : (
+            <>
+              {pagedHistory.map((item) => (
+                <HistoryItemCard
+                  key={item.id}
+                  item={item}
+                  onProfileClick={handleProfileClick}
+                  onChatClick={setSelectedChat}
+                  onBlock={(target) => blockPartner(target.id, target.partnerId)}
+                  onUnblock={(target) => unblockPartner(target.id, target.partnerId)}
+                  isBlocked={blockedIds.includes(item.id)}
+                />
+              ))}
+              {emptySlots > 0 &&
+                Array.from({ length: emptySlots }, (_, index) => (
+                  <div
+                    key={`history-empty-slot-${index}`}
+                    className="min-h-[128px] sm:min-h-[96px] rounded-xl border border-dashed border-border/60 bg-muted/20"
+                  />
+                ))}
+            </>
+          )}
         </div>
 
-        {history.length === 0 && !searchTerm && <HistoryEmptyState />}
-        {history.length === 0 && searchTerm && (
+        {!isLoading && !error && history.length === 0 && !searchTerm && <HistoryEmptyState />}
+        {!isLoading && !error && history.length === 0 && searchTerm && (
           <div className="py-8 text-center text-sm text-muted-foreground">검색 결과가 없습니다.</div>
         )}
-        {totalPages > 1 && (
-          <Pagination className="mt-6">
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious
-                  href="#"
-                  className={safePage === 1 ? "pointer-events-none opacity-50" : undefined}
-                  onClick={(event) => {
-                    event.preventDefault()
-                    if (safePage > 1) setCurrentPage(safePage - 1)
-                  }}
-                />
-              </PaginationItem>
-              {Array.from({ length: totalPages }, (_, index) => {
-                const page = index + 1
-                return (
-                  <PaginationItem key={page}>
-                    <PaginationLink
-                      href="#"
-                      isActive={page === safePage}
-                      onClick={(event) => {
-                        event.preventDefault()
-                        setCurrentPage(page)
-                      }}
-                    >
-                      {page}
-                    </PaginationLink>
-                  </PaginationItem>
-                )
-              })}
-              <PaginationItem>
-                <PaginationNext
-                  href="#"
-                  className={safePage === totalPages ? "pointer-events-none opacity-50" : undefined}
-                  onClick={(event) => {
-                    event.preventDefault()
-                    if (safePage < totalPages) setCurrentPage(safePage + 1)
-                  }}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        )}
+        <HistoryPagination
+          className="mt-6"
+          currentPage={safePage - 1}
+          totalPages={totalPages}
+          hasPrevious={!isLoading && safePage > 1}
+          hasNext={!isLoading && safePage < totalPages}
+          onPageChange={(pageIndex) => {
+            if (isLoading) return
+            setCurrentPage(pageIndex + 1)
+          }}
+        />
       </div>
 
       {selectedChat && (

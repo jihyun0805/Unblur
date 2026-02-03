@@ -49,7 +49,7 @@ export function HistoryItemCard({ item, onProfileClick, onChatClick, onBlock, on
 
   return (
     <div
-      className={`p-4 rounded-xl flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 ${
+      className={`min-h-[128px] sm:min-h-[96px] p-4 rounded-xl flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 ${
         isBlocked ? "bg-muted/40 opacity-70" : "bg-card"
       }`}
     >
