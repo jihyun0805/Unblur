@@ -34,6 +34,7 @@ public enum ErrorCode {
     MATCH_TARGET_NOT_FOUND(HttpStatus.BAD_REQUEST, "MATCH-003", "대상 사용자를 찾을 수 없습니다."),
     MATCH_ALREADY_HANDLED(HttpStatus.CONFLICT, "MATCH-004", "이미 처리된 매칭 요청입니다."),
     MATCH_TARGET_OFFLINE(HttpStatus.CONFLICT, "MATCH-005", "상대가 현재 수락할 수 없는 상태입니다."),
+    MATCH_TARGET_ALREADY_REQUESTED(HttpStatus.CONFLICT, "MATCH-006", "누군가 1:1 요청 중입니다."),
 
     BALANCE_ALREADY_IN_PROGRESS(HttpStatus.CONFLICT, "BALANCE-001", "이미 진행 중인 밸런스 게임이 있습니다."),
     BALANCE_NOT_PARTICIPANT(HttpStatus.FORBIDDEN, "BALANCE-002", "참여자가 아닙니다."),

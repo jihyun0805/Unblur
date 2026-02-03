@@ -56,6 +56,15 @@ public interface MatchQueueService {
     boolean existsWaiting(UUID userId, MatchType queueType);
 
     /**
+     * 수신자 기준 대기 여부를 확인하는 메서드 (1:1 매칭)
+     *
+     * @param userId    수신자 사용자 ID
+     * @param queueType 대기열 유형
+     * @return 대기 중이면 true
+     */
+    boolean existsWaitingRecipient(UUID userId, MatchType queueType);
+
+    /**
      * 완료/취소/타임아웃 등 종료 상태의 항목을 정리하는 메서드
      *
      * @param cutoff 정리 기준 시각
