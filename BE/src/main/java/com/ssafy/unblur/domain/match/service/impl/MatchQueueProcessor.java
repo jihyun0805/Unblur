@@ -623,6 +623,7 @@ public class MatchQueueProcessor {
                 .status(item.getStatus().name().toLowerCase())
                 .queueType(item.getMatchType().name().toLowerCase())
                 .targetUserId(item.getRecipientUserId().toString())
+                .requesterProfile(null)
                 .targetStatus(targetStatus)
                 .estimatedWaitSeconds(policy.averageWaitSeconds())
                 .queuedAt(item.getCreatedAt())

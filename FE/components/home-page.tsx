@@ -3,24 +3,50 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
+import { useMatchSse } from "@/contexts/match-sse-context"
 import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { MatchingModal } from "@/components/matching/matching-modal"
 import { OneOnOneModal } from "@/components/matching/one-on-one-modal"
-import { Zap, UserPlus } from "lucide-react"
+import { CameraTestModal } from "@/components/matching/camera-test-modal"
+import { Camera, Users, Zap, UserPlus } from "lucide-react"
 import { stopAllStreams } from "@/lib/media-streams"
 
 export function HomePage() {
   const { user } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
+  const { subscribe } = useMatchSse()
   const [showMatching, setShowMatching] = useState(false)
   const [showOneOnOne, setShowOneOnOne] = useState(false)
+  const [waitingRequestId, setWaitingRequestId] = useState<string | null>(null)
+  const [isWaitingModalOpen, setIsWaitingModalOpen] = useState(false)
+  const [isCameraTestOpen, setIsCameraTestOpen] = useState(false)
 
   useEffect(() => {
     stopAllStreams()
   }, [])
+
+  useEffect(() => {
+    if (!waitingRequestId) return
+    const handleClose = (data: unknown) => {
+      const payload = data as { requestId?: string; request_id?: string } | undefined
+      const requestId = payload?.requestId ?? payload?.request_id
+      if (requestId && requestId !== waitingRequestId) return
+      setIsWaitingModalOpen(false)
+      setWaitingRequestId(null)
+    }
+    const unsubAccepted = subscribe("one-on-one-accepted", handleClose)
+    const unsubDeclined = subscribe("one-on-one-declined", handleClose)
+    const unsubTimeout = subscribe("one-on-one-timeout", handleClose)
+    return () => {
+      unsubAccepted()
+      unsubDeclined()
+      unsubTimeout()
+    }
+  }, [subscribe, waitingRequestId])
 
   const handleMatchFound = (sessionId: string) => {
     setShowMatching(false)
@@ -28,8 +54,9 @@ export function HomePage() {
   }
 
   /** 1:1 요청은 OneOnOneModal에서 API 호출 후 처리. 수락 시 MatchRequestToaster가 세션으로 이동시킴. */
-  const handleRequestChat = (_userId: string) => {
-    // 모달에서 이미 요청 전송·토스트 처리함. 추가 동작 없음.
+  const handleRequestChat = (payload: { requestId: string }) => {
+    setWaitingRequestId(payload.requestId)
+    setIsWaitingModalOpen(true)
   }
 
   const getTemperatureColor = (clarity: number) => {
@@ -132,6 +159,46 @@ export function HomePage() {
 
       <MatchingModal open={showMatching} onOpenChange={setShowMatching} onMatchFound={handleMatchFound} />
       <OneOnOneModal open={showOneOnOne} onOpenChange={setShowOneOnOne} onRequestChat={handleRequestChat} />
+
+      <Dialog open={isWaitingModalOpen} onOpenChange={setIsWaitingModalOpen}>
+        <DialogContent
+          className="sm:max-w-md bg-background"
+          showCloseButton={false}
+          onPointerDownOutside={(event) => event.preventDefault()}
+          onEscapeKeyDown={(event) => event.preventDefault()}
+        >
+          <DialogTitle className="text-xl font-bold text-center">1:1 매칭 대기</DialogTitle>
+          <DialogDescription className="text-sm text-muted-foreground text-center">
+            상대 응답을 기다리는 중입니다.
+          </DialogDescription>
+          <div className="py-6 text-center">
+            <div className="relative w-28 h-28 mx-auto mb-4">
+              <div className="absolute inset-0 rounded-full border-4 border-primary/20" />
+              <div className="absolute inset-0 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+              <div className="absolute inset-4 rounded-full bg-card flex items-center justify-center">
+                <Users className="w-8 h-8 text-primary" />
+              </div>
+            </div>
+            <button
+              type="button"
+              className="w-full text-xs text-muted-foreground hover:text-foreground flex items-center justify-center gap-2"
+              onClick={() => setIsCameraTestOpen(true)}
+            >
+              <Camera className="w-4 h-4" />
+              카메라 테스트하기
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <CameraTestModal
+        open={isCameraTestOpen}
+        onOpenChange={(open) => {
+          if (!open) setIsCameraTestOpen(false)
+          setIsCameraTestOpen(open)
+        }}
+        onReady={() => setIsCameraTestOpen(false)}
+      />
     </>
   )
 }
