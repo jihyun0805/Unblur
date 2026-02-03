@@ -6,6 +6,7 @@ import "./globals.css"
 import { AuthProvider } from "@/contexts/auth-context"
 import { ChatProvider } from "@/contexts/chat-context"
 import { MatchSseProvider } from "@/contexts/match-sse-context"
+import { SessionIdProvider } from "@/contexts/session-id-context"
 import { MatchRequestToaster } from "@/components/matching/match-request-toaster"
 import { Toaster } from "@/components/ui/toaster"
 import { ConsoleErrorFilter } from "@/components/debug/console-error-filter"
@@ -51,11 +52,13 @@ export default function RootLayout({
       <body className={`${geist.className} antialiased`}>
         <AuthProvider>
           <MatchSseProvider>
-            <ChatProvider>
-              {children}
-              <Toaster />
-            </ChatProvider>
-            <MatchRequestToaster />
+            <SessionIdProvider>
+              <ChatProvider>
+                {children}
+                <Toaster />
+              </ChatProvider>
+              <MatchRequestToaster />
+            </SessionIdProvider>
           </MatchSseProvider>
         </AuthProvider>
         <Analytics />
