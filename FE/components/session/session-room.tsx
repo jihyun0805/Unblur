@@ -30,6 +30,8 @@ import { ChatPanel } from "@/components/session/chat-panel"
 interface SessionRoomProps {
   sessionId: string
   onLeave: () => void
+  /** 종료되었거나 유효하지 않은 세션에 (재)진입 시 호출 → /home으로 이동용 */
+  onInvalidOrEndedSession?: () => void
   externalShowEndConfirm?: boolean
   onExternalConfirmLeave?: () => void
   onExternalCancelLeave?: () => void
@@ -48,6 +50,7 @@ const SILENCE_VOLUME_THRESHOLD = 15
 export function SessionRoom({ 
   sessionId, 
   onLeave,
+  onInvalidOrEndedSession,
   externalShowEndConfirm = false,
   onExternalConfirmLeave,
   onExternalCancelLeave,
@@ -112,6 +115,7 @@ export function SessionRoom({
     remoteVideoRef,
     enabled: !!sessionId && !!user?.id,
     useMock: false,
+    onInvalidSession: onInvalidOrEndedSession,
     onDisconnected: () => {
       setShowVote(false)
       setShowConfirmLeave(false)
@@ -198,8 +202,8 @@ export function SessionRoom({
 
       switch (message.type) {
         case "balance-invite":
-          // 초대 받음 - 확인 다이얼로그 표시
-          if (message.fromUserId !== user.id) {
+          // 초대 받음 - 확인 다이얼로그 표시 (이미 게임 오버레이가 열려 있으면 무시)
+          if (message.fromUserId !== user.id && !showGame) {
             console.log("[BalanceGame] 초대 받음, 확인 다이얼로그 표시")
             // 기존 타임아웃 정리
             if (balanceInviteTimeoutRef.current) {

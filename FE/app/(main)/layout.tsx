@@ -1,9 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useLayoutEffect, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { useMatchSse } from "@/contexts/match-sse-context"
+import { useSessionId } from "@/contexts/session-id-context"
 import { useToast } from "@/hooks/use-toast"
 import { BackgroundLayout } from "@/components/common/background-layout"
 import { MainLayout } from "@/components/common/main-layout"
@@ -13,10 +14,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 export default function MainRouteLayout({ children }: { children: React.ReactNode }) {
   const { user, logout, isLoading } = useAuth()
   const { disconnect } = useMatchSse()
+  const { sessionId } = useSessionId()
   const pathname = usePathname()
   const router = useRouter()
   const { toast } = useToast()
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+
+  const isExactSession = pathname === "/session"
+  const shouldRedirectSessionToHome = isExactSession && (sessionId === null || sessionId === "")
+
+  useLayoutEffect(() => {
+    if (shouldRedirectSessionToHome) router.replace("/home")
+  }, [shouldRedirectSessionToHome, router])
 
   useEffect(() => {
     if (isLoading) return
@@ -26,7 +35,8 @@ export default function MainRouteLayout({ children }: { children: React.ReactNod
     }
   }, [user, isLoading, router])
 
-  const isSessionOrMbti = pathname?.startsWith("/session") || pathname?.startsWith("/test")
+  const isSessionRoom = pathname === "/session" || pathname?.startsWith("/session/")
+  const isSessionOrMbti = isSessionRoom || pathname?.startsWith("/test")
   const hideFloatingTestButton = pathname?.startsWith("/history")
   const handleLogout = async () => {
     try {
@@ -60,6 +70,14 @@ export default function MainRouteLayout({ children }: { children: React.ReactNod
           <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
           <p className="text-muted-foreground">로딩 중...</p>
         </div>
+      </div>
+    )
+  }
+
+  if (shouldRedirectSessionToHome) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <p className="text-muted-foreground">홈으로 이동 중...</p>
       </div>
     )
   }

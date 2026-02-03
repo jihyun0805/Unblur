@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Loader2, Clock } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import type { WebRTCSignalingClient, SignalingMessage } from "@/lib/webrtc-signaling"
@@ -71,10 +71,6 @@ export function BalanceGameOverlay({
   useEffect(() => {
     partnerChoiceRef.current = partnerChoice
   }, [partnerChoice])
-
-  useEffect(() => {
-    gameStateRef.current = gameState
-  }, [gameState])
 
   useEffect(() => {
     gameStateRef.current = gameState
@@ -346,6 +342,9 @@ export function BalanceGameOverlay({
       >
         <DialogHeader>
           <DialogTitle>밸런스 게임</DialogTitle>
+          <DialogDescription className="sr-only">
+            상대와 가치관을 비교하는 질문에 A 또는 B를 선택합니다.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
