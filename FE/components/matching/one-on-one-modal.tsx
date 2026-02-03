@@ -72,13 +72,23 @@ interface OneOnOneModalProps {
 export function OneOnOneModal({ open, onOpenChange, onRequestChat }: OneOnOneModalProps) {
   const { toast } = useToast()
   const { user } = useAuth()
+  const [step, setStep] = useState<"permission" | "list">("permission")
   const [matchedUsers, setMatchedUsers] = useState<MatchedUser[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [permissionError, setPermissionError] = useState<string | null>(null)
   const isConflictError = (err: unknown) =>
     err instanceof Error && err.message?.includes("API_ERROR_409")
 
   useEffect(() => {
     if (!open) return
+    setStep("permission")
+    setPermissionError(null)
+    setMatchedUsers([])
+    setIsLoading(false)
+  }, [open])
+
+  useEffect(() => {
+    if (!open || step !== "list") return
     if (!user?.id) {
       setMatchedUsers([])
       setIsLoading(false)
@@ -103,7 +113,22 @@ export function OneOnOneModal({ open, onOpenChange, onRequestChat }: OneOnOneMod
         setMatchedUsers([])
       })
       .finally(() => setIsLoading(false))
-  }, [open, toast, user?.id])
+  }, [open, step, toast, user?.id])
+
+  const requestCameraPermission = async () => {
+    if (!navigator?.mediaDevices?.getUserMedia) {
+      setPermissionError("브라우저에서 카메라 권한을 지원하지 않습니다.")
+      return
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true })
+      stream.getTracks().forEach((track) => track.stop())
+      setPermissionError(null)
+      setStep("list")
+    } catch {
+      setPermissionError("카메라 권한이 꺼져있습니다. 크롬 카메라 권한을 해제하고 다시 해주세요.")
+    }
+  }
 
   const onlineUsers = matchedUsers.filter((user) => user.isOnline)
 
@@ -154,26 +179,40 @@ export function OneOnOneModal({ open, onOpenChange, onRequestChat }: OneOnOneMod
           </DialogDescription>
         </DialogHeader>
 
-        <div className="mt-4 space-y-3 max-h-96 overflow-y-auto">
-          {isLoading ? (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">로딩 중...</p>
-            </div>
-          ) : onlineUsers.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground mb-2">현재 온라인인 사람이 없습니다</p>
-              <p className="text-sm text-muted-foreground">나중에 다시 확인해보세요</p>
-            </div>
-          ) : (
-            onlineUsers.map((user) => (
-              <UserListItem
-                key={user.id}
-                user={user}
-                onRequestChat={handleRequestChat}
-              />
-            ))
-          )}
-        </div>
+        {step === "permission" ? (
+          <div className="mt-6 space-y-3 text-center">
+            <p className="text-sm text-muted-foreground">
+              카메라 확인 버튼을 눌러주세요.
+            </p>
+            {permissionError && (
+              <p className="text-xs text-destructive">{permissionError}</p>
+            )}
+            <Button onClick={requestCameraPermission} className="w-full">
+              카메라 확인
+            </Button>
+          </div>
+        ) : (
+          <div className="mt-4 space-y-3 max-h-96 overflow-y-auto">
+            {isLoading ? (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">로딩 중...</p>
+              </div>
+            ) : onlineUsers.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground mb-2">현재 온라인인 사람이 없습니다</p>
+                <p className="text-sm text-muted-foreground">나중에 다시 확인해보세요</p>
+              </div>
+            ) : (
+              onlineUsers.map((user) => (
+                <UserListItem
+                  key={user.id}
+                  user={user}
+                  onRequestChat={handleRequestChat}
+                />
+              ))
+            )}
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   )
