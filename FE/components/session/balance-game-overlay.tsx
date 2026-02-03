@@ -52,6 +52,17 @@ export function BalanceGameOverlay({
   const gameStateRef = useRef<GameState>(gameState)
   const selectionStartTimeRef = useRef<number | null>(null)
   const selectionSentRef = useRef<boolean>(false)
+  
+  const pendingResultRef = useRef<{
+    questionId: string
+    category: string
+    question: string
+    optionA: string
+    optionB: string
+    sameChoice: boolean
+    selections: Array<{ userId: string; choice: string }>
+  } | null>(null)
+  const currentQuestionRef = useRef<typeof currentQuestion>(null)
 
   useEffect(() => {
     myChoiceRef.current = myChoice
@@ -68,6 +79,10 @@ export function BalanceGameOverlay({
   useEffect(() => {
     gameStateRef.current = gameState
   }, [gameState])
+
+  useEffect(() => {
+    currentQuestionRef.current = currentQuestion
+  }, [currentQuestion])
 
   const clearTimers = useCallback(() => {
     if (timeoutRef.current) {
@@ -140,6 +155,7 @@ export function BalanceGameOverlay({
       setSameChoice(null)
       selectionStartTimeRef.current = null
       selectionSentRef.current = false
+      pendingResultRef.current = null
       clearTimers()
     }
   }, [open, clearTimers])
@@ -172,6 +188,7 @@ export function BalanceGameOverlay({
 
         case "balance-start":
           // 게임 시작
+          pendingResultRef.current = null
           setGameState("started")
           setCurrentQuestion({
             questionId: message.questionId,
@@ -193,8 +210,8 @@ export function BalanceGameOverlay({
           break
 
         case "balance-result":
-          // 결과 수신 - 상대도 10초 내에 선택하면 바로 표시
-          const resultData = {
+          // 결과 수신 - 10초 타이머가 끝난 뒤에만 표시
+          pendingResultRef.current = {
             questionId: message.questionId,
             category: message.category,
             question: message.question,
@@ -203,7 +220,6 @@ export function BalanceGameOverlay({
             sameChoice: message.sameChoice,
             selections: message.selections,
           }
-          displayResult(resultData)
           break
       }
     }
@@ -245,8 +261,7 @@ export function BalanceGameOverlay({
     }, 200)
 
     timeoutRef.current = setTimeout(() => {
-      // 10초가 지나면 결과 표시
-      // 타임아웃 시 NONE 처리 (서버에서 처리하지만 UI 업데이트)
+      // 10초가 지나면 결과 표시 (서버에서 먼저 온 결과가 있으면 사용, 없으면 로컬 상태로 표시)
       selectionSentRef.current = true
       setPendingChoice(null)
       if (myChoiceRef.current === null) {
@@ -255,6 +270,32 @@ export function BalanceGameOverlay({
       if (partnerChoiceRef.current === null) {
         setPartnerChoice("NONE")
       }
+      const result = pendingResultRef.current
+      if (result) {
+        displayResult(result)
+        pendingResultRef.current = null
+      } else {
+        const q = currentQuestionRef.current
+        if (q) {
+          const my = myChoiceRef.current
+          const partner = partnerChoiceRef.current
+          const toChoice = (c: "A" | "B" | "NONE" | null) =>
+            c === "A" ? "OPTION_A" : c === "B" ? "OPTION_B" : "NONE"
+          displayResult({
+            questionId: q.questionId,
+            category: q.category,
+            question: q.question,
+            optionA: q.optionA,
+            optionB: q.optionB,
+            sameChoice: my === partner && my != null,
+            selections: [
+              { userId, choice: toChoice(my) },
+              { userId: "partner", choice: toChoice(partner) },
+            ],
+          })
+        }
+      }
+      clearTimers()
     }, TIME_LIMIT_SECONDS * 1000)
   }
 
