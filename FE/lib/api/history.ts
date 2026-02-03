@@ -103,6 +103,7 @@ export async function getHistoryList(page: number, size: number, search?: string
       partnerTemp: item.clarityScore ?? 0,
       isOnline: item.isOnline ?? false,
       isBlocked: item.isBlocked ?? false,
+      unreadCount: item.unreadCount ?? 0,
     })),
     summary: {
       totalMatches: data.summary.totalMatches,

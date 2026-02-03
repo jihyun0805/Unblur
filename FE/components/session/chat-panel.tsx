@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { X, Send, Check } from "lucide-react"
+import { X, Send } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import type { ChatMessage } from "@/lib/chat-types"
 
@@ -12,7 +12,7 @@ interface ChatPanelProps {
   isLoading: boolean
   isSending: boolean
   sendMessage: (content: string) => Promise<void>
-  markAsRead: () => Promise<void>
+  markAsRead?: () => void
   onClose?: () => void
   showCloseButton?: boolean
   className?: string
@@ -36,7 +36,6 @@ export function ChatPanel({
     try {
       await sendChatMessage(newMessage.trim())
       setNewMessage("")
-      markChatAsRead()
     } catch (error: any) {
       toast({
         title: "메시지 전송 실패",
@@ -80,17 +79,6 @@ export function ChatPanel({
               key={msg.id}
               className={`flex items-end gap-2 flex-shrink-0 ${msg.isMine ? "justify-end" : "justify-start"}`}
             >
-              {msg.isMine && (
-                <div className="flex-shrink-0 mb-1">
-                  <Check
-                    className={`w-4 h-4 ${
-                      msg.isReadByPartner
-                        ? "text-primary"
-                        : "text-gray-300 dark:text-gray-500"
-                    }`}
-                  />
-                </div>
-              )}
               <div
                 className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-sm ${
                   msg.isMine
