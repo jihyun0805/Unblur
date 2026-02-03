@@ -67,8 +67,8 @@ export const SURVEY_QUESTIONS = {
     question: "흡연을 하시나요?",
     options: [
       { value: "nonsmoker", label: "비흡연" },
-      { value: "social", label: "가끔(사교)" },
-      { value: "smoker", label: "연초 및 전담" },
+      { value: "vape", label: "전자담배만" },
+      { value: "smoker", label: "연초 포함(전부)" },
     ],
   },
   smokingPartner: {
@@ -76,22 +76,22 @@ export const SURVEY_QUESTIONS = {
     options: [
       { value: "any", label: "상관없음" },
       { value: "nonsmoker", label: "비흡연자만" },
-      { value: "vape-ok", label: "전담까진 OK" },
+      { value: "vape", label: "전담까진 OK" },
     ],
   },
   drinkingSelf: {
-    question: "음주를 하시나요?",
+    question: "평소 음주 스타일이 어떠신가요?",
     options: [
-      { value: "none", label: "알쓰(못마심)" },
-      { value: "mood", label: "기분파" },
-      { value: "heavy", label: "애주가" },
+      { value: "none", label: "금주/술을 못마심" },
+      { value: "social", label: "가끔/사교적" },
+      { value: "lover", label: "애주가" },
     ],
   },
   drinkingPartner: {
-    question: "상대방의 음주 여부를 허용하시나요?",
+    question: "상대방의 음주 습관, 어디까지 괜찮으세요?",
     options: [
       { value: "any", label: "상관없음" },
-      { value: "light", label: "금주 및 절주 선호" },
+      { value: "limit", label: "비음주·절주 선호" },
       { value: "buddy", label: "술친구 선호" },
     ],
   },
@@ -110,23 +110,20 @@ export const SURVEY_QUESTIONS = {
     options: [
       { value: "respect", label: "존중해요" },
       { value: "same", label: "같은 종교만" },
-      { value: "no-pressure", label: "종교 강요 X" },
     ],
   },
   petSelf: {
     question: "반려동물을 키우시나요?",
     options: [
-      { value: "none", label: "없음" },
-      { value: "have", label: "반려동물 있음" },
-      { value: "allergy", label: "알러지 있음" },
+      { value: "none", label: "안 키움" },
+      { value: "have", label: "키우고 있음" },
     ],
   },
   petPartner: {
     question: "상대방의 반려동물 키우기 여부를 허용하시나요?",
     options: [
       { value: "any", label: "상관없음" },
-      { value: "like", label: "동물 좋아해요" },
-      { value: "prefer-none", label: "없는 분 선호" },
+      { value: "prefer-none", label: "안 키우는 분 선호" },
     ],
   },
 
