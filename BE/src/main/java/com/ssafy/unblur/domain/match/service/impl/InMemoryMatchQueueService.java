@@ -109,6 +109,27 @@ public class InMemoryMatchQueueService implements MatchQueueService {
     }
 
     @Override
+    public boolean existsWaitingRecipient(UUID userId, MatchType queueType) {
+        if (userId == null) {
+            return false;
+        }
+
+        lock.lock();
+        try {
+            for (MatchQueueItem item : items.values()) {
+                if (item.getMatchType() == queueType && item.getStatus() == MatchQueueStatus.WAITING && userId.equals(item.getRecipientUserId())) {
+                    return true;
+                }
+            }
+
+            return false;
+
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    @Override
     public void purgeFinished(LocalDateTime cutoff) {
         lock.lock();
 

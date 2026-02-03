@@ -4,7 +4,20 @@ import { useState, useEffect, useRef, useCallback, type MutableRefObject } from 
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useToast } from "@/hooks/use-toast"
-import { Mic, MicOff, PhoneOff, MessageCircle, Gamepad2, BookOpen, Clock, X, Lightbulb, AlertCircle } from "lucide-react"
+import {
+  Mic,
+  MicOff,
+  PhoneOff,
+  MessageCircle,
+  Gamepad2,
+  BookOpen,
+  Clock,
+  X,
+  Lightbulb,
+  AlertCircle,
+  Video,
+  VideoOff,
+} from "lucide-react"
 import { BalanceGameOverlay } from "@/components/session/balance-game-overlay"
 import {
   AlertDialog,
@@ -104,6 +117,7 @@ export function SessionRoom({
     remoteAudioMuted,
     sendVote,
     leaveSession,
+    replaceVideoTrack,
     signalingClient,
   } = useWebRTC({
     sessionId,
@@ -270,6 +284,13 @@ export function SessionRoom({
       localVideoRef.current.play().catch(() => {})
     }
   }, [localStream])
+
+  const handleFilteredStream = useCallback(
+    (filteredStream: MediaStream | null) => {
+      replaceVideoTrack(filteredStream)
+    },
+    [replaceVideoTrack]
+  )
 
   // 원격 스트림을 비디오 요소에 설정 및 재생
   useEffect(() => {
@@ -550,6 +571,33 @@ export function SessionRoom({
                 {isMuted ? "마이크 켜기" : "마이크 끄기"}
               </TooltipContent>
             </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={toggleVideo}
+                  className={`h-8 w-8 rounded-full ${
+                    isVideoEnabled ? "bg-white/20 hover:bg-white/30" : "bg-red-500 hover:bg-red-600"
+                  }`}
+                >
+                  {isVideoEnabled ? (
+                    <Video className="h-4 w-4 text-white" />
+                  ) : (
+                    <VideoOff className="h-4 w-4 text-white" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent
+                side="bottom"
+                sideOffset={8}
+                align="center"
+                showArrow={false}
+                className="bg-white text-foreground text-xs font-medium rounded-md px-3 py-1.5"
+              >
+                {isVideoEnabled ? "카메라 끄기" : "카메라 켜기"}
+              </TooltipContent>
+            </Tooltip>
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -673,6 +721,7 @@ export function SessionRoom({
                     blurLevel={blurLevel}
                     smoothness={beautyFilter.smoothness}
                     lipIntensity={beautyFilter.lipIntensity}
+                    onFilteredStream={handleFilteredStream}
                   />
                 </div>
               )}

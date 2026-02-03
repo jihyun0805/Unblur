@@ -34,6 +34,7 @@ public enum ErrorCode {
     MATCH_TARGET_NOT_FOUND(HttpStatus.BAD_REQUEST, "MATCH-003", "대상 사용자를 찾을 수 없습니다."),
     MATCH_ALREADY_HANDLED(HttpStatus.CONFLICT, "MATCH-004", "이미 처리된 매칭 요청입니다."),
     MATCH_TARGET_OFFLINE(HttpStatus.CONFLICT, "MATCH-005", "상대가 현재 수락할 수 없는 상태입니다."),
+    MATCH_TARGET_ALREADY_REQUESTED(HttpStatus.CONFLICT, "MATCH-006", "누군가 1:1 요청 중입니다."),
 
     BALANCE_ALREADY_IN_PROGRESS(HttpStatus.CONFLICT, "BALANCE-001", "이미 진행 중인 밸런스 게임이 있습니다."),
     BALANCE_NOT_PARTICIPANT(HttpStatus.FORBIDDEN, "BALANCE-002", "참여자가 아닙니다."),
@@ -51,6 +52,7 @@ public enum ErrorCode {
     CONFERENCE_ALREADY_COMPLETED(HttpStatus.CONFLICT, "CONF-003", "이미 종료된 세션입니다."),
     CONFERENCE_MAX_ROUND_REACHED(HttpStatus.CONFLICT, "CONF-004", "최대 라운드에 도달했습니다."),
     CONFERENCE_NOT_COMPLETED(HttpStatus.CONFLICT, "CONF-005", "아직 종료되지 않은 세션입니다."),
+    CONFERENCE_NOT_IN_EVALUATION_STATE(HttpStatus.CONFLICT, "CONF-006", "선명도 평가가 가능한 상태가 아닙니다."),
 
     CLARITY_EVALUATION_ALREADY_EXISTS(HttpStatus.CONFLICT, "EVAL-001", "이미 선명도 평가를 완료했습니다."),
 

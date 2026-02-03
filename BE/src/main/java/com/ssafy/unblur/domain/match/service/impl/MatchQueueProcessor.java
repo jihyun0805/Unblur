@@ -14,7 +14,7 @@ import com.ssafy.unblur.domain.match.dto.response.OneOnOneMatchResponse;
 import com.ssafy.unblur.domain.match.model.*;
 import com.ssafy.unblur.domain.match.repository.ConferenceRepository;
 import com.ssafy.unblur.domain.match.repository.MatchCandidateRepository;
-import com.ssafy.unblur.domain.match.service.MatchEventPublisher;
+import com.ssafy.unblur.common.service.EventSender;
 import com.ssafy.unblur.domain.match.service.MatchQueueService;
 import com.ssafy.unblur.domain.survey.service.SurveySimilarityCalculator;
 import com.ssafy.unblur.domain.user.repository.UserBlockRepository;
@@ -90,7 +90,7 @@ public class MatchQueueProcessor {
     /**
      * 매칭 이벤트 전송기
      */
-    private final MatchEventPublisher eventPublisher;
+    private final EventSender eventSender;
 
     /**
      * 설문 유사도 계산기
@@ -218,8 +218,8 @@ public class MatchQueueProcessor {
 
             // 타임아웃 이벤트 전송
             OneOnOneMatchResponse response = buildOneOnOneResponse(item, "timeout");
-            eventPublisher.publish(item.getRequesterUserId(), SseEventType.ONE_ON_ONE_TIMEOUT, response);
-            eventPublisher.publish(item.getRecipientUserId(), SseEventType.ONE_ON_ONE_TIMEOUT, response);
+            eventSender.publish(item.getRequesterUserId(), SseEventType.ONE_ON_ONE_TIMEOUT, response);
+            eventSender.publish(item.getRecipientUserId(), SseEventType.ONE_ON_ONE_TIMEOUT, response);
 
             log.info("1:1 매칭 타임아웃. requestId={}, requesterId={}, recipientId={}", item.getRequestId(), item.getRequesterUserId(), item.getRecipientUserId());
         }
@@ -239,7 +239,7 @@ public class MatchQueueProcessor {
                 .build();
 
         log.info("타임아웃 이벤트 전송. requestId={}, userId={}", item.getRequestId(), item.getRequesterUserId());
-        eventPublisher.publish(item.getRequesterUserId(), SseEventType.QUICK_TIMEOUT, event);
+        eventSender.publish(item.getRequesterUserId(), SseEventType.QUICK_TIMEOUT, event);
     }
 
     /**
@@ -573,7 +573,7 @@ public class MatchQueueProcessor {
                 .build();
 
         log.info("완화 단계 이벤트 전송. requestId={}, userId={}", item.getRequestId(), item.getRequesterUserId());
-        eventPublisher.publish(item.getRequesterUserId(), SseEventType.QUICK_RELAXED, event);
+        eventSender.publish(item.getRequesterUserId(), SseEventType.QUICK_RELAXED, event);
     }
 
     /**
@@ -607,8 +607,8 @@ public class MatchQueueProcessor {
                 .build();
 
         TransactionUtils.runAfterCommit(() -> {
-            eventPublisher.publish(left.getRequesterUserId(), SseEventType.QUICK_MATCHED, leftEvent);
-            eventPublisher.publish(right.getRequesterUserId(), SseEventType.QUICK_MATCHED, rightEvent);
+            eventSender.publish(left.getRequesterUserId(), SseEventType.QUICK_MATCHED, leftEvent);
+            eventSender.publish(right.getRequesterUserId(), SseEventType.QUICK_MATCHED, rightEvent);
         });
 
         log.info("빠른 매칭 완료 이벤트 예약. conferenceId={}, leftUserId={}, rightUserId={}", conferenceId, left.getRequesterUserId(), right.getRequesterUserId());

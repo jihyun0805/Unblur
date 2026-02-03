@@ -54,6 +54,9 @@ public class MdcLoggingFilter extends OncePerRequestFilter {
      */
     private static final String MDC_IP = "ip";
 
+    private static final String MDC_STATUS = "status";
+    private static final String MDC_ERROR_CODE = "errorCode";
+
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
@@ -67,6 +70,8 @@ public class MdcLoggingFilter extends OncePerRequestFilter {
         MDC.put(MDC_METHOD, request.getMethod());
         MDC.put(MDC_PATH, request.getRequestURI());
         MDC.put(MDC_IP, request.getRemoteAddr());
+        MDC.put(MDC_STATUS, "-");
+        MDC.put(MDC_ERROR_CODE, "-");
 
         // 사용자 인증 정보에서 사용자 ID 설정
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -85,10 +90,7 @@ public class MdcLoggingFilter extends OncePerRequestFilter {
     }
 
     /**
-     * 요청에서 요청 ID를 확인하거나 새로 생성하는 메서드
-     *
-     * @param request HTTP 요청
-     * @return 요청 ID
+     * 요청에서 요청 ID를 확인하거나 새로 생성
      */
     private String resolveRequestId(HttpServletRequest request) {
         String requestId = request.getHeader(HEADER_REQUEST_ID);

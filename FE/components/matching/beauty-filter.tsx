@@ -13,6 +13,9 @@ interface BeautyFilterProps {
   blurLevel: number;    // 블라인드 처리용 (전체 블러)
   smoothness: number;   // 피부 보정 강도 (0 ~ 100)
   lipIntensity: number; // 입술 색상 강도 (0 ~ 100)
+
+  // null 허용 (스트림 해제 시 알림 용도)
+  onFilteredStream?: (filteredStream: MediaStream | null) => void;
 }
 
 const FEATURE_INDICES = {
@@ -68,6 +71,7 @@ const BeautyFilter = ({
   blurLevel,
   smoothness,
   lipIntensity,
+  onFilteredStream,
 }: BeautyFilterProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -76,13 +80,24 @@ const BeautyFilter = ({
   const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
   const scratchCanvasRef = useRef<HTMLCanvasElement | null>(null);
   
+  // Refs for stream and callback
+  const filteredStreamRef = useRef<MediaStream | null>(null);
+  const onFilteredStreamRef = useRef(onFilteredStream);  
+  
   // Refs for Props (Closure 문제 해결)
   const paramsRef = useRef({ smoothness, lipIntensity });
 
+  // props 업데이트 
   useEffect(() => {
     paramsRef.current = { smoothness, lipIntensity };
   }, [smoothness, lipIntensity]);
 
+  // callback func 최신화 (의존성 제거)
+  useEffect(() => {
+    onFilteredStreamRef.current = onFilteredStream;
+  }, [onFilteredStream]);
+
+  // Mediapipe 초기화
   useEffect(() => {
     const initMediapipe = async () => {
       const vision = await FilesetResolver.forVisionTasks(
@@ -97,10 +112,8 @@ const BeautyFilter = ({
         runningMode: "VIDEO",
         numFaces: 1,
       });
-
       startRenderLoop();
     };
-
     initMediapipe();
 
     return () => {
@@ -109,11 +122,34 @@ const BeautyFilter = ({
     };
   }, []);
 
+  // 입력 스트림 변경 감지 및 cleanup
   useEffect(() => {
-    if (!videoRef.current || !stream) return;
-    videoRef.current.srcObject = stream;
-    videoRef.current.onloadeddata = () => startRenderLoop();
-    videoRef.current.play().catch(() => {});
+    const video = videoRef.current;
+    if (!video || !stream) return;
+
+    // 기존 필터 스트림 정리 
+    if (filteredStreamRef.current) {
+      filteredStreamRef.current.getTracks().forEach(track => track.stop());
+      filteredStreamRef.current = null;
+      onFilteredStreamRef.current?.(null);
+    }
+
+    if (stream) {
+      video.srcObject = stream;
+      video.onloadeddata = () => startRenderLoop();
+      video.play().catch(() => {});
+    } else {
+      video.srcObject = null;
+    }
+
+    // Cleanup
+    return () => {
+      if (filteredStreamRef.current) {
+        filteredStreamRef.current.getTracks().forEach(track => track.stop());
+        filteredStreamRef.current = null;
+        onFilteredStreamRef.current?.(null);
+      }
+    };
   }, [stream]);
 
   const startRenderLoop = () => {
@@ -136,6 +172,21 @@ const BeautyFilter = ({
       if (canvas.width !== video.videoWidth) {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
+      }
+
+      if (!filteredStreamRef.current && stream) {
+        const out = (canvas as any).captureStream(30);
+
+        // 오디오 트랙 전체 병합
+        stream.getAudioTracks().forEach((track) => {
+          out.addTrack(track);
+        });
+        filteredStreamRef.current = out;
+
+        // 부모에게 전달
+        if (onFilteredStreamRef.current) {
+          onFilteredStreamRef.current(out);
+        }
       }
 
       // 1. 캔버스 초기화
@@ -218,7 +269,6 @@ const BeautyFilter = ({
     render();
   };
 
-  // ✅ [수정됨] 이 함수는 scratchCanvasRef를 사용하므로 컴포넌트 내부에 있어야 함
   const applySkinAndBrightness = (
     ctx: CanvasRenderingContext2D,
     video: HTMLVideoElement,

@@ -40,3 +40,4 @@ out/
 /src/main/resources/ssl/
 /recordings/
 /.tmp/
+/logs/error.log

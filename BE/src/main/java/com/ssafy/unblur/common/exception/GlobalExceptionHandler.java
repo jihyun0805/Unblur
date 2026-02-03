@@ -4,16 +4,17 @@ import com.ssafy.unblur.common.response.BaseResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BindException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
-import org.springframework.web.bind.MethodArgumentNotValidException;
 
 @Slf4j
 @RestControllerAdvice
@@ -26,6 +27,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BaseException.class)
     public ResponseEntity<BaseResponse> handleUserException(BaseException e, HttpServletRequest request) {
         HttpStatus httpStatus = e.getHttpStatus();
+        setErrorMdc(e.getErrorCode(), httpStatus);
 
         if (httpStatus.is5xxServerError()) {
             logError(e.getErrorCode(), request, e.getMessage(), e);
@@ -64,6 +66,7 @@ public class GlobalExceptionHandler {
     })
     public ResponseEntity<BaseResponse> handleInvalidInput(Exception e, HttpServletRequest request) {
         String logDetail = summarizeInvalidInput(e);
+        setErrorMdc(ErrorCode.INVALID_INPUT_VALUE, HttpStatus.BAD_REQUEST);
         logInfo(request, logDetail);
 
         BaseResponse response = BaseResponse.onFailure(ErrorCode.INVALID_INPUT_VALUE);
@@ -74,6 +77,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<BaseResponse> handleAccessDenied(AccessDeniedException e, HttpServletRequest request) {
+        setErrorMdc(ErrorCode.ACCESS_DENIED, ErrorCode.ACCESS_DENIED.getHttpStatus());
         logWarn(ErrorCode.ACCESS_DENIED, request, e.getMessage());
 
         BaseResponse response = BaseResponse.onFailure(ErrorCode.ACCESS_DENIED);
@@ -87,6 +91,7 @@ public class GlobalExceptionHandler {
             org.hibernate.exception.ConstraintViolationException.class
     })
     public ResponseEntity<BaseResponse> handleDataIntegrityViolation(Exception e, HttpServletRequest request) {
+        setErrorMdc(ErrorCode.INTERNAL_SERVER_ERROR, HttpStatus.INTERNAL_SERVER_ERROR);
         logError(ErrorCode.INTERNAL_SERVER_ERROR, request, e.getMessage(), e);
 
         BaseResponse response = BaseResponse.onFailure(ErrorCode.INTERNAL_SERVER_ERROR);
@@ -111,6 +116,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<BaseResponse> handleException(Exception e, HttpServletRequest request) {
+        setErrorMdc(ErrorCode.INTERNAL_SERVER_ERROR, HttpStatus.INTERNAL_SERVER_ERROR);
         logError(ErrorCode.INTERNAL_SERVER_ERROR, request, e.getMessage(), e);
 
         BaseResponse response = BaseResponse.onFailure(ErrorCode.INTERNAL_SERVER_ERROR);
@@ -154,5 +160,10 @@ public class GlobalExceptionHandler {
 
     private static void logError(ErrorCode errorCode, HttpServletRequest request, String detail, Throwable throwable) {
         log.error(REQUEST_LOG_FORMAT, errorCode.getCode(), request.getMethod(), request.getRequestURI(), detail, throwable);
+    }
+
+    private static void setErrorMdc(ErrorCode errorCode, HttpStatus status) {
+        MDC.put("status", String.valueOf(status.value()));
+        MDC.put("errorCode", errorCode.getCode());
     }
 }

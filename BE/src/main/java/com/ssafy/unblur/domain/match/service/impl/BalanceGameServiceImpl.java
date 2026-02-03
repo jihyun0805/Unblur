@@ -2,9 +2,9 @@ package com.ssafy.unblur.domain.match.service.impl;
 
 import com.ssafy.unblur.common.exception.BaseException;
 import com.ssafy.unblur.common.exception.ErrorCode;
+import com.ssafy.unblur.common.service.EventSender;
 import com.ssafy.unblur.common.service.event.WsEventType;
 import com.ssafy.unblur.domain.match.service.BalanceGameService;
-import com.ssafy.unblur.domain.match.service.MatchEventPublisher;
 import com.ssafy.unblur.domain.rtc.dto.event.BalanceGameMessages;
 import com.ssafy.unblur.domain.match.model.BalanceChoice;
 import com.ssafy.unblur.domain.match.model.BalanceQuestion;
@@ -51,9 +51,9 @@ public class BalanceGameServiceImpl implements BalanceGameService {
     private final RtcParticipantStore participantStore;
 
     /**
-     * 이벤트 발행자
+     * 이벤트 전송기
      */
-    private final MatchEventPublisher eventPublisher;
+    private final EventSender eventSender;
 
     /**
      * 세션별 밸런스 게임 상태
@@ -159,7 +159,7 @@ public class BalanceGameServiceImpl implements BalanceGameService {
                 .fromUserId(fromUserId.toString())
                 .build();
 
-        eventPublisher.publish(targetUserId, WsEventType.BALANCE_INVITE, message);
+        eventSender.publish(targetUserId, WsEventType.BALANCE_INVITE, message);
     }
 
     @Override
@@ -208,7 +208,7 @@ public class BalanceGameServiceImpl implements BalanceGameService {
                     .build();
 
             // 거절 알림 전송
-            eventPublisher.publish(session.inviterUserId, WsEventType.BALANCE_DECLINED, declined);
+            eventSender.publish(session.inviterUserId, WsEventType.BALANCE_DECLINED, declined);
             return;
         }
 
@@ -223,8 +223,8 @@ public class BalanceGameServiceImpl implements BalanceGameService {
                 .build();
 
         // 게임 시작 알림 전송
-        eventPublisher.publish(session.inviterUserId, WsEventType.BALANCE_STARTED, start);
-        eventPublisher.publish(session.targetUserId, WsEventType.BALANCE_STARTED, start);
+        eventSender.publish(session.inviterUserId, WsEventType.BALANCE_STARTED, start);
+        eventSender.publish(session.targetUserId, WsEventType.BALANCE_STARTED, start);
     }
 
     @Override
@@ -289,7 +289,7 @@ public class BalanceGameServiceImpl implements BalanceGameService {
                 .build();
 
         // 상대방에게 선택 알림 전송
-        eventPublisher.publish(otherUserId, WsEventType.BALANCE_SELECTED, selected);
+        eventSender.publish(otherUserId, WsEventType.BALANCE_SELECTED, selected);
 
         // 한 명만 선택했다면 결과는 아직 전송하지 않음
         if (!completed) {
@@ -309,8 +309,8 @@ public class BalanceGameServiceImpl implements BalanceGameService {
                 .build();
 
         // 양측에 결과 전송
-        eventPublisher.publish(session.inviterUserId, WsEventType.BALANCE_RESULT, result);
-        eventPublisher.publish(session.targetUserId, WsEventType.BALANCE_RESULT, result);
+        eventSender.publish(session.inviterUserId, WsEventType.BALANCE_RESULT, result);
+        eventSender.publish(session.targetUserId, WsEventType.BALANCE_RESULT, result);
     }
 
     /**
@@ -388,7 +388,7 @@ public class BalanceGameServiceImpl implements BalanceGameService {
                     .fromUserId(session.targetUserId.toString())
                     .build();
 
-            eventPublisher.publish(session.inviterUserId, WsEventType.BALANCE_DECLINED, declined);
+            eventSender.publish(session.inviterUserId, WsEventType.BALANCE_DECLINED, declined);
 
         }, INVITE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     }
@@ -453,8 +453,8 @@ public class BalanceGameServiceImpl implements BalanceGameService {
                     .build();
 
             // 양측에 결과 전송
-            eventPublisher.publish(session.inviterUserId, WsEventType.BALANCE_RESULT, result);
-            eventPublisher.publish(session.targetUserId, WsEventType.BALANCE_RESULT, result);
+            eventSender.publish(session.inviterUserId, WsEventType.BALANCE_RESULT, result);
+            eventSender.publish(session.targetUserId, WsEventType.BALANCE_RESULT, result);
 
         }, SELECTION_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     }
