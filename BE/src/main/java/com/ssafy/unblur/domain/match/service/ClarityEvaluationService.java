@@ -12,12 +12,14 @@ import com.ssafy.unblur.domain.match.model.ConferenceStatus;
 import com.ssafy.unblur.domain.match.repository.ConferenceParticipantRepository;
 import com.ssafy.unblur.domain.match.repository.ConferenceRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ClarityEvaluationService {
@@ -44,6 +46,8 @@ public class ClarityEvaluationService {
 
     @Transactional
     public void evaluate(UUID conferenceId, String evaluatorEmail, int score) {
+        log.info("선명도 평가 요청. conferenceId={}, score={}", conferenceId, score);
+
         // 평가자 및 컨퍼런스 조회
         User evaluator = userRepository.findByEmail(evaluatorEmail)
                 .orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
@@ -89,6 +93,7 @@ public class ClarityEvaluationService {
                 .build();
 
         clarityEvaluationRepository.save(evaluation);
+        log.info("선명도 평가 완료. conferenceId={}, evaluatorId={}, targetId={}, score={}", conferenceId, evaluator.getId(), target.getId(), score);
 
     }
 }

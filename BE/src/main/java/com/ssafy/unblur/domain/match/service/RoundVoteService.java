@@ -216,6 +216,8 @@ public class RoundVoteService {
 
             // 스킵 찬성자 수 확인
             int skipCount = voteStore.getSkipVoterCount(conferenceId);
+            log.info("라운드 스킵 찬성자 수. conferenceId={}, skipCount={}, participantCount={}", conferenceId, skipCount, participants.size());
+
             if (skipCount >= participants.size()) {
                 // 타이머 취소 및 다음 라운드로 진행
                 timerService.cancelTimer(conferenceId);
@@ -231,6 +233,8 @@ public class RoundVoteService {
                 for (UUID participantId : participants) {
                     eventSender.publish(participantId, WsEventType.ROUND_SKIPPED, skippedMessage);
                 }
+
+                log.info("라운드 스킵 처리 완료. conferenceId={}, fromRound={}, toRound={}", conferenceId, currentRound, currentRound + 1);
 
                 // 다음 라운드로 진행
                 advanceToNextRound(conferenceId, participants);
@@ -286,6 +290,8 @@ public class RoundVoteService {
                     eventSender.publish(participantId, WsEventType.ROUND_SKIP_DECLINED, declinedMessage);
                 }
             }
+
+            log.info("라운드 스킵 거절 전송. conferenceId={}, declinerId={}", conferenceId, userId);
 
             // 스킵 투표 초기화
             voteStore.resetSkips(conferenceId);

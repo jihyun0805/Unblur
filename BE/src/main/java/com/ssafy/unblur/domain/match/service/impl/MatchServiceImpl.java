@@ -89,6 +89,7 @@ public class MatchServiceImpl implements MatchService {
 //    @TimeWindow(start = "20:00", end = "02:00") // Todo: 테스트 이후 주석 해제
     public MatchingQueueResponse startQuickMatch(UUID userId, FastMatchingRequest request) {
         log.info("빠른 매칭 요청 시작. userId={}", userId);
+
         // 동일 사용자가 이미 대기 중이면 중복 등록 방지
         if (matchQueueService.existsWaiting(userId, MatchType.QUICK)) {
             log.warn("빠른 매칭 중복 요청. userId={}", userId);
@@ -119,9 +120,11 @@ public class MatchServiceImpl implements MatchService {
         log.info("빠른 매칭 즉시 시도 결과. userId={}, requestId={}, matched={}", userId, item.getRequestId(), matched);
 
         MatchingQueueResponse response = buildResponse(item);
+        log.debug("빠른 매칭 응답 생성. userId={}, requestId={}, status={}, queued={}", userId, item.getRequestId(), item.getStatus(), response.isQueued());
 
         if (!matched) {
             eventSender.publish(userId, SseEventType.QUICK_WAITING, response);
+            log.debug("빠른 매칭 대기 이벤트 전송. userId={}, requestId={}", userId, item.getRequestId());
         }
 
         return response;
@@ -155,6 +158,7 @@ public class MatchServiceImpl implements MatchService {
         }
 
         item.markCanceled();
+        log.info("빠른 매칭 취소 처리. userId={}, requestId={}", userId, item.getRequestId());
 
         // SSE 취소 이벤트 전송
         QuickMatchStageEvent event = QuickMatchStageEvent.builder()
@@ -172,7 +176,13 @@ public class MatchServiceImpl implements MatchService {
         MatchingQueueResponse response = matchQueueService.findUserRequestByMatchType(userId, MatchType.QUICK)
                 .map(this::buildResponse)
                 .orElse(null);
+
         log.debug("빠른 매칭 대기열 상태 조회. userId={}, exists={}", userId, response != null);
+
+        if (response == null) {
+            log.debug("빠른 매칭 대기열 항목 없음. userId={}", userId);
+        }
+
         return response;
     }
 
@@ -226,6 +236,8 @@ public class MatchServiceImpl implements MatchService {
             throw new BaseException(ErrorCode.MATCH_TARGET_OFFLINE);
         }
 
+        log.debug("1:1 매칭 대상 온라인 확인. userId={}, targetUserId={}", userId, targetUserId);
+
         // 대상 사용자가 이미 다른 1:1 요청을 받은 경우
         if (matchQueueService.existsWaitingRecipient(targetUserId, MatchType.ONE_ON_ONE)) {
             log.warn("1:1 매칭 대상이 이미 요청 수신 중. userId={}, targetUserId={}", userId, targetUserId);
@@ -260,6 +272,7 @@ public class MatchServiceImpl implements MatchService {
         eventSender.publish(targetUserId, SseEventType.ONE_ON_ONE_REQUESTED, recipientResponse);
         log.info("1:1 매칭 요청 전송. requesterId={}, targetUserId={}, requestId={}", userId, targetUserId, item.getRequestId());
 
+        log.debug("1:1 매칭 요청 응답 생성. requesterId={}, requestId={}", userId, item.getRequestId());
         return buildOneOnOneResponse(item, "pending");
     }
 
@@ -318,6 +331,8 @@ public class MatchServiceImpl implements MatchService {
         TransactionUtils.runAfterCommit(() -> {
             eventSender.publish(item.getRequesterUserId(), SseEventType.ONE_ON_ONE_ACCEPTED, requesterResponse);
             eventSender.publish(userId, SseEventType.ONE_ON_ONE_ACCEPTED, recipientResponse);
+
+            log.info("1:1 매칭 수락 이벤트 전송. requestId={}, requesterId={}, recipientId={}", requestId, item.getRequesterUserId(), userId);
         });
 
         return recipientResponse;
@@ -359,11 +374,13 @@ public class MatchServiceImpl implements MatchService {
         eventSender.publish(item.getRequesterUserId(), SseEventType.ONE_ON_ONE_DECLINED, requesterResponse);
         log.info("1:1 매칭 거절 전송. userId={}, requestId={}, requesterId={}", userId, requestId, item.getRequesterUserId());
 
+        log.debug("1:1 매칭 거절 응답 생성. userId={}, requestId={}", userId, requestId);
         return buildOneOnOneResponse(item, "declined");
     }
 
     @Override
     public OneOnOneMatchResponse cancelOneOnOneMatch(UUID userId) {
+        log.info("1:1 매칭 취소 요청. userId={}", userId);
         // 대기열 항목 조회
         MatchQueueItem item = matchQueueService.findUserRequestByMatchType(userId, MatchType.ONE_ON_ONE)
                 .orElseThrow(() -> new BaseException(ErrorCode.MATCH_REQUEST_NOT_FOUND));
@@ -396,6 +413,7 @@ public class MatchServiceImpl implements MatchService {
         // 상대방에게도 취소 알림 전송
         if (item.getRecipientUserId() != null) {
             eventSender.publish(item.getRecipientUserId(), SseEventType.ONE_ON_ONE_CANCELED, response);
+            log.info("1:1 매칭 취소 상대방 알림 전송. userId={}, recipientId={}, requestId={}", userId, item.getRecipientUserId(), item.getRequestId());
         }
 
         log.info("1:1 매칭 취소 완료. userId={}, requestId={}", userId, item.getRequestId());
@@ -421,6 +439,8 @@ public class MatchServiceImpl implements MatchService {
 
         // 현재 연결된 사용자 중 반대 성별의 사용자 목록 조회
         Set<UUID> connectedUserIds = sseService.getConnectedUserIds();
+        log.debug("온라인 사용자 조회 대상 수. userId={}, connectedCount={}", userId, connectedUserIds.size());
+
         List<User> oppositeGenderUsers = userRepository.findAllById(connectedUserIds).stream()
                 .filter(user -> user.getGender() == oppositeGender)
                 .filter(User::isActive)
@@ -439,6 +459,7 @@ public class MatchServiceImpl implements MatchService {
         }
 
         // 응답 반환
+        log.debug("온라인 사용자 목록 조회 완료. userId={}, resultCount={}", userId, result.size());
         return OnlineUserListResponse.builder()
                 .onlineUsers(result)
                 .build();

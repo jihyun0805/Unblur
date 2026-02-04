@@ -217,6 +217,8 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
+        log.info("RTC 방 입장 요청. sessionId={}, conferenceId={}, userId={}", session.getId(), conferenceId, userId);
+
         sessionStore.bindUser(session.getId(), userId);
         sessionStore.bindConference(session.getId(), conferenceId);
 
@@ -227,6 +229,8 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
 
             // 회의 생명주기 서비스에 입장 알림 (DB 기록 + 라운드 시작)
             conferenceLifecycleService.onJoin(conferenceId, userId);
+
+            log.info("RTC 방 입장 완료. sessionId={}, conferenceId={}, userId={}", session.getId(), conferenceId, userId);
 
         } catch (RuntimeException e) {
             // join 실패 시 세션 매핑/RTC 정리
