@@ -530,6 +530,19 @@ export function ProfilePage() {
     .filter((option) => surveyData.interests.includes(option.value))
     .map((option) => option.label)
 
+  const isSurveyStep1Complete = Boolean(
+    surveyData.dateStyle && surveyData.contactStyle && surveyData.conflictStyle && surveyData.spending
+  )
+  const isSurveyStep2Complete = Boolean(
+    surveyData.priority && surveyData.agePreference.length > 0 && surveyData.distancePreference
+  )
+  const isSurveyStep3Complete = Boolean(
+    surveyData.smokingSelf && surveyData.drinkingSelf && surveyData.religionSelf && surveyData.petSelf
+  )
+  const isSurveyStep4Complete = Boolean(
+    surveyData.smokingPartner && surveyData.drinkingPartner && surveyData.religionPartner && surveyData.petPartner
+  )
+
   const profileImage = getLoveDnaImage(user?.loveDna)
 
   return (
@@ -880,7 +893,11 @@ export function ProfilePage() {
                 </Button>
                 <Button
                   onClick={() => setSurveyStep(2)}
-                  className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+                  className={`flex-1 transition ${
+                    isSurveyStep1Complete
+                      ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                      : "bg-primary/40 text-primary-foreground hover:bg-primary/50"
+                  }`}
                 >
                   다음
                 </Button>
@@ -926,7 +943,11 @@ export function ProfilePage() {
                 </Button>
                 <Button
                   onClick={() => setSurveyStep(3)}
-                  className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+                  className={`flex-1 transition ${
+                    isSurveyStep2Complete
+                      ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                      : "bg-primary/40 text-primary-foreground hover:bg-primary/50"
+                  }`}
                 >
                   다음
                 </Button>
@@ -980,7 +1001,11 @@ export function ProfilePage() {
                 </Button>
                 <Button
                   onClick={() => setSurveyStep(4)}
-                  className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+                  className={`flex-1 transition ${
+                    isSurveyStep3Complete
+                      ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                      : "bg-primary/40 text-primary-foreground hover:bg-primary/50"
+                  }`}
                 >
                   다음
                 </Button>
@@ -1034,7 +1059,11 @@ export function ProfilePage() {
                 </Button>
                 <Button
                   onClick={handleSaveSurvey}
-                  className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+                  className={`flex-1 transition ${
+                    isSurveyStep4Complete
+                      ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                      : "bg-primary/40 text-primary-foreground hover:bg-primary/50"
+                  }`}
                   disabled={isLoading}
                 >
                   {isLoading ? (
