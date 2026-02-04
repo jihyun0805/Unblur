@@ -12,6 +12,10 @@ export type SignalingMessage =
   | { type: "vote-confirm-request"; conferenceId: string; message?: string }
   | { type: "partner-voted"; conferenceId: string; message?: string }
   | { type: "conference-ended"; conferenceId: string; message?: string }
+  | { type: "round-skip-requested"; conferenceId: string; requesterId: string; message?: string }
+  | { type: "round-skip-sent"; conferenceId: string; message?: string }
+  | { type: "round-skipped"; conferenceId: string; fromRound: number; toRound: number; message?: string }
+  | { type: "round-skip-declined"; conferenceId: string; declinerId: string; message?: string }
   | { type: "balance-invite"; conferenceId: string; fromUserId: string; sessionId: string }
   | { type: "balance-declined"; conferenceId: string; fromUserId: string; sessionId: string }
   | { type: "balance-start"; conferenceId: string; questionId: string; category: string; question: string; optionA: string; optionB: string; sessionId: string }
@@ -30,6 +34,8 @@ export interface WebRTCSignalingClient {
   sendAnswer(sdp: RTCSessionDescriptionInit, conferenceId: string, userId: string): void
   sendIceCandidate(candidate: RTCIceCandidateInit, conferenceId: string, userId: string): void
   sendVote(conferenceId: string, userId: string, vote: VoteChoice): void
+  sendRoundSkip(conferenceId: string, userId: string): void
+  sendRoundSkipDecline(conferenceId: string, userId: string): void
   sendBalanceInvite(conferenceId: string, userId: string): void
   sendBalanceResponse(conferenceId: string, userId: string, accepted: boolean): void
   sendBalanceSelect(conferenceId: string, userId: string, choice: "A" | "B"): void
@@ -56,6 +62,10 @@ interface ServerMessage {
   optionB?: string
   sameChoice?: boolean
   selections?: Array<{ userId: string; choice: string }>
+  requesterId?: string
+  declinerId?: string
+  fromRound?: number
+  toRound?: number
 }
 
 function normalizeWsUrl(input: string): string {
@@ -208,6 +218,18 @@ export class WebSocketSignalingClient implements WebRTCSignalingClient {
     if (raw.type === "conference-ended") {
       return { type: "conference-ended", conferenceId: cid, message: raw.message }
     }
+    if (raw.type === "round-skip-requested" && raw.requesterId != null) {
+      return { type: "round-skip-requested", conferenceId: cid, requesterId: raw.requesterId, message: raw.message }
+    }
+    if (raw.type === "round-skip-sent") {
+      return { type: "round-skip-sent", conferenceId: cid, message: raw.message }
+    }
+    if (raw.type === "round-skipped" && raw.fromRound != null && raw.toRound != null) {
+      return { type: "round-skipped", conferenceId: cid, fromRound: raw.fromRound, toRound: raw.toRound, message: raw.message }
+    }
+    if (raw.type === "round-skip-declined" && raw.declinerId != null) {
+      return { type: "round-skip-declined", conferenceId: cid, declinerId: raw.declinerId, message: raw.message }
+    }
     // 밸런스 게임 이벤트
     if (raw.type === "balance-invite") {
       if (process.env.NODE_ENV === "development") {
@@ -323,6 +345,14 @@ export class WebSocketSignalingClient implements WebRTCSignalingClient {
     this.send({ type: "vote", conferenceId, userId, vote })
   }
 
+  sendRoundSkip(conferenceId: string, userId: string): void {
+    this.send({ type: "round-skip", conferenceId, userId })
+  }
+
+  sendRoundSkipDecline(conferenceId: string, userId: string): void {
+    this.send({ type: "round-skip-decline", conferenceId, userId })
+  }
+
   sendBalanceInvite(conferenceId: string, userId: string): void {
     this.send({ type: "balance-invite", conferenceId, userId })
   }
@@ -394,6 +424,14 @@ export class MockSignalingClient implements WebRTCSignalingClient {
 
   sendVote(_conferenceId: string, _userId: string, vote: VoteChoice): void {
     console.log("[WebRTC] Mock: vote sent", { vote })
+  }
+
+  sendRoundSkip(_conferenceId: string, _userId: string): void {
+    console.log("[WebRTC] Mock: round-skip sent")
+  }
+
+  sendRoundSkipDecline(_conferenceId: string, _userId: string): void {
+    console.log("[WebRTC] Mock: round-skip-decline sent")
   }
 
   sendBalanceInvite(_conferenceId: string, _userId: string): void {
