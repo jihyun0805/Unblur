@@ -1,6 +1,6 @@
 "use client"
 
-import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { SURVEY_QUESTIONS } from "@/lib/survey-questions"
 import { getLoveDnaImage } from "@/lib/profile-image"
@@ -15,7 +15,7 @@ export interface UserProfileData {
   mbti?: string
   loveDna?: string
   interests?: string[]
-  roundSummaries?: string[]
+  roundSummaries?: (string | null)[]
 }
 
 interface UserProfileModalProps {
@@ -36,6 +36,7 @@ export function UserProfileModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md bg-background max-h-[90vh] overflow-y-auto">
+        <DialogTitle className="sr-only">사용자 프로필</DialogTitle>
         <div className="space-y-3 pt-2">
           {/* 닉네임, 선명도 */}
           <div className="flex items-center gap-4 px-4">
@@ -114,9 +115,9 @@ export function UserProfileModal({
               ) : profile.roundSummaries && profile.roundSummaries.length > 0 ? (
                 <div className="space-y-2">
                   {profile.roundSummaries.map((summary, index) => (
-                    <div key={`${index + 1}-${summary}`} className="text-sm text-foreground">
+                    <div key={`${index + 1}-${index}`} className="text-sm text-foreground">
                       <span className="text-xs text-muted-foreground mr-2">{`라운드 ${index + 1}`}</span>
-                      {summary}
+                      {summary?.trim() ? summary : "이 라운드에는 요약할 내용이 없어요"}
                     </div>
                   ))}
                 </div>

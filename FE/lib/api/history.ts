@@ -57,7 +57,7 @@ interface PartnerProfileResponseDto {
   interestTags: string[]
   roundSummaries: Array<{
     roundNumber: number
-    summaryText: string
+    summaryText: string | null
   }>
 }
 
