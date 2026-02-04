@@ -120,12 +120,37 @@ export function OneOnOneModal({ open, onOpenChange, onRequestChat }: OneOnOneMod
       return
     }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true })
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
       stream.getTracks().forEach((track) => track.stop())
       setPermissionError(null)
       setStep("list")
     } catch {
-      setPermissionError("카메라 권한이 꺼져있습니다. 크롬 카메라 권한을 해제하고 다시 해주세요.")
+      let cameraDenied = false
+      let micDenied = false
+
+      if (navigator?.permissions?.query) {
+        const [cameraResult, micResult] = await Promise.allSettled([
+          navigator.permissions.query({ name: "camera" as PermissionName }),
+          navigator.permissions.query({ name: "microphone" as PermissionName }),
+        ])
+
+        if (cameraResult.status === "fulfilled" && cameraResult.value.state === "denied") {
+          cameraDenied = true
+        }
+        if (micResult.status === "fulfilled" && micResult.value.state === "denied") {
+          micDenied = true
+        }
+      }
+
+      if (cameraDenied && micDenied) {
+        setPermissionError("카메라 및 마이크 권한을 해제하고 다시 해주세요.")
+      } else if (cameraDenied) {
+        setPermissionError("카메라 권한을 해제하고 다시 해주세요.")
+      } else if (micDenied) {
+        setPermissionError("마이크 권한을 해제하고 다시 해주세요.")
+      } else {
+        setPermissionError("권한을 해제하고 다시 해주세요.")
+      }
     }
   }
 
@@ -181,13 +206,13 @@ export function OneOnOneModal({ open, onOpenChange, onRequestChat }: OneOnOneMod
         {step === "permission" ? (
           <div className="mt-6 space-y-3 text-center">
             <p className="text-sm text-muted-foreground">
-              카메라 확인 버튼을 눌러주세요.
+              카메라 및 마이크 확인 버튼을 눌러주세요.
             </p>
             {permissionError && (
               <p className="text-xs text-destructive">{permissionError}</p>
             )}
             <Button onClick={requestCameraPermission} className="w-full">
-              카메라 확인
+              확인
             </Button>
           </div>
         ) : (

@@ -14,6 +14,7 @@ interface RegisterFormWrapperProps {
   submitDisabled?: boolean
   submitLoading?: boolean
   submitLoadingText?: string
+  submitEmphasized?: boolean
   className?: string
 }
 
@@ -27,9 +28,11 @@ export function RegisterFormWrapper({
   submitDisabled = false,
   submitLoading = false,
   submitLoadingText,
+  submitEmphasized = false,
   className = "space-y-10 mt-4",
 }: RegisterFormWrapperProps) {
   const loadingText = submitLoadingText || "처리 중..."
+  const shouldEmphasize = submitEmphasized && !submitDisabled && !submitLoading
 
   return (
     <form onSubmit={onSubmit} className={className}>
@@ -48,7 +51,11 @@ export function RegisterFormWrapper({
         )}
         <Button
           type="submit"
-          className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+          className={`flex-1 transition ${
+            shouldEmphasize
+              ? "bg-primary text-primary-foreground hover:bg-primary/90"
+              : "bg-primary/40 text-primary-foreground hover:bg-primary/50"
+          }`}
           disabled={submitDisabled || submitLoading}
         >
           {submitLoading ? (

@@ -77,6 +77,7 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
 
         // 참가자 저장소에 등록
         participantStore.add(conferenceId, userId);
+        log.info("RTC 참가자 등록. conferenceId={}, userId={}, participantCount={}", conferenceId, userId, participantStore.getParticipantIds(conferenceId).size());
 
         return userSession;
     }
@@ -84,12 +85,14 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
     @Override
     public String processOffer(UUID conferenceId, UUID userId, String sdpOffer) {
         Room room = getRoom(conferenceId);
+        log.debug("RTC SDP offer 처리. conferenceId={}, userId={}, sdpLength={}", conferenceId, userId, sdpOffer != null ? sdpOffer.length() : 0);
         return room.processOffer(userId, sdpOffer);
     }
 
     @Override
     public void addIceCandidate(UUID conferenceId, UUID userId, IceCandidate candidate) {
         Room room = getRoom(conferenceId);
+        log.debug("RTC ICE candidate 추가. conferenceId={}, userId={}, candidate={}", conferenceId, userId, candidate != null ? candidate.getCandidate() : null);
         room.addIceCandidate(userId, candidate);
     }
 
@@ -97,6 +100,7 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
     public void leave(UUID conferenceId, UUID userId) {
         // 참가자 저장소에서 제거
         participantStore.remove(conferenceId, userId);
+        log.info("RTC 참가자 제거. conferenceId={}, userId={}, participantCount={}", conferenceId, userId, participantStore.getParticipantIds(conferenceId).size());
 
         Room room = rooms.get(conferenceId);
         if (room == null) {
@@ -107,18 +111,21 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
         if (room.isEmpty()) {
             rooms.remove(conferenceId);
             room.release();
+            log.info("RTC 방 제거 완료. conferenceId={}", conferenceId);
         }
     }
 
     @Override
     public void startRecording(UUID conferenceId, int roundNumber) {
         Room room = getRoom(conferenceId);
+        log.info("RTC 녹음 시작. conferenceId={}, roundNumber={}", conferenceId, roundNumber);
         room.startRecording(roundNumber);
     }
 
     @Override
     public void stopRecordingAndUpload(UUID conferenceId, int roundNumber) {
         Room room = getRoom(conferenceId);
+        log.info("RTC 녹음 종료 및 업로드 시작. conferenceId={}, roundNumber={}", conferenceId, roundNumber);
         Path recordingPath = room.stopRecording();
 
         if (recordingPath == null || !Files.exists(recordingPath)) {
@@ -140,6 +147,7 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
 
             // 임시 파일 삭제
             Files.deleteIfExists(recordingPath);
+            log.info("녹음 파일 삭제 완료. conferenceId={}, roundNumber={}", conferenceId, roundNumber);
 
         } catch (IOException e) {
             log.error("녹음 파일 업로드 실패. conferenceId={}, roundNumber={}", conferenceId, roundNumber, e);
@@ -171,9 +179,11 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
      */
     private Room createRoom(UUID conferenceId) {
         try {
+            log.info("RTC 방 생성. conferenceId={}", conferenceId);
             return new Room(kurentoClientProvider.get(), conferenceId, recordingDir);
 
         } catch (JsonRpcClientClosedException e) {
+            log.warn("Kurento client closed. 재생성 시도. conferenceId={}", conferenceId);
             return new Room(kurentoClientProvider.recreate(), conferenceId, recordingDir);
         }
     }
@@ -245,6 +255,13 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
          * @return 사용자 세션
          */
         UserSession join(UUID userId) {
+            // 기존 세션이 있으면 정리
+            if (participants.containsKey(userId)) {
+                leave(userId);
+                log.info("RTC 재입장 기존 세션 정리. conferenceId={}, userId={}", conferenceId, userId);
+            }
+
+            // WebRtcEndpoint 및 UserSession 생성
             WebRtcEndpoint endpoint = new WebRtcEndpoint.Builder(pipeline).build();
             UserSession userSession = new UserSession(userId, endpoint);
             participants.put(userId, userSession);
@@ -279,6 +296,8 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
                 }
             }
 
+            log.debug("RTC SDP 처리 완료. conferenceId={}, userId={}, participantCount={}", conferenceId, userId, participants.size());
+
             return sdpAnswer;
         }
 
@@ -299,11 +318,19 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
          * @param userId 사용자 ID
          */
         void leave(UUID userId) {
+            // 참가자 및 HubPort 제거
             UserSession userSession = participants.remove(userId);
+            HubPort hubPort = hubPorts.remove(userId);
 
+            // 사용자 세션 해제
             if (userSession != null) {
                 userSession.webRtcEndpoint().release();
                 log.info("RTC 사용자 퇴장. conferenceId={}, userId={}, size={}", conferenceId, userId, participants.size());
+            }
+
+            // HubPort 해제
+            if (hubPort != null) {
+                hubPort.release();
             }
         }
 
@@ -397,6 +424,7 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
         private UserSession getUserSession(UUID userId) {
             UserSession userSession = participants.get(userId);
             if (userSession == null) {
+                log.warn("RTC 사용자 세션 없음. conferenceId={}, userId={}", conferenceId, userId);
                 throw new BaseException(ErrorCode.USER_NOT_JOINED);
             }
 

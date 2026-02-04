@@ -16,6 +16,7 @@ import com.ssafy.unblur.domain.rtc.dto.event.RoundMessages;
 import com.ssafy.unblur.domain.rtc.service.KurentoRoomService;
 import com.ssafy.unblur.common.util.TransactionUtils;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -33,6 +34,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * <p>
  * 매칭 완료 시 WAITING 상태로 생성된 세션을 기준으로, 실제 RTC 입장 시점에 참여자/라운드 정보를 기록한다.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ConferenceLifecycleServiceImpl implements ConferenceLifecycleService {
@@ -96,6 +98,8 @@ public class ConferenceLifecycleServiceImpl implements ConferenceLifecycleServic
         boolean unlockManually = lockUntilTxCompletion();
 
         try {
+            log.info("세션 입장 처리 시작. conferenceId={}, userId={}", conferenceId, userId);
+
             // 세션과 사용자 존재 확인
             Conference conference = conferenceRepository.findById(conferenceId)
                     .orElseThrow(() -> new BaseException(ErrorCode.MATCH_REQUEST_NOT_FOUND));
@@ -127,6 +131,7 @@ public class ConferenceLifecycleServiceImpl implements ConferenceLifecycleServic
             // 두 명이 모두 입장한 경우 세션을 활성화하고 1라운드 생성
             if (conference.getStatus() == ConferenceStatus.WAITING) {
                 long activeCount = participantRepository.countByConference_IdAndLeftAtIsNull(conferenceId);
+                log.info("세션 입장자 수 확인. conferenceId={}, activeCount={}", conferenceId, activeCount);
 
                 if (activeCount >= 2) {
                     LocalDateTime now = LocalDateTime.now(clock);
@@ -188,10 +193,12 @@ public class ConferenceLifecycleServiceImpl implements ConferenceLifecycleServic
         boolean unlockManually = lockUntilTxCompletion();
 
         try {
+            log.info("세션 퇴장 처리 시작. conferenceId={}, userId={}", conferenceId, userId);
             ConferenceParticipant participant = participantRepository.findByConference_IdAndUser_Id(conferenceId, userId)
                     .orElse(null);
 
             if (participant == null) {
+                log.debug("퇴장 처리 대상 없음. conferenceId={}, userId={}", conferenceId, userId);
                 return;
             }
 
@@ -202,6 +209,7 @@ public class ConferenceLifecycleServiceImpl implements ConferenceLifecycleServic
 
             // 남아 있는 참여자가 1명 이하이면 세션/라운드 종료
             long activeCount = participantRepository.countByConference_IdAndLeftAtIsNull(conferenceId);
+            log.info("세션 퇴장 후 남은 참여자 수. conferenceId={}, activeCount={}", conferenceId, activeCount);
 
             if (activeCount <= 1) {
                 Conference conference = conferenceRepository.findById(conferenceId)
@@ -211,6 +219,7 @@ public class ConferenceLifecycleServiceImpl implements ConferenceLifecycleServic
                 if (conference != null && conference.getStatus() != ConferenceStatus.COMPLETED) {
                     LocalDateTime now = LocalDateTime.now(clock);
                     conference.complete(now);
+                    log.info("세션 종료 처리. conferenceId={}, endedAt={}", conferenceId, now);
 
                     // 진행 중이던 라운드 조회
                     ConferenceRound activeRound = roundRepository.findFirstByConference_IdAndStatus(conferenceId, ConferenceRoundStatus.ACTIVE)

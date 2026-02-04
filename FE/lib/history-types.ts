@@ -5,7 +5,7 @@ export interface HistoryItem {
   partnerNickname: string
   duration: string
   rounds: number
-  roundSummaries?: string[]
+  roundSummaries?: (string | null)[]
   partnerTemp: number
   age?: number
   gender?: string

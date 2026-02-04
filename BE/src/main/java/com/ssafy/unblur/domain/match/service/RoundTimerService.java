@@ -136,13 +136,17 @@ public class RoundTimerService {
         cancelTimer(conferenceId);
         participantStore.clear(conferenceId);
         voteStore.clear(conferenceId);
+        log.info("라운드 타이머 정리 완료. conferenceId={}", conferenceId);
     }
 
     /**
      * 참가자 목록을 조회하는 메서드
      */
     public List<UUID> getParticipants(UUID conferenceId) {
-        return participantStore.getParticipantIds(conferenceId);
+        List<UUID> participants = participantStore.getParticipantIds(conferenceId);
+        log.debug("라운드 참가자 조회. conferenceId={}, count={}", conferenceId, participants.size());
+
+        return participants;
     }
 
     /**

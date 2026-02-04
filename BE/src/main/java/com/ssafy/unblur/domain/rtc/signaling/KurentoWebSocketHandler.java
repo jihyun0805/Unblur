@@ -108,7 +108,9 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
                 case "balance-select" -> handleBalanceSelect(session, payload);
                 case "vote" -> handleVote(session, payload);
                 case "round-skip" -> handleRoundSkip(session, payload);
+                case "round-skip-accept" -> handleRoundSkipAccept(session, payload);
                 case "round-skip-decline" -> handleRoundSkipDecline(session, payload);
+                case "media-state" -> handleMediaState(session, payload);
                 case "leave" -> handleLeave(session, payload);
                 default -> {
                     SignalingMessages.Error errorMessage = SignalingMessages.Error.builder()
@@ -154,17 +156,35 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
         String sessionId = session.getId();
         webSocketMessageSender.release(sessionId);
 
+        // 재연결 시 "이전 세션"이 늦게 닫히는 경우가 있어, 최신 세션이 있는지 확인한 뒤에만 퇴장 처리를 수행한다.
+
+        // 세션에 바인딩된 사용자 ID 조회
+        UUID boundUserId = sessionStore.getUserId(sessionId).orElse(null);
+        if (boundUserId != null) {
+            // 현재 사용자 기준으로 최신 세션 조회
+            String currentSessionId = sessionStore.findSessionIdByUser(boundUserId).orElse(null);
+
+            // 현재 세션 ID가 존재하고, 이것이 종료된 세션 ID와 다르면 stale 세션으로 간주
+            if (currentSessionId != null && !currentSessionId.equals(sessionId)) {
+                log.info("오래된 WebSocket 종료 감지. sessionId={}, userId={}, currentSessionId={}", sessionId, boundUserId, currentSessionId);
+
+                // 오래된 세션은 컨퍼런스 퇴장 처리 없이 매핑만 정리
+                sessionStore.remove(sessionId);
+                return;
+            }
+        }
+
         // 룸 퇴장 처리
         sessionStore.getConferenceId(sessionId).ifPresent(conferenceId ->
-                sessionStore.getUserId(sessionId).ifPresent(userId -> {
+                sessionStore.getUserId(sessionId).ifPresent(sessionUserId -> {
                     // 남아 있는 참가자에게 left 이벤트 브로드캐스트
-                    notifyLeft(conferenceId, userId);
+                    notifyLeft(conferenceId, sessionUserId);
 
                     // 회의 생명주기 서비스에 퇴장 알림 (DB 기록)
-                    conferenceLifecycleService.onLeave(conferenceId, userId);
+                    conferenceLifecycleService.onLeave(conferenceId, sessionUserId);
 
                     // Kurento 룸 서비스에 퇴장 요청 (WebRTC 정리)
-                    kurentoRoomService.leave(conferenceId, userId);
+                    kurentoRoomService.leave(conferenceId, sessionUserId);
                 })
         );
 
@@ -217,6 +237,13 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
+        // 세션-사용자 일치 검증
+        if (!validateSessionUserForJoin(session, userId)) {
+            return;
+        }
+
+        log.info("RTC 방 입장 요청. sessionId={}, conferenceId={}, userId={}", session.getId(), conferenceId, userId);
+
         sessionStore.bindUser(session.getId(), userId);
         sessionStore.bindConference(session.getId(), conferenceId);
 
@@ -227,6 +254,8 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
 
             // 회의 생명주기 서비스에 입장 알림 (DB 기록 + 라운드 시작)
             conferenceLifecycleService.onJoin(conferenceId, userId);
+
+            log.info("RTC 방 입장 완료. sessionId={}, conferenceId={}, userId={}", session.getId(), conferenceId, userId);
 
         } catch (RuntimeException e) {
             // join 실패 시 세션 매핑/RTC 정리
@@ -270,6 +299,11 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
+        // 세션-사용자 일치 검증
+        if (isInvalidSessionUser(session, userId)) {
+            return;
+        }
+
         // SDP Offer 처리 및 Answer 생성
         String sdpOffer = payload.get("sdpOffer").asText();
         String sdpAnswer = kurentoRoomService.processOffer(conferenceId, userId, sdpOffer);
@@ -294,6 +328,11 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
         UUID conferenceId = parseUuid(session, payload, "conferenceId");
         UUID userId = parseUuid(session, payload, "userId");
         if (conferenceId == null || userId == null) {
+            return;
+        }
+
+        // 세션-사용자 일치 검증
+        if (isInvalidSessionUser(session, userId)) {
             return;
         }
 
@@ -332,6 +371,11 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
+        // 세션-사용자 일치 검증
+        if (isInvalidSessionUser(session, userId)) {
+            return;
+        }
+
         // 밸런스 게임 초대 처리
         balanceGameService.invite(conferenceId, userId);
     }
@@ -348,6 +392,11 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
         UUID conferenceId = parseUuid(session, payload, "conferenceId");
         UUID userId = parseUuid(session, payload, "userId");
         if (conferenceId == null || userId == null) {
+            return;
+        }
+
+        // 세션-사용자 일치 검증
+        if (isInvalidSessionUser(session, userId)) {
             return;
         }
 
@@ -383,6 +432,11 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
+        // 세션-사용자 일치 검증
+        if (isInvalidSessionUser(session, userId)) {
+            return;
+        }
+
         // 선택 값 추출 및 검증
         JsonNode choiceNode = payload.get("choice");
         if (choiceNode == null || choiceNode.isNull()) {
@@ -408,6 +462,11 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
         UUID conferenceId = parseUuid(session, payload, "conferenceId");
         UUID userId = parseUuid(session, payload, "userId");
         if (conferenceId == null || userId == null) {
+            return;
+        }
+
+        // 세션-사용자 일치 검증
+        if (isInvalidSessionUser(session, userId)) {
             return;
         }
 
@@ -464,8 +523,37 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
+        // 세션-사용자 일치 검증
+        if (isInvalidSessionUser(session, userId)) {
+            return;
+        }
+
         // 라운드 스킵 요청 처리
         roundVoteService.requestSkip(conferenceId, userId);
+    }
+
+    /**
+     * 라운드 스킵 수락 요청을 처리하는 메서드
+     *
+     * @param session WebSocket 세션
+     * @param payload 요청 페이로드
+     * @throws IOException 전송 중 오류
+     */
+    private void handleRoundSkipAccept(WebSocketSession session, JsonNode payload) throws IOException {
+        // 방 ID 및 사용자 ID 추출
+        UUID conferenceId = parseUuid(session, payload, "conferenceId");
+        UUID userId = parseUuid(session, payload, "userId");
+        if (conferenceId == null || userId == null) {
+            return;
+        }
+
+        // 세션-사용자 일치 검증
+        if (isInvalidSessionUser(session, userId)) {
+            return;
+        }
+
+        // 라운드 스킵 수락 처리
+        roundVoteService.acceptSkip(conferenceId, userId);
     }
 
     /**
@@ -480,6 +568,11 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
         UUID conferenceId = parseUuid(session, payload, "conferenceId");
         UUID userId = parseUuid(session, payload, "userId");
         if (conferenceId == null || userId == null) {
+            return;
+        }
+
+        // 세션-사용자 일치 검증
+        if (isInvalidSessionUser(session, userId)) {
             return;
         }
 
@@ -502,6 +595,11 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
+        // 세션-사용자 일치 검증
+        if (isInvalidSessionUser(session, userId)) {
+            return;
+        }
+
         // 남아 있는 참가자에게 left 이벤트 브로드캐스트
         notifyLeft(conferenceId, userId);
 
@@ -520,6 +618,41 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
 
         // 중복 전송 방지를 위해 세션 매핑 제거
         sessionStore.remove(session.getId());
+    }
+
+    /**
+     * 카메라/마이크 상태를 상대방에게 전달하는 메서드
+     */
+    private void handleMediaState(WebSocketSession session, JsonNode payload) {
+        // 세션·회의·사용자 식별자 조회
+        String sessionId = session.getId();
+        UUID conferenceId = sessionStore.getConferenceId(sessionId).orElse(null);
+        UUID userId = sessionStore.getUserId(sessionId).orElse(null);
+        if (conferenceId == null || userId == null) {
+            return;
+        }
+
+        // 페이로드에서 카메라/마이크 상태 추출
+        JsonNode videoNode = payload.get("videoEnabled");
+        JsonNode audioNode = payload.get("audioMuted");
+        boolean videoEnabled = videoNode != null && !videoNode.isNull() && videoNode.asBoolean(true);
+        boolean audioMuted = audioNode != null && !audioNode.isNull() && audioNode.asBoolean(false);
+
+        // MediaState 메시지 생성
+        SignalingMessages.MediaState mediaMessage = SignalingMessages.MediaState.of(
+                conferenceId.toString(), 
+                userId.toString(), 
+                videoEnabled, 
+                audioMuted
+        );
+
+        // 같은 회의의 다른 참가자들에게 미디어 상태 브로드캐스트
+        List<UUID> participants = participantStore.getParticipantIds(conferenceId);
+        for (UUID participantId : participants) {
+            if (!participantId.equals(userId)) {
+                eventSender.publish(participantId, WsEventType.MEDIA_STATE, mediaMessage);
+            }
+        }
     }
 
     /**
@@ -561,6 +694,78 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
             log.error("ICE candidate 전송 실패. sessionId={}", session.getId(), e);
             throw new BaseException(ErrorCode.ICE_CANDIDATE_SEND_FAILED);
         }
+    }
+
+    /**
+     * 세션-사용자 일치 검증하는 메서드 (조인 전용)
+     *
+     * @param session WebSocket 세션
+     * @param userId  사용자 ID
+     * @return 일치하면 true, 불일치하면 false
+     * @throws IOException 전송 중 오류
+     */
+    private boolean validateSessionUserForJoin(WebSocketSession session, UUID userId) throws IOException {
+        // 세션에 바인딩된 사용자 ID 조회
+        UUID boundUserId = sessionStore.getUserId(session.getId()).orElse(null);
+
+        // 세션에 바인딩된 사용자 ID가 존재하나 페이로드의 사용자 ID와 일치하지 않는 경우
+        if (boundUserId != null && !boundUserId.equals(userId)) {
+            // 에러 메시지 생성
+            SignalingMessages.Error errorMessage = SignalingMessages.Error.builder()
+                    .message("세션 사용자 정보가 일치하지 않습니다.")
+                    .build();
+
+            // 에러 메시지 전송
+            webSocketMessageSender.send(session, errorMessage);
+
+            log.warn("WebSocket 세션-사용자 불일치(조인). sessionId={}, payloadUserId={}, boundUserId={}", session.getId(), userId, boundUserId);
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * 세션-사용자 일치 검증하는 메서드
+     *
+     * @param session WebSocket 세션
+     * @param userId  사용자 ID
+     * @return 일치하면 true, 불일치하면 false
+     * @throws IOException 전송 중 오류
+     */
+    private boolean isInvalidSessionUser(WebSocketSession session, UUID userId) throws IOException {
+        // 세션에 바인딩된 사용자 ID 조회
+        UUID boundUserId = sessionStore.getUserId(session.getId()).orElse(null);
+
+        // 세션에 사용자 정보가 없는 경우
+        if (boundUserId == null) {
+            // 에러 메시지 생성
+            SignalingMessages.Error errorMessage = SignalingMessages.Error.builder()
+                    .message("세션 사용자 정보가 없습니다.")
+                    .build();
+
+            // 에러 메시지 전송
+            webSocketMessageSender.send(session, errorMessage);
+
+            log.warn("WebSocket 세션 사용자 없음. sessionId={}, payloadUserId={}", session.getId(), userId);
+            return true;
+        }
+
+        // 세션에 바인딩된 사용자 ID와 페이로드의 사용자 ID가 일치하지 않는 경우
+        if (!boundUserId.equals(userId)) {
+            // 에러 메시지 생성
+            SignalingMessages.Error errorMessage = SignalingMessages.Error.builder()
+                    .message("세션 사용자 정보가 일치하지 않습니다.")
+                    .build();
+
+            // 에러 메시지 전송
+            webSocketMessageSender.send(session, errorMessage);
+
+            log.warn("WebSocket 세션-사용자 불일치. sessionId={}, payloadUserId={}, boundUserId={}", session.getId(), userId, boundUserId);
+            return true;
+        }
+
+        return false;
     }
 
     /**

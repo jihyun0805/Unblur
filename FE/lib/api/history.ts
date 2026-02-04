@@ -18,6 +18,7 @@ interface ConferenceHistoryItemDto {
   nickname: string | null
   profileImageUrl: string | null
   clarityScore: number | null
+  loveDna: string | null
   isOnline: boolean | null
   isBlocked: boolean | null
 }
@@ -53,11 +54,12 @@ interface PartnerProfileResponseDto {
   gender: string | null
   region: string | null
   mbti: string | null
+  loveDna: string | null
   intro: string | null
   interestTags: string[]
   roundSummaries: Array<{
     roundNumber: number
-    summaryText: string
+    summaryText: string | null
   }>
 }
 
@@ -101,6 +103,7 @@ export async function getHistoryList(page: number, size: number, search?: string
       duration: formatDuration(item.durationMinutes),
       rounds: item.currentRound ?? 0,
       partnerTemp: item.clarityScore ?? 0,
+      loveDna: item.loveDna ?? undefined,
       isOnline: item.isOnline ?? false,
       isBlocked: item.isBlocked ?? false,
       unreadCount: item.unreadCount ?? 0,

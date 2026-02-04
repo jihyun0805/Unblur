@@ -12,6 +12,8 @@ import { useAuth } from "@/contexts/auth-context"
 import { UserProfileData, UserProfileModal } from "@/components/common/user-profile-modal"
 import { getOnlineUsers, startOneOnOneMatch } from "@/lib/api/match"
 import { getLoveDnaImage } from "@/lib/profile-image"
+import { CameraTestModal } from "@/components/matching/camera-test-modal"
+import { isConflictError } from "@/lib/error-codes"
 
 const getResultLabel = (type: string) => {
   if (!type || type.length !== 4) return ""
@@ -407,6 +409,9 @@ export default function MbtiResultPage() {
   const router = useRouter()
   const [shareStatus, setShareStatus] = useState<string>("")
   const [listOpen, setListOpen] = useState(false)
+  const [listStep, setListStep] = useState<"permission" | "list">("permission")
+  const [permissionError, setPermissionError] = useState<string | null>(null)
+  const [isCameraTestOpen, setIsCameraTestOpen] = useState(false)
   const [listType, setListType] = useState<"best" | "worst" | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
   const [detailType, setDetailType] = useState<"best" | "worst" | null>(null)
@@ -504,17 +509,38 @@ export default function MbtiResultPage() {
   }, [resultContent.bestMatch.code, resultContent.worstMatch.code])
 
   const handleRequestChat = async (targetUserId: string, nickname: string) => {
+    if (!user?.id) {
+      toast({
+        title: "요청 불가",
+        description: "사용자 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.",
+        variant: "destructive",
+      })
+      return
+    }
+    if (targetUserId === user.id) {
+      toast({
+        title: "요청 불가",
+        description: "본인에게는 매칭 요청을 보낼 수 없습니다.",
+        variant: "destructive",
+      })
+      return
+    }
     try {
       await startOneOnOneMatch(targetUserId)
       toast({
         title: "1:1 매칭 요청",
-        description: `${nickname}님에게 매칭 요청을 보냈습니다.`,
+        description: `${nickname}님에게 매칭 요청을 보냈습니다. 수락 시 세션방으로 이동합니다.`,
       })
+      setListOpen(false)
+      setIsCameraTestOpen(true)
     } catch (error) {
+      if (isConflictError(error)) {
+        return
+      }
       console.error("[TestResult] 1:1 매칭 요청 실패", error)
       toast({
         title: "매칭 요청 실패",
-        description: "잠시 후 다시 시도해 주세요.",
+        description: error instanceof Error ? error.message : "잠시 후 다시 시도해 주세요.",
         variant: "destructive",
       })
     }
@@ -522,7 +548,32 @@ export default function MbtiResultPage() {
 
   const handleOpenList = (type: "best" | "worst") => {
     setListType(type)
+    setListStep("permission")
+    setPermissionError(null)
     setListOpen(true)
+  }
+
+  const handleListOpenChange = (open: boolean) => {
+    setListOpen(open)
+    if (!open) {
+      setListStep("permission")
+      setPermissionError(null)
+    }
+  }
+
+  const requestCameraPermission = async () => {
+    if (!navigator?.mediaDevices?.getUserMedia) {
+      setPermissionError("브라우저에서 카메라 권한을 지원하지 않습니다.")
+      return
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true })
+      stream.getTracks().forEach((track) => track.stop())
+      setPermissionError(null)
+      setListStep("list")
+    } catch {
+      setPermissionError("카메라 권한이 꺼져있습니다. 크롬 카메라 권한을 해제하고 다시 해주세요.")
+    }
   }
 
   const handleOpenDetail = (type: "best" | "worst") => {
@@ -546,6 +597,7 @@ export default function MbtiResultPage() {
             <div className="flex items-center justify-between">
               <div className="w-16" />
               <CardTitle className="text-xl">나의 유형은?</CardTitle>
+              <div className="w-16" />
             </div>
             <div className="flex flex-col items-center text-center gap-1">
               {result ? (
@@ -655,7 +707,7 @@ export default function MbtiResultPage() {
         {shareStatus && <div className="text-sm text-muted-foreground text-center mt-2">{shareStatus}</div>}
       </div>
 
-      <Dialog open={listOpen} onOpenChange={setListOpen}>
+      <Dialog open={listOpen} onOpenChange={handleListOpenChange}>
         <DialogContent className="sm:max-w-md bg-background">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-center">{modalTitle}</DialogTitle>
@@ -663,52 +715,62 @@ export default function MbtiResultPage() {
               온라인인 사람들 중 가치관이 {listType === "best" ? "맞는" : "다른"} 프로필입니다.
             </p>
           </DialogHeader>
-          <div className="mt-4 space-y-3">
-            {modalProfiles.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground mb-2">현재 온라인인 사람이 없습니다</p>
-                <p className="text-sm text-muted-foreground">나중에 다시 확인해보세요</p>
-              </div>
-            ) : (
-              modalProfiles.map((user) => (
-                <div
-                  key={user.id}
-                  className="flex items-center justify-between p-4 rounded-xl bg-card border border-border hover:bg-accent/50 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="relative">
-                      <Avatar className="w-12 h-12">
-                        <AvatarImage src={getLoveDnaImage(listLoveDna)} alt={user.nickname} />
-                        <AvatarFallback className="bg-primary/20 text-primary">
-                          {user.nickname.charAt(0)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-background" />
-                    </div>
-                    <div>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedProfile(user.profile)}
-                        className="font-semibold hover:text-primary cursor-pointer text-left"
-                      >
-                        {user.nickname}
-                      </button>
-                      <p className="text-xs text-muted-foreground">
-                        선명도 {Math.round(user.profile.temperature || 0)}%
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={() => handleRequestChat(user.id, user.nickname)}
-                    className="bg-primary text-primary-foreground hover:bg-primary/90"
-                  >
-                    1:1 매칭 요청
-                  </Button>
+          {listStep === "permission" ? (
+            <div className="mt-6 space-y-3 text-center">
+              <p className="text-sm text-muted-foreground">카메라 확인 버튼을 눌러주세요.</p>
+              {permissionError && <p className="text-xs text-destructive">{permissionError}</p>}
+              <Button onClick={requestCameraPermission} className="w-full">
+                카메라 확인
+              </Button>
+            </div>
+          ) : (
+            <div className="mt-4 space-y-3">
+              {modalProfiles.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground mb-2">현재 온라인인 사람이 없습니다</p>
+                  <p className="text-sm text-muted-foreground">나중에 다시 확인해보세요</p>
                 </div>
-              ))
-            )}
-          </div>
+              ) : (
+                modalProfiles.map((user) => (
+                  <div
+                    key={user.id}
+                    className="flex items-center justify-between p-4 rounded-xl bg-card border border-border hover:bg-accent/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="relative">
+                        <Avatar className="w-12 h-12">
+                          <AvatarImage src={getLoveDnaImage(listLoveDna)} alt={user.nickname} />
+                          <AvatarFallback className="bg-primary/20 text-primary">
+                            {user.nickname.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-background" />
+                      </div>
+                      <div>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedProfile(user.profile)}
+                          className="font-semibold hover:text-primary cursor-pointer text-left"
+                        >
+                          {user.nickname}
+                        </button>
+                        <p className="text-xs text-muted-foreground">
+                          선명도 {Math.round(user.profile.temperature || 0)}%
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => handleRequestChat(user.id, user.nickname)}
+                      className="bg-primary text-primary-foreground hover:bg-primary/90"
+                    >
+                      1:1 매칭 요청
+                    </Button>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
@@ -760,6 +822,12 @@ export default function MbtiResultPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <CameraTestModal
+        open={isCameraTestOpen}
+        onOpenChange={setIsCameraTestOpen}
+        onReady={() => setIsCameraTestOpen(false)}
+      />
 
       <UserProfileModal
         open={!!selectedProfile}

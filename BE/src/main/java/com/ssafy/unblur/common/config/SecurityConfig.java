@@ -80,7 +80,8 @@ public class SecurityConfig {
                                 "/api/v1/auth/login",
                                 "/api/v1/auth/check-email",
                                 "/api/v1/auth/check-nickname",
-                                "/api/v1/auth/reissue"
+                                "/api/v1/auth/reissue",
+                                "/api/v1/auth/password/reset/**"
                         ).permitAll()
                         .requestMatchers("/api/internal/**").permitAll()
                         // 인증된 사용자만 접근 가능

@@ -24,6 +24,9 @@ public enum WsEventType implements EventType {
     BALANCE_SELECTED("balance-selected"),
     BALANCE_RESULT("balance-result"),
 
+    // 미디어 상태 (카메라/마이크 켜짐·꺼짐을 상대에게 알림)
+    MEDIA_STATE("media-state"),
+
     // 시그널링 관련
     REGISTERED("registered"),
     JOINED("joined"),

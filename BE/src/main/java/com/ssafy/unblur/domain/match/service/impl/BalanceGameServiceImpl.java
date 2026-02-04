@@ -10,6 +10,7 @@ import com.ssafy.unblur.domain.match.model.BalanceChoice;
 import com.ssafy.unblur.domain.match.model.BalanceQuestion;
 import com.ssafy.unblur.domain.rtc.service.RtcParticipantStore;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PreDestroy;
@@ -31,6 +32,7 @@ import java.util.stream.Collectors;
  * <p>
  * 단일 인스턴스 환경에서 인메모리로 게임 상태를 관리한다.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class BalanceGameServiceImpl implements BalanceGameService {
@@ -118,6 +120,8 @@ public class BalanceGameServiceImpl implements BalanceGameService {
 
     @Override
     public void invite(UUID conferenceId, UUID fromUserId) {
+        log.info("밸런스 게임 초대 요청. conferenceId={}, fromUserId={}", conferenceId, fromUserId);
+
         // 밸런스 게임 초대를 위한 변수 선언
         UUID targetUserId;
         BalanceGameSession newSession;
@@ -129,10 +133,12 @@ public class BalanceGameServiceImpl implements BalanceGameService {
             // 현재 세션 참가자 조회 및 1:1 조건 검증
             List<UUID> participants = participantStore.getParticipantIds(conferenceId);
             validateParticipants(participants, fromUserId);
+            log.debug("밸런스 게임 참가자 확인. conferenceId={}, participants={}", conferenceId, participants);
 
             // 이미 진행 중인 게임이 있으면 중복 초대 차단
             BalanceGameSession existing = sessions.get(conferenceId);
             if (existing != null) {
+                log.warn("밸런스 게임 중복 초대 차단. conferenceId={}, fromUserId={}", conferenceId, fromUserId);
                 throw new BaseException(ErrorCode.BALANCE_ALREADY_IN_PROGRESS);
             }
 
@@ -142,12 +148,15 @@ public class BalanceGameServiceImpl implements BalanceGameService {
                     .findFirst()
                     .orElseThrow(() -> new BaseException(ErrorCode.BALANCE_TARGET_NOT_FOUND));
 
+            log.info("밸런스 게임 초대 대상 확정. conferenceId={}, fromUserId={}, targetUserId={}", conferenceId, fromUserId, targetUserId);
+
             // 세션 상태 저장 및 타임아웃 예약
             newSession = BalanceGameSession.invited(fromUserId, targetUserId);
             sessions.put(conferenceId, newSession);
 
             // 초대 타임아웃 예약: 10초 내 응답이 없으면 자동 거절 처리
             newSession.inviteTimeout = scheduleInviteTimeout(conferenceId);
+            log.debug("밸런스 게임 초대 타임아웃 예약. conferenceId={}, timeoutSeconds={}", conferenceId, INVITE_TIMEOUT_SECONDS);
 
         } finally {
             lock.unlock();
@@ -160,10 +169,13 @@ public class BalanceGameServiceImpl implements BalanceGameService {
                 .build();
 
         eventSender.publish(targetUserId, WsEventType.BALANCE_INVITE, message);
+        log.info("밸런스 게임 초대 전송. conferenceId={}, fromUserId={}, targetUserId={}", conferenceId, fromUserId, targetUserId);
     }
 
     @Override
     public void respond(UUID conferenceId, UUID fromUserId, boolean accepted) {
+        log.info("밸런스 게임 응답 처리. conferenceId={}, fromUserId={}, accepted={}", conferenceId, fromUserId, accepted);
+
         // 밸런스 게임 응답 처리를 위한 변수 선언
         BalanceGameSession session;
         BalanceQuestion question = null;
@@ -175,11 +187,13 @@ public class BalanceGameServiceImpl implements BalanceGameService {
             // 초대 대기 상태인지 확인
             session = sessions.get(conferenceId);
             if (session == null || session.state != BalanceGameState.INVITED) {
+                log.warn("밸런스 게임 초대 상태 아님. conferenceId={}, fromUserId={}", conferenceId, fromUserId);
                 throw new BaseException(ErrorCode.BALANCE_INVITE_NOT_FOUND);
             }
 
             // 초대받은 사용자만 응답 가능
             if (!session.targetUserId.equals(fromUserId)) {
+                log.warn("밸런스 게임 응답 권한 없음. conferenceId={}, fromUserId={}", conferenceId, fromUserId);
                 throw new BaseException(ErrorCode.BALANCE_RESPONSE_NOT_ALLOWED);
             }
 
@@ -187,6 +201,7 @@ public class BalanceGameServiceImpl implements BalanceGameService {
                 // 타임아웃 예약을 취소하고 세션 제거
                 cancelInviteTimeout(session);
                 sessions.remove(conferenceId);
+                log.info("밸런스 게임 초대 거절 처리. conferenceId={}, fromUserId={}", conferenceId, fromUserId);
 
             } else { // 수락하는 경우
                 // 질문을 선택하고 선택 타임아웃 예약
@@ -194,6 +209,7 @@ public class BalanceGameServiceImpl implements BalanceGameService {
                 session.start(question);
                 cancelInviteTimeout(session);
                 session.selectionTimeout = scheduleSelectionTimeout(conferenceId);
+                log.info("밸런스 게임 시작. conferenceId={}, fromUserId={}, questionId={}", conferenceId, fromUserId, question.id());
             }
 
         } finally {
@@ -209,6 +225,7 @@ public class BalanceGameServiceImpl implements BalanceGameService {
 
             // 거절 알림 전송
             eventSender.publish(session.inviterUserId, WsEventType.BALANCE_DECLINED, declined);
+            log.info("밸런스 게임 거절 전송. conferenceId={}, inviterUserId={}, fromUserId={}", conferenceId, session.inviterUserId, fromUserId);
             return;
         }
 
@@ -225,20 +242,25 @@ public class BalanceGameServiceImpl implements BalanceGameService {
         // 게임 시작 알림 전송
         eventSender.publish(session.inviterUserId, WsEventType.BALANCE_STARTED, start);
         eventSender.publish(session.targetUserId, WsEventType.BALANCE_STARTED, start);
+        log.info("밸런스 게임 시작 전송. conferenceId={}, inviterUserId={}, targetUserId={}, questionId={}", conferenceId, session.inviterUserId, session.targetUserId, question.id());
     }
 
     @Override
     public void select(UUID conferenceId, UUID userId, String choiceRaw) {
+        log.info("밸런스 게임 선택 처리. conferenceId={}, userId={}, choice={}", conferenceId, userId, choiceRaw);
+
         // 밸런스 게임 선택 처리를 위한 변수 선언
         ReentrantLock lock = locks.computeIfAbsent(conferenceId, id -> new ReentrantLock());
         BalanceGameSession session;
         BalanceChoice choice;
         try {
-            // 입력 선택값 파싱 (A/B 외 값은 오류)
             choice = BalanceChoice.from(choiceRaw);
+
         } catch (IllegalArgumentException e) {
+            log.warn("밸런스 게임 선택값 오류. conferenceId={}, userId={}, choice={}", conferenceId, userId, choiceRaw);
             throw new BaseException(ErrorCode.BALANCE_INVALID_CHOICE);
         }
+
         UUID otherUserId;
         boolean completed;
         BalanceQuestion question;
@@ -251,16 +273,19 @@ public class BalanceGameServiceImpl implements BalanceGameService {
             // 게임이 시작된 상태인지 확인
             session = sessions.get(conferenceId);
             if (session == null || session.state != BalanceGameState.STARTED) {
+                log.warn("밸런스 게임 시작 상태 아님. conferenceId={}, userId={}", conferenceId, userId);
                 throw new BaseException(ErrorCode.BALANCE_NOT_STARTED);
             }
 
             // 참여자 검증
             if (!session.isParticipant(userId)) {
+                log.warn("밸런스 게임 참여자 아님. conferenceId={}, userId={}", conferenceId, userId);
                 throw new BaseException(ErrorCode.BALANCE_NOT_PARTICIPANT);
             }
 
             // 중복 선택 방지
             if (session.selections.containsKey(userId)) {
+                log.warn("밸런스 게임 중복 선택. conferenceId={}, userId={}", conferenceId, userId);
                 throw new BaseException(ErrorCode.BALANCE_ALREADY_SELECTED);
             }
 
@@ -269,6 +294,7 @@ public class BalanceGameServiceImpl implements BalanceGameService {
             otherUserId = session.otherUserId(userId);
             completed = session.selections.size() >= 2;
             question = session.question;
+            log.debug("밸런스 게임 선택 저장. conferenceId={}, userId={}, completed={}, selectionCount={}", conferenceId, userId, completed, session.selections.size());
 
             if (completed) {
                 // 양측 선택 완료: 결과 생성 후 타임아웃 취소 및 세션 제거
@@ -276,6 +302,7 @@ public class BalanceGameServiceImpl implements BalanceGameService {
                 sameChoice = computeSameChoice(session.selections);
                 cancelSelectionTimeout(session);
                 sessions.remove(conferenceId);
+                log.info("밸런스 게임 선택 완료. conferenceId={}, sameChoice={}", conferenceId, sameChoice);
             }
 
         } finally {
@@ -290,6 +317,7 @@ public class BalanceGameServiceImpl implements BalanceGameService {
 
         // 상대방에게 선택 알림 전송
         eventSender.publish(otherUserId, WsEventType.BALANCE_SELECTED, selected);
+        log.info("밸런스 게임 선택 알림 전송. conferenceId={}, fromUserId={}, toUserId={}", conferenceId, userId, otherUserId);
 
         // 한 명만 선택했다면 결과는 아직 전송하지 않음
         if (!completed) {
@@ -311,6 +339,7 @@ public class BalanceGameServiceImpl implements BalanceGameService {
         // 양측에 결과 전송
         eventSender.publish(session.inviterUserId, WsEventType.BALANCE_RESULT, result);
         eventSender.publish(session.targetUserId, WsEventType.BALANCE_RESULT, result);
+        log.info("밸런스 게임 결과 전송. conferenceId={}, inviterUserId={}, targetUserId={}", conferenceId, session.inviterUserId, session.targetUserId);
     }
 
     /**
@@ -319,6 +348,7 @@ public class BalanceGameServiceImpl implements BalanceGameService {
     @PreDestroy
     private void shutdownScheduler() {
         scheduler.shutdown();
+        log.info("밸런스 게임 스케줄러 종료");
     }
 
     /**
@@ -372,6 +402,7 @@ public class BalanceGameServiceImpl implements BalanceGameService {
                 // 여전히 초대 대기 상태인지 확인
                 session = sessions.get(conferenceId);
                 if (session == null || session.state != BalanceGameState.INVITED) {
+                    log.debug("초대 타임아웃 무시(상태 변경). conferenceId={}", conferenceId);
                     return;
                 }
 
@@ -389,6 +420,7 @@ public class BalanceGameServiceImpl implements BalanceGameService {
                     .build();
 
             eventSender.publish(session.inviterUserId, WsEventType.BALANCE_DECLINED, declined);
+            log.info("밸런스 게임 초대 타임아웃 처리. conferenceId={}, inviterUserId={}, targetUserId={}", conferenceId, session.inviterUserId, session.targetUserId);
 
         }, INVITE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     }
@@ -416,11 +448,13 @@ public class BalanceGameServiceImpl implements BalanceGameService {
                 // 여전히 게임 진행 중인지 확인
                 session = sessions.get(conferenceId);
                 if (session == null || session.state != BalanceGameState.STARTED) {
+                    log.debug("선택 타임아웃 무시(상태 변경). conferenceId={}", conferenceId);
                     return;
                 }
 
                 // 2명 모두 선택했으면 타임아웃 무시
                 if (session.selections.size() >= 2) {
+                    log.debug("선택 타임아웃 무시(선택 완료). conferenceId={}", conferenceId);
                     return;
                 }
 
@@ -455,6 +489,7 @@ public class BalanceGameServiceImpl implements BalanceGameService {
             // 양측에 결과 전송
             eventSender.publish(session.inviterUserId, WsEventType.BALANCE_RESULT, result);
             eventSender.publish(session.targetUserId, WsEventType.BALANCE_RESULT, result);
+            log.info("밸런스 게임 선택 타임아웃 결과 전송. conferenceId={}, inviterUserId={}, targetUserId={}", conferenceId, session.inviterUserId, session.targetUserId);
 
         }, SELECTION_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     }
@@ -503,6 +538,7 @@ public class BalanceGameServiceImpl implements BalanceGameService {
         ScheduledFuture<?> future = session.inviteTimeout;
         if (future != null && !future.isDone()) {
             future.cancel(false);
+            log.debug("밸런스 게임 초대 타임아웃 취소. inviterUserId={}, targetUserId={}", session.inviterUserId, session.targetUserId);
         }
 
         session.inviteTimeout = null;
@@ -518,6 +554,7 @@ public class BalanceGameServiceImpl implements BalanceGameService {
         ScheduledFuture<?> future = session.selectionTimeout;
         if (future != null && !future.isDone()) {
             future.cancel(false);
+            log.debug("밸런스 게임 선택 타임아웃 취소. inviterUserId={}, targetUserId={}", session.inviterUserId, session.targetUserId);
         }
 
         session.selectionTimeout = null;

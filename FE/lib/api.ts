@@ -1,4 +1,5 @@
 import { toast } from "@/hooks/use-toast"
+import { v4 as uuidv4 } from "uuid"
 import { reissueToken } from "./api/auth"
 import { ApiError, parseApiError, AUTH_FORBIDDEN_MESSAGE, ERROR_CODE_CATEGORY } from "./error-codes"
 
@@ -48,8 +49,34 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
 const IDEMPOTENCY_HEADER = "Idempotency-Key"
 const IDEMPOTENT_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"])
 
+// 요청 단위 멱등성 키 생성 (crypto 우선, 없으면 실패)
+const createIdempotencyKey = (): string => {
+  // Web Crypto API 참조
+  const cryptoRef = typeof globalThis !== "undefined" ? globalThis.crypto : undefined
+
+  if (cryptoRef) { // Web Crypto API 사용 가능한 경우
+    // randomUUID 함수가 있으면 사용
+    if (typeof cryptoRef.randomUUID === "function") {
+      return cryptoRef.randomUUID()
+    }
+
+    // randomUUID 함수가 없으면 getRandomValues로 바이트 생성 후 uuidv4에 전달
+    if (typeof cryptoRef.getRandomValues === "function") {
+      return uuidv4({
+        rng: () => {
+          const bytes = new Uint8Array(16)
+          cryptoRef.getRandomValues(bytes)
+          return bytes
+        },
+      })
+    }
+  }
+
+  // Web Crypto API를 사용할 수 없는 경우
+  throw new Error("Idempotency key generation failed: Web Crypto API unavailable.")
+}
+
 export type ApiFetchInit = RequestInit & {
-  idempotencyKey?: string
   /** 401 시 토큰 정리/로그아웃 알림 생략 (세션 종료 후 평가 등 비즈니스 401용) */
   skipAuthClearOn401?: boolean
   /** true이면 !response.ok 시 토스트 생략 (호출부에서 메시지 표시할 때 사용) */
@@ -79,7 +106,7 @@ export const apiFetch = async (
   retried = false
 ): Promise<Response> => {
   const token = getAuthToken()
-  const { idempotencyKey, skipAuthClearOn401, skipToastOnError, ...restInit } = init
+  const { skipAuthClearOn401, skipToastOnError, ...restInit } = init
   const headers = new Headers(restInit.headers)
 
   if (token) {
@@ -87,9 +114,15 @@ export const apiFetch = async (
   }
 
   const method = (restInit.method ?? "GET").toUpperCase()
+  // 호출부에서 헤더를 직접 넣은 경우를 우선 사용
+  const existingHeaderKey = headers.get(IDEMPOTENCY_HEADER)
+  const resolvedIdempotencyKey = IDEMPOTENT_METHODS.has(method)
+    ? (existingHeaderKey?.trim() || createIdempotencyKey())
+    : ""
+
   // 멱등 키는 POST/PUT/PATCH/DELETE 요청에만 추가
-  if (idempotencyKey && IDEMPOTENT_METHODS.has(method)) {
-    headers.set(IDEMPOTENCY_HEADER, idempotencyKey)
+  if (resolvedIdempotencyKey) {
+    headers.set(IDEMPOTENCY_HEADER, resolvedIdempotencyKey)
   }
 
   // 상대 경로인 경우 API_BASE_URL 추가
@@ -108,8 +141,8 @@ export const apiFetch = async (
       const newToken = getAuthToken()
       const newHeaders = new Headers(restInit.headers)
       if (newToken) newHeaders.set("Authorization", `Bearer ${newToken}`)
-      if (idempotencyKey && IDEMPOTENT_METHODS.has(method)) {
-        newHeaders.set(IDEMPOTENCY_HEADER, idempotencyKey)
+      if (resolvedIdempotencyKey) {
+        newHeaders.set(IDEMPOTENCY_HEADER, resolvedIdempotencyKey)
       }
       const retryResponse = await fetch(url, {
         ...restInit,
