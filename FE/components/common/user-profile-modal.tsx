@@ -117,7 +117,7 @@ export function UserProfileModal({
                   {profile.roundSummaries.map((summary, index) => (
                     <div key={`${index + 1}-${index}`} className="text-sm text-foreground">
                       <span className="text-xs text-muted-foreground mr-2">{`라운드 ${index + 1}`}</span>
-                      {summary?.trim() ? summary : "이 라운드에는 요약할 내용이 없어요"}
+                      {typeof summary === "string" && summary.trim() ? summary : "나눈 대화가 적어 요약할 내용이 없어요"}
                     </div>
                   ))}
                 </div>
