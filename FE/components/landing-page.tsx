@@ -6,6 +6,7 @@ import { LoginModal } from "@/components/auth/login-modal"
 import { RegisterModal } from "@/components/auth/register/register-modal"
 import { PasswordResetModal } from "@/components/auth/password-reset-modal"
 import { EmailVerificationModal } from "@/components/auth/email-verification-modal"
+import { PasswordResetChangeModal } from "@/components/auth/password-reset-change-modal"
 import { Users, Clock, Shield, Eye, MessageCircle, Heart, Zap, User2 } from "lucide-react"
 import Image from "next/image"
 import { Header } from "@/components/common/header"
@@ -16,7 +17,9 @@ export function LandingPage() {
   const [showRegister, setShowRegister] = useState(false)
   const [showPasswordReset, setShowPasswordReset] = useState(false)
   const [showEmailVerification, setShowEmailVerification] = useState(false)
+  const [showPasswordResetChange, setShowPasswordResetChange] = useState(false)
   const [passwordResetEmail, setPasswordResetEmail] = useState("")
+  const [passwordResetCode, setPasswordResetCode] = useState("")
   const [showIntro, setShowIntro] = useState(true)
   const [introSharp, setIntroSharp] = useState(false)
   const [heroParallax, setHeroParallax] = useState({ x: 0, y: 0 })
@@ -393,6 +396,7 @@ export function LandingPage() {
           onOpenChange={setShowPasswordReset}
           onOpenVerification={(email) => {
             setPasswordResetEmail(email)
+            setPasswordResetCode("")
             setShowEmailVerification(true)
           }}
         />
@@ -400,8 +404,19 @@ export function LandingPage() {
           open={showEmailVerification}
           onOpenChange={setShowEmailVerification}
           email={passwordResetEmail}
-          onComplete={() => {
+          onVerified={(code) => {
+            setPasswordResetCode(code)
             setShowEmailVerification(false)
+            setShowPasswordResetChange(true)
+          }}
+        />
+        <PasswordResetChangeModal
+          open={showPasswordResetChange}
+          onOpenChange={setShowPasswordResetChange}
+          email={passwordResetEmail}
+          code={passwordResetCode}
+          onComplete={() => {
+            setShowPasswordResetChange(false)
             setShowLogin(true)
           }}
         />
