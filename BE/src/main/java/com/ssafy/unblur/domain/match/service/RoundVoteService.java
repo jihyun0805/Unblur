@@ -156,6 +156,20 @@ public class RoundVoteService {
      * @param userId       사용자 ID
      */
     public void requestSkip(UUID conferenceId, UUID userId) {
+        handleSkip(conferenceId, userId, SkipIntent.REQUEST);
+    }
+
+    /**
+     * 라운드 스킵 수락 처리하는 메서드
+     *
+     * @param conferenceId 세션 ID
+     * @param userId       사용자 ID
+     */
+    public void acceptSkip(UUID conferenceId, UUID userId) {
+        handleSkip(conferenceId, userId, SkipIntent.ACCEPT);
+    }
+
+    private void handleSkip(UUID conferenceId, UUID userId, SkipIntent intent) {
         // 동시성 제어를 위한 락 획득
         ReentrantLock lock = voteLocks.computeIfAbsent(conferenceId, id -> new ReentrantLock());
         lock.lock();
@@ -164,7 +178,7 @@ public class RoundVoteService {
             // 현재 투표 상태 확인
             VoteState currentState = voteStore.getVoteState(conferenceId);
             if (currentState != VoteState.IN_PROGRESS) {
-                log.warn("스킵 요청 불가(상태). conferenceId={}, userId={}, state={}", conferenceId, userId, currentState);
+                log.warn("스킵 처리 불가(상태). conferenceId={}, userId={}, state={}", conferenceId, userId, currentState);
                 return;
             }
 
@@ -178,15 +192,25 @@ public class RoundVoteService {
             // 현재 라운드 확인
             int currentRound = conference.getCurrentRound();
             if (currentRound >= MAX_ROUND) {
-                log.info("스킵 요청 불가(라운드). conferenceId={}, round={}", conferenceId, currentRound);
+                log.info("스킵 처리 불가(라운드). conferenceId={}, round={}", conferenceId, currentRound);
                 return;
             }
 
             // 참가자 확인
             List<UUID> participants = timerService.getParticipants(conferenceId);
             if (participants.isEmpty() || !participants.contains(userId)) {
-                log.warn("스킵 요청 대상 아님. conferenceId={}, userId={}", conferenceId, userId);
+                log.warn("스킵 처리 대상 아님. conferenceId={}, userId={}", conferenceId, userId);
                 return;
+            }
+
+            // 수락은 기존 요청이 있어야 처리
+            if (intent == SkipIntent.ACCEPT) {
+                Set<UUID> existingSkipVoters = voteStore.getSkipVoterIds(conferenceId);
+
+                if (existingSkipVoters.isEmpty()) {
+                    log.warn("스킵 수락 대상 요청 없음. conferenceId={}, userId={}", conferenceId, userId);
+                    return;
+                }
             }
 
             // 스킵 요청 등록
@@ -196,21 +220,23 @@ public class RoundVoteService {
                 return;
             }
 
-            // 스킵 요청 메시지 생성
-            RoundMessages.RoundSkipRequested skipRequested = RoundMessages.RoundSkipRequested.of(
-                    conferenceId.toString(),
-                    userId.toString()
-            );
+            if (intent == SkipIntent.REQUEST) {
+                // 스킵 요청 메시지 생성
+                RoundMessages.RoundSkipRequested skipRequested = RoundMessages.RoundSkipRequested.of(
+                        conferenceId.toString(),
+                        userId.toString()
+                );
 
-            // 스킵 요청 전송 메시지 생성
-            RoundMessages.RoundSkipSent skipSent = RoundMessages.RoundSkipSent.of(conferenceId.toString());
+                // 스킵 요청 전송 메시지 생성
+                RoundMessages.RoundSkipSent skipSent = RoundMessages.RoundSkipSent.of(conferenceId.toString());
 
-            // 모든 참가자에게 알림 전송
-            for (UUID participantId : participants) {
-                if (participantId.equals(userId)) {
-                    eventSender.publish(participantId, WsEventType.ROUND_SKIP_SENT, skipSent);
-                } else {
-                    eventSender.publish(participantId, WsEventType.ROUND_SKIP_REQUESTED, skipRequested);
+                // 모든 참가자에게 알림 전송
+                for (UUID participantId : participants) {
+                    if (participantId.equals(userId)) {
+                        eventSender.publish(participantId, WsEventType.ROUND_SKIP_SENT, skipSent);
+                    } else {
+                        eventSender.publish(participantId, WsEventType.ROUND_SKIP_REQUESTED, skipRequested);
+                    }
                 }
             }
 
@@ -556,6 +582,11 @@ public class RoundVoteService {
             timerService.cleanup(conferenceId);
             voteLocks.remove(conferenceId);
         });
+    }
+
+    private enum SkipIntent {
+        REQUEST,
+        ACCEPT
     }
 
 }

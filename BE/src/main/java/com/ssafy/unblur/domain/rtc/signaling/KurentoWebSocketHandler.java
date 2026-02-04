@@ -108,6 +108,7 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
                 case "balance-select" -> handleBalanceSelect(session, payload);
                 case "vote" -> handleVote(session, payload);
                 case "round-skip" -> handleRoundSkip(session, payload);
+                case "round-skip-accept" -> handleRoundSkipAccept(session, payload);
                 case "round-skip-decline" -> handleRoundSkipDecline(session, payload);
                 case "leave" -> handleLeave(session, payload);
                 default -> {
@@ -470,6 +471,25 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
 
         // 라운드 스킵 요청 처리
         roundVoteService.requestSkip(conferenceId, userId);
+    }
+
+    /**
+     * 라운드 스킵 수락 요청을 처리하는 메서드
+     *
+     * @param session WebSocket 세션
+     * @param payload 요청 페이로드
+     * @throws IOException 전송 중 오류
+     */
+    private void handleRoundSkipAccept(WebSocketSession session, JsonNode payload) throws IOException {
+        // 방 ID 및 사용자 ID 추출
+        UUID conferenceId = parseUuid(session, payload, "conferenceId");
+        UUID userId = parseUuid(session, payload, "userId");
+        if (conferenceId == null || userId == null) {
+            return;
+        }
+
+        // 라운드 스킵 수락 처리
+        roundVoteService.acceptSkip(conferenceId, userId);
     }
 
     /**
