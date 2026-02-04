@@ -643,7 +643,8 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
                 conferenceId.toString(), 
                 userId.toString(), 
                 videoEnabled, 
-                audioMuted);
+                audioMuted
+        );
 
         // 같은 회의의 다른 참가자들에게 미디어 상태 브로드캐스트
         List<UUID> participants = participantStore.getParticipantIds(conferenceId);
