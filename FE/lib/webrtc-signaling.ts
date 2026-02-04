@@ -24,7 +24,8 @@ export type VoteChoice = "PROCEED" | "END"
 
 export interface WebRTCSignalingClient {
   connect(conferenceId: string, userId: string): Promise<void>
-  disconnect(): void
+  /** @param notifyLeave true면 서버에 leave 전송 후 종료(통화 종료 시), false면 전송 없이 종료(새로고침/탭 닫기 시) */
+  disconnect(notifyLeave?: boolean): void
   sendOffer(sdp: RTCSessionDescriptionInit, conferenceId: string, userId: string): void
   sendAnswer(sdp: RTCSessionDescriptionInit, conferenceId: string, userId: string): void
   sendIceCandidate(candidate: RTCIceCandidateInit, conferenceId: string, userId: string): void
@@ -83,7 +84,7 @@ export class WebSocketSignalingClient implements WebRTCSignalingClient {
       return
     }
 
-    this.disconnect()
+    this.disconnect(false)
     this.conferenceId = conferenceId
     this.userId = userId
 
@@ -258,14 +259,27 @@ export class WebSocketSignalingClient implements WebRTCSignalingClient {
     }, delay)
   }
 
-  disconnect(): void {
+  disconnect(notifyLeave = true): void {
     this.skipReconnect = true
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer)
       this.reconnectTimer = null
     }
-    if (this.ws?.readyState === WebSocket.OPEN && this.conferenceId && this.userId) {
+    if (notifyLeave && this.ws?.readyState === WebSocket.OPEN && this.conferenceId && this.userId) {
       this.send({ type: "leave", conferenceId: this.conferenceId, userId: this.userId })
+      const wsToClose = this.ws
+      this.ws = null
+      this.conferenceId = null
+      this.userId = null
+      this.reconnectAttempts = 0
+      setTimeout(() => {
+        try {
+          wsToClose.close()
+        } catch {
+          // 이미 닫혀 있으면 무시
+        }
+      }, 150)
+      return
     }
     if (this.ws) {
       this.ws.close()
@@ -360,7 +374,7 @@ export class MockSignalingClient implements WebRTCSignalingClient {
     return Promise.resolve()
   }
 
-  disconnect(): void {
+  disconnect(_notifyLeave?: boolean): void {
     this.connected = false
     this.mockConferenceId = null
     this.mockUserId = null

@@ -31,6 +31,8 @@ export interface UseWebRTCOptions {
   onRoundStarted?: (payload: RoundStartedPayload) => void
   onVoteConfirmRequest?: () => void
   onConferenceEnded?: () => void
+  /** 조인 전에 세션 종료/에러 시 호출 (종료된 세션 재진입 방지) */
+  onInvalidSession?: () => void
 }
 
 export interface UseWebRTCReturn {
@@ -91,16 +93,20 @@ export function useWebRTC({
   onRoundStarted,
   onVoteConfirmRequest,
   onConferenceEnded,
+  onInvalidSession,
 }: UseWebRTCOptions): UseWebRTCReturn {
   const onRoundTimeUpRef = useRef(onRoundTimeUp)
   const onRoundStartedRef = useRef(onRoundStarted)
   const onVoteConfirmRequestRef = useRef(onVoteConfirmRequest)
   const onConferenceEndedRef = useRef(onConferenceEnded)
+  const onInvalidSessionRef = useRef(onInvalidSession)
   const onDisconnectedRef = useRef(onDisconnected)
+  const hasJoinedRef = useRef(false)
   onRoundTimeUpRef.current = onRoundTimeUp
   onRoundStartedRef.current = onRoundStarted
   onVoteConfirmRequestRef.current = onVoteConfirmRequest
   onConferenceEndedRef.current = onConferenceEnded
+  onInvalidSessionRef.current = onInvalidSession
   onDisconnectedRef.current = onDisconnected
   const [localStream, setLocalStream] = useState<MediaStream | null>(null)
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null)
@@ -122,6 +128,9 @@ export function useWebRTC({
   const isMutedRef = useRef(isMuted)
   const isVideoEnabledRef = useRef(isVideoEnabled)
 
+  useEffect(() => {
+    hasJoinedRef.current = hasJoined
+  }, [hasJoined])
   useEffect(() => {
     isMutedRef.current = isMuted
   }, [isMuted])
@@ -429,12 +438,14 @@ export function useWebRTC({
           }
           break
         case "joined":
+          hasJoinedRef.current = true
           setHasJoined(true)
           break
         case "connected":
           break
         case "error":
           setError(message.message)
+          if (!hasJoinedRef.current) onInvalidSessionRef.current?.()
           break
         case "disconnected":
           setIsConnected(false)
@@ -452,6 +463,7 @@ export function useWebRTC({
           onVoteConfirmRequestRef.current?.()
           break
         case "conference-ended":
+          if (!hasJoinedRef.current) onInvalidSessionRef.current?.()
           onConferenceEndedRef.current?.()
           break
       }
@@ -523,8 +535,11 @@ export function useWebRTC({
         peerConnectionRef.current = null
       }
       if (signalingClientRef.current) {
-        signalingClientRef.current.disconnect()
+        signalingClientRef.current.disconnect(false)
         signalingClientRef.current = null
+      }
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("session_id")
       }
       remoteStreamRef.current = null
       setSignalingReady(false)

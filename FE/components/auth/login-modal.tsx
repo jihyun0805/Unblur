@@ -54,10 +54,10 @@ export function LoginModal({ open, onOpenChange, onSwitchToRegister }: LoginModa
     }
 
     setIsLoading(true)
-    const success = await login(email, password, rememberMe)
+    const result = await login(email, password, rememberMe)
     setIsLoading(false)
 
-    if (success) {
+    if (result.success) {
       if (typeof window !== "undefined") {
         sessionStorage.setItem(
           "pendingToast",
@@ -71,7 +71,7 @@ export function LoginModal({ open, onOpenChange, onSwitchToRegister }: LoginModa
     } else {
       toast({
         title: "로그인 실패",
-        description: "이메일 또는 비밀번호가 올바르지 않습니다.",
+        description: result.error.message,
         variant: "destructive",
       })
     }

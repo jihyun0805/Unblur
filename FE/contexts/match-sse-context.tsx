@@ -131,7 +131,9 @@ export function MatchSseProvider({ children }: { children: ReactNode }) {
     setIsConnected(false)
     setConnectTrigger((t) => t + 1)
     if (options?.skipServerNotify) return
-    return closeMatchStream().catch(() => {})
+    return closeMatchStream().catch((err) => {
+      console.warn("[MatchSSE] closeMatchStream 실패", err)
+    })
   }, [])
 
   const reconnect = useCallback(() => {

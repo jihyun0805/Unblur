@@ -87,10 +87,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/auth/logout", "/api/v1/users/withdraw").authenticated()
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(internalTokenFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(mdcLoggingFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(internalTokenFilter, MdcLoggingFilter.class)
                 .addFilterAfter(new JWTFilter(jwtUtil), InternalTokenFilter.class)
-                .addFilterAfter(mdcLoggingFilter, JWTFilter.class)
-                .addFilterAfter(idempotencyFilter, MdcLoggingFilter.class)
+                .addFilterAfter(idempotencyFilter, JWTFilter.class)
                 .build();
     }
 }

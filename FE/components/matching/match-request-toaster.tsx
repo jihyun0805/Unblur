@@ -4,11 +4,14 @@ import { useEffect, useRef, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 import { useMatchSse } from "@/contexts/match-sse-context"
+import { useSessionId } from "@/contexts/session-id-context"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { CameraTestModal } from "@/components/matching/camera-test-modal"
 import { UserProfileModal, type UserProfileData } from "@/components/common/user-profile-modal"
+import { getAuthToken, resolveApiUrl } from "@/lib/api"
 import * as matchApi from "@/lib/api/match"
+import { isConflictError } from "@/lib/error-codes"
 import { Camera } from "lucide-react"
 
 const { ACCEPTED_MATCH_SESSION_ID } = matchApi
@@ -22,6 +25,7 @@ export function MatchRequestToaster() {
   const router = useRouter()
   const { toast: showToast } = useToast()
   const { subscribe, disconnect } = useMatchSse()
+  const { enterSession } = useSessionId()
   const [pendingRequestId, setPendingRequestId] = useState<string | null>(null)
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false)
   const [isCameraTestOpen, setIsCameraTestOpen] = useState(false)
@@ -29,9 +33,6 @@ export function MatchRequestToaster() {
   const [requesterProfile, setRequesterProfile] = useState<UserProfileData | null>(null)
   const requestExpiresAtRef = useRef<number | null>(null)
   const requestTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const isConflictError = (err: unknown) =>
-    err instanceof Error && err.message?.includes("API_ERROR_409")
 
   const REGION_CODE_TO_LABEL: Record<string, string> = {
     SEOUL: "서울",
@@ -109,20 +110,22 @@ export function MatchRequestToaster() {
   }, [subscribe, showToast, pendingRequestId])
 
   // 요청자: 상대가 수락함 → "세션방으로 이동합니다" 토스트 후 이동
+  // disconnect() 시 skipServerNotify: true로 호출. closeMatchStream()(apiFetch)가 401이면 로그아웃 처리되므로
+  // 이동 직전에는 로컬만 끊고, 세션 페이지 마운트 시 disconnect()에서 서버에 스트림 종료 알림.
   useEffect(() => {
     const unsub = subscribe("one-on-one-accepted", async (data) => {
-      if (pathnameRef.current?.startsWith("/session")) return
+      if (pathnameRef.current === "/session" || pathnameRef.current?.startsWith("/session/")) return
       const payload = data as { conferenceId?: string } | undefined
       const conferenceId = payload?.conferenceId ?? ACCEPTED_MATCH_SESSION_ID
       showToast({
         title: "매칭 수락됨",
         description: "세션방으로 이동합니다.",
       })
-      await disconnect()
-      router.push(`/session/${conferenceId}`)
+      disconnect({ skipServerNotify: true })
+      enterSession(conferenceId)
     })
     return unsub
-  }, [subscribe, disconnect, showToast, router])
+  }, [subscribe, disconnect, showToast, enterSession])
 
   useEffect(() => {
     const unsub = subscribe("one-on-one-requested", (data) => {
@@ -192,16 +195,23 @@ export function MatchRequestToaster() {
     return () => window.removeEventListener("popstate", handlePopState)
   }, [isRequestModalOpen])
 
-  // 새로고침/탭 닫기 시 거절 처리 + 리로드 알림 플래그 저장
+  // 새로고침/탭 닫기 시 거절 처리 + 리로드 알림 플래그 저장 (토큰 포함해 서버에 거절 반영)
   useEffect(() => {
     if (!isRequestModalOpen || !pendingRequestId) return
     const handleBeforeUnload = () => {
       sessionStorage.setItem("one-on-one-request-reload-alert", "1")
-      fetch(`/api/v1/match/one-on-one/${encodeURIComponent(pendingRequestId)}/decline`, {
+      const token = getAuthToken()
+      const url = resolveApiUrl(`/api/v1/match/one-on-one/${encodeURIComponent(pendingRequestId)}/decline`)
+      const headers: HeadersInit = { "Content-Type": "application/json" }
+      if (token) headers["Authorization"] = `Bearer ${token}`
+      fetch(url, {
         method: "POST",
         credentials: "include",
         keepalive: true,
-      }).catch(() => {})
+        headers,
+      }).catch((err) => {
+        console.warn("[MatchRequestToaster] beforeunload 요청 실패", err)
+      })
     }
     window.addEventListener("beforeunload", handleBeforeUnload)
     return () => window.removeEventListener("beforeunload", handleBeforeUnload)
@@ -268,8 +278,8 @@ export function MatchRequestToaster() {
         description: "세션방으로 이동합니다.",
       })
       const conferenceId = res.conferenceId ?? ACCEPTED_MATCH_SESSION_ID
-      await disconnect()
-      router.push(`/session/${conferenceId}`)
+      disconnect({ skipServerNotify: true })
+      enterSession(conferenceId)
     } catch (err) {
       console.error("1:1 수락 실패:", err)
       if (isConflictError(err)) {

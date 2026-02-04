@@ -8,6 +8,7 @@ import { CameraTestModal } from "./camera-test-modal"
 import { useMatchSse } from "@/contexts/match-sse-context"
 import { useToast } from "@/hooks/use-toast"
 import * as matchApi from "@/lib/api/match"
+import { isConflictError } from "@/lib/error-codes"
 import type { QuickMatchResultPayload } from "@/contexts/match-sse-context"
 
 interface MatchingModalProps {
@@ -24,8 +25,6 @@ export function MatchingModal({ open, onOpenChange, onMatchFound }: MatchingModa
   const { toast } = useToast()
   const onMatchFoundRef = useRef(onMatchFound)
   onMatchFoundRef.current = onMatchFound
-  const isConflictError = (err: unknown) =>
-    err instanceof Error && err.message?.includes("API_ERROR_409")
 
   // 빠른 매칭 시작 + SSE 구독
   useEffect(() => {
@@ -56,7 +55,7 @@ export function MatchingModal({ open, onOpenChange, onMatchFound }: MatchingModa
     const unsubMatched = subscribe("quick-match-matched", (data) => {
       const payload = data as QuickMatchResultPayload
       if (!payload?.conferenceId) return
-      disconnect()
+      disconnect({ skipServerNotify: true })
       onMatchFoundRef.current(payload.conferenceId)
       onOpenChange(false)
     })
@@ -131,7 +130,9 @@ export function MatchingModal({ open, onOpenChange, onMatchFound }: MatchingModa
   // 모달 닫을 때 진행 중인 빠른 매칭 취소
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen && requestId) {
-      matchApi.cancelQuickMatch(requestId).catch(() => {})
+      matchApi.cancelQuickMatch(requestId).catch((err) => {
+      console.warn("[MatchingModal] 취소 요청 실패", err)
+    })
       setRequestId(null)
     }
     if (!isOpen) {
