@@ -255,6 +255,13 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
          * @return 사용자 세션
          */
         UserSession join(UUID userId) {
+            // 기존 세션이 있으면 정리
+            if (participants.containsKey(userId)) {
+                leave(userId);
+                log.info("RTC 재입장 기존 세션 정리. conferenceId={}, userId={}", conferenceId, userId);
+            }
+
+            // WebRtcEndpoint 및 UserSession 생성
             WebRtcEndpoint endpoint = new WebRtcEndpoint.Builder(pipeline).build();
             UserSession userSession = new UserSession(userId, endpoint);
             participants.put(userId, userSession);
@@ -311,11 +318,19 @@ public class InMemoryKurentoRoomService implements KurentoRoomService {
          * @param userId 사용자 ID
          */
         void leave(UUID userId) {
+            // 참가자 및 HubPort 제거
             UserSession userSession = participants.remove(userId);
+            HubPort hubPort = hubPorts.remove(userId);
 
+            // 사용자 세션 해제
             if (userSession != null) {
                 userSession.webRtcEndpoint().release();
                 log.info("RTC 사용자 퇴장. conferenceId={}, userId={}, size={}", conferenceId, userId, participants.size());
+            }
+
+            // HubPort 해제
+            if (hubPort != null) {
+                hubPort.release();
             }
         }
 
