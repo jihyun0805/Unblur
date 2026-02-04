@@ -47,6 +47,19 @@ export function useHistory({ page, size, search }: UseHistoryOptions) {
     fetchHistory()
   }, [fetchHistory])
 
+  useEffect(() => {
+    console.log("[useHistory] 상태", {
+      page,
+      size,
+      search,
+      isLoading,
+      historyLength: history.length,
+      totalPages,
+      totalElements,
+      error: error?.message ?? null,
+    })
+  }, [page, size, search, isLoading, history.length, totalPages, totalElements, error])
+
   const blockPartner = useCallback(async (localId: string, apiId?: string) => {
     const targetIds = apiId ? history.filter((item) => item.partnerId === apiId).map((item) => item.id) : [localId]
     setBlockedIds((prev) => {
