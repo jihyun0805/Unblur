@@ -25,6 +25,10 @@ public enum ErrorCode {
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "AUTH-007", "로그인이 필요합니다."),
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "AUTH-008", "해당 기능에 접근할 권한이 없습니다."),
     INVALID_EMAIL_FORMAT(HttpStatus.BAD_REQUEST, "AUTH-009", "유효하지 않은 이메일 형식입니다."),
+    EMAIL_VERIFICATION_CODE_INVALID(HttpStatus.BAD_REQUEST, "AUTH-010", "인증 코드가 올바르지 않습니다."),
+    EMAIL_VERIFICATION_CODE_EXPIRED(HttpStatus.BAD_REQUEST, "AUTH-011", "인증 코드가 만료되었습니다."),
+    EMAIL_VERIFICATION_NOT_CONFIRMED(HttpStatus.BAD_REQUEST, "AUTH-012", "이메일 인증이 완료되지 않았습니다."),
+    EMAIL_VERIFICATION_ALREADY_USED(HttpStatus.BAD_REQUEST, "AUTH-013", "이미 사용된 인증 코드입니다."),
 
     ICE_CANDIDATE_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "RTC-001", "ICE candidate 전송에 실패했습니다."),
     USER_NOT_JOINED(HttpStatus.FORBIDDEN, "RTC-002", "방에 참여하지 않은 사용자입니다."),

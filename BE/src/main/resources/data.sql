@@ -1,7 +1,7 @@
 -- Local seed data
 INSERT INTO users (id, email, encrypted_password, auth_provider, nickname, birth_date, gender,
                    clarity_score, is_active, created_at, updated_at)
-VALUES ('11111111-1111-1111-1111-111111111111', 'user1@test.com',
+VALUES ('11111111-1111-1111-1111-111111111111', 'rovin054@gmail.com',
         '$2a$10$LjFQE7nar27xySuaY1X0iupMIQluovA32N.BWqkNkrhJe.6EC3Cr.', 'LOCAL', 'user1', '1998-01-01', 'MALE',
         60, true, now(), now()),
        ('22222222-2222-2222-2222-222222222222', 'user2@test.com',
