@@ -466,6 +466,10 @@ export function useWebRTC({
           if (!hasJoinedRef.current) onInvalidSessionRef.current?.()
           onConferenceEndedRef.current?.()
           break
+        case "media-state":
+          setRemoteVideoMuted(!message.videoEnabled)
+          setRemoteAudioMuted(message.audioMuted)
+          break
       }
     }
     const unsub = signalingClientRef.current.onMessage(handleMessage)
@@ -491,6 +495,12 @@ export function useWebRTC({
     unsubs.push(() => window.removeEventListener("focus", onWindowFocus))
     return () => unsubs.forEach((fn) => fn())
   }, [enabled, signalingReady, localStream, reacquireMedia])
+
+  // 참가 직후 현재 카메라/마이크 상태를 상대에게 알림
+  useEffect(() => {
+    if (!hasJoined || !sessionId || !userId || !signalingClientRef.current) return
+    signalingClientRef.current.sendMediaState(sessionId, userId, isVideoEnabledRef.current, isMutedRef.current)
+  }, [hasJoined, sessionId, userId])
 
   useEffect(() => {
     if (!enabled || !sessionId || !userId) return
@@ -557,7 +567,10 @@ export function useWebRTC({
     const next = !isMutedRef.current
     localStreamRef.current?.getAudioTracks().forEach((t) => { t.enabled = !next })
     flushSync(() => setIsMuted(next))
-  }, [])
+    if (sessionId && userId && signalingClientRef.current) {
+      signalingClientRef.current.sendMediaState(sessionId, userId, isVideoEnabledRef.current, isMutedRef.current)
+    }
+  }, [sessionId, userId])
 
   const toggleVideo = useCallback(() => {
     const next = !isVideoEnabledRef.current
@@ -568,7 +581,10 @@ export function useWebRTC({
     if (localVideoRef.current && localStreamRef.current) {
       localVideoRef.current.srcObject = localStreamRef.current
     }
-  }, [localVideoRef])
+    if (sessionId && userId && signalingClientRef.current) {
+      signalingClientRef.current.sendMediaState(sessionId, userId, isVideoEnabledRef.current, isMutedRef.current)
+    }
+  }, [sessionId, userId, localVideoRef])
 
   const sendVote = useCallback(
     (vote: VoteChoice) => {

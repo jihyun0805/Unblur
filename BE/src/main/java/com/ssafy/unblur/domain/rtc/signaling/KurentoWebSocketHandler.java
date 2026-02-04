@@ -110,6 +110,7 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
                 case "round-skip" -> handleRoundSkip(session, payload);
                 case "round-skip-accept" -> handleRoundSkipAccept(session, payload);
                 case "round-skip-decline" -> handleRoundSkipDecline(session, payload);
+                case "media-state" -> handleMediaState(session, payload);
                 case "leave" -> handleLeave(session, payload);
                 default -> {
                     SignalingMessages.Error errorMessage = SignalingMessages.Error.builder()
@@ -544,6 +545,40 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
 
         // 중복 전송 방지를 위해 세션 매핑 제거
         sessionStore.remove(session.getId());
+    }
+
+    /**
+     * 카메라/마이크 상태를 상대방에게 전달하는 메서드
+     */
+    private void handleMediaState(WebSocketSession session, JsonNode payload) {
+        // 세션·회의·사용자 식별자 조회
+        String sessionId = session.getId();
+        UUID conferenceId = sessionStore.getConferenceId(sessionId).orElse(null);
+        UUID userId = sessionStore.getUserId(sessionId).orElse(null);
+        if (conferenceId == null || userId == null) {
+            return;
+        }
+
+        // 페이로드에서 카메라/마이크 상태 추출
+        JsonNode videoNode = payload.get("videoEnabled");
+        JsonNode audioNode = payload.get("audioMuted");
+        boolean videoEnabled = videoNode != null && !videoNode.isNull() && videoNode.asBoolean(true);
+        boolean audioMuted = audioNode != null && !audioNode.isNull() && audioNode.asBoolean(false);
+
+        // MediaState 메시지 생성
+        SignalingMessages.MediaState mediaMessage = SignalingMessages.MediaState.of(
+                conferenceId.toString(), 
+                userId.toString(), 
+                videoEnabled, 
+                audioMuted);
+
+        // 같은 회의의 다른 참가자들에게 미디어 상태 브로드캐스트
+        List<UUID> participants = participantStore.getParticipantIds(conferenceId);
+        for (UUID participantId : participants) {
+            if (!participantId.equals(userId)) {
+                eventSender.publish(participantId, WsEventType.MEDIA_STATE, mediaMessage);
+            }
+        }
     }
 
     /**

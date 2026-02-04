@@ -23,7 +23,7 @@ export default function SessionPage() {
 
   useEffect(() => {
     if (id === null || id === "") return
-    void disconnect({ skipServerNotify: true })
+    void disconnect({ skipServerNotify: false })
     return () => {
       reconnect()
     }

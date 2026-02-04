@@ -110,8 +110,7 @@ export function MatchRequestToaster() {
   }, [subscribe, showToast, pendingRequestId])
 
   // 요청자: 상대가 수락함 → "세션방으로 이동합니다" 토스트 후 이동
-  // disconnect() 시 skipServerNotify: true로 호출. closeMatchStream()(apiFetch)가 401이면 로그아웃 처리되므로
-  // 이동 직전에는 로컬만 끊고, 세션 페이지 마운트 시 disconnect()에서 서버에 스트림 종료 알림.
+  // disconnect({ skipServerNotify: false })로 서버에 DELETE /stream 호출해 emitter 정리 후 이동 (하트비트 flush 오류 방지).
   useEffect(() => {
     const unsub = subscribe("one-on-one-accepted", async (data) => {
       if (pathnameRef.current === "/session" || pathnameRef.current?.startsWith("/session/")) return
@@ -121,7 +120,7 @@ export function MatchRequestToaster() {
         title: "매칭 수락됨",
         description: "세션방으로 이동합니다.",
       })
-      disconnect({ skipServerNotify: true })
+      disconnect({ skipServerNotify: false })
       enterSession(conferenceId)
     })
     return unsub
