@@ -70,7 +70,9 @@ export default function MainRouteLayout({ children }: { children: React.ReactNod
         pathname?.startsWith("/test") ? <BackgroundLayout>{children}</BackgroundLayout> : children
       ) : (
         <MainLayout onLogout={() => setShowLogoutConfirm(true)} hideFloatingTestButton={hideFloatingTestButton}>
-          {children}
+          <div key = {pathname}>
+            {children}
+          </div>
         </MainLayout>
       )}
 
