@@ -209,6 +209,10 @@ public class User {
         this.lastActiveAt = null;
     }
 
+    public void updatePassword(String encodedPassword) {
+        this.password = encodedPassword;
+    }
+
     /**
      * 사용자의 만 나이를 계산합니다.
      */

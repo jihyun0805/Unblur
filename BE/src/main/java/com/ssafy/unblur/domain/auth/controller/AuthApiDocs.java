@@ -3,6 +3,9 @@ package com.ssafy.unblur.domain.auth.controller;
 import com.ssafy.unblur.common.response.BaseResponse;
 import com.ssafy.unblur.common.response.SwaggerResponses;
 import com.ssafy.unblur.domain.auth.dto.request.LoginRequestDto;
+import com.ssafy.unblur.domain.auth.dto.request.EmailVerificationConfirmRequestDto;
+import com.ssafy.unblur.domain.auth.dto.request.EmailVerificationRequestDto;
+import com.ssafy.unblur.domain.auth.dto.request.PasswordResetRequestDto;
 import com.ssafy.unblur.domain.auth.dto.response.LoginResponseDto;
 import com.ssafy.unblur.domain.auth.dto.request.SignupRequestDto;
 import com.ssafy.unblur.domain.auth.dto.response.SignupResponseDto;
@@ -236,5 +239,17 @@ public interface AuthApiDocs {
             )
     )
     ResponseEntity<BaseResponse<Void>> logout(HttpServletResponse response);
+
+    @Operation(summary = "비밀번호 재설정 인증 코드 전송", description = "입력한 이메일로 비밀번호 재설정 인증 코드를 전송합니다.")
+    @ApiResponse(responseCode = "200", description = "인증 코드 전송 성공", content = @Content(schema = @Schema(implementation = SwaggerResponses.VoidResponse.class)))
+    ResponseEntity<BaseResponse<Void>> sendPasswordResetCode(@RequestBody EmailVerificationRequestDto request);
+
+    @Operation(summary = "비밀번호 재설정 인증 코드 확인", description = "이메일과 인증 코드를 확인합니다.")
+    @ApiResponse(responseCode = "200", description = "인증 코드 확인 성공", content = @Content(schema = @Schema(implementation = SwaggerResponses.VoidResponse.class)))
+    ResponseEntity<BaseResponse<Void>> confirmPasswordResetCode(@RequestBody EmailVerificationConfirmRequestDto request);
+
+    @Operation(summary = "비밀번호 재설정", description = "이메일 인증이 완료된 사용자의 비밀번호를 재설정합니다.")
+    @ApiResponse(responseCode = "200", description = "비밀번호 재설정 성공", content = @Content(schema = @Schema(implementation = SwaggerResponses.VoidResponse.class)))
+    ResponseEntity<BaseResponse<Void>> resetPassword(@RequestBody PasswordResetRequestDto request);
 }
 
