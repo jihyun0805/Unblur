@@ -12,6 +12,10 @@ public enum WsEventType implements EventType {
     ROUND_STARTED("round-started"),
     ROUND_ENDED("round-ended"),
     CONFERENCE_ENDED("conference-ended"),
+    ROUND_SKIP_REQUESTED("round-skip-requested"),
+    ROUND_SKIP_SENT("round-skip-sent"),
+    ROUND_SKIPPED("round-skipped"),
+    ROUND_SKIP_DECLINED("round-skip-declined"),
 
     // 밸런스 게임
     BALANCE_INVITE("balance-invite"),
@@ -26,6 +30,7 @@ public enum WsEventType implements EventType {
     ANSWER("answer"),
     CANDIDATE("candidate"),
     LEFT("left"),
+    PARTNER_VOTED("partner-voted"),
     VOTE_RECEIVED("vote-received"),
     ERROR("error");
 
