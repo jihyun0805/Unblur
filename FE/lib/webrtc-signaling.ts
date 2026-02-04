@@ -35,6 +35,7 @@ export interface WebRTCSignalingClient {
   sendIceCandidate(candidate: RTCIceCandidateInit, conferenceId: string, userId: string): void
   sendVote(conferenceId: string, userId: string, vote: VoteChoice): void
   sendRoundSkip(conferenceId: string, userId: string): void
+  sendRoundSkipAccept(conferenceId: string, userId: string): void
   sendRoundSkipDecline(conferenceId: string, userId: string): void
   sendBalanceInvite(conferenceId: string, userId: string): void
   sendBalanceResponse(conferenceId: string, userId: string, accepted: boolean): void
@@ -349,6 +350,10 @@ export class WebSocketSignalingClient implements WebRTCSignalingClient {
     this.send({ type: "round-skip", conferenceId, userId })
   }
 
+  sendRoundSkipAccept(conferenceId: string, userId: string): void {
+    this.send({ type: "round-skip-accept", conferenceId, userId })
+  }
+
   sendRoundSkipDecline(conferenceId: string, userId: string): void {
     this.send({ type: "round-skip-decline", conferenceId, userId })
   }
@@ -428,6 +433,10 @@ export class MockSignalingClient implements WebRTCSignalingClient {
 
   sendRoundSkip(_conferenceId: string, _userId: string): void {
     console.log("[WebRTC] Mock: round-skip sent")
+  }
+
+  sendRoundSkipAccept(_conferenceId: string, _userId: string): void {
+    console.log("[WebRTC] Mock: round-skip-accept sent")
   }
 
   sendRoundSkipDecline(_conferenceId: string, _userId: string): void {

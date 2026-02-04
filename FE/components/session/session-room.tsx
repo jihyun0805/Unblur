@@ -966,7 +966,7 @@ export function SessionRoom({
             <AlertDialogAction
               onClick={() => {
                 if (signalingClient && user?.id) {
-                  signalingClient.sendRoundSkip(sessionId, user.id)
+                  signalingClient.sendRoundSkipAccept(sessionId, user.id)
                 }
                 setShowSkipRequestModal(false)
               }}
