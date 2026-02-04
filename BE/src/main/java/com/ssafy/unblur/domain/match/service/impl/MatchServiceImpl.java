@@ -363,6 +363,46 @@ public class MatchServiceImpl implements MatchService {
     }
 
     @Override
+    public OneOnOneMatchResponse cancelOneOnOneMatch(UUID userId) {
+        // 대기열 항목 조회
+        MatchQueueItem item = matchQueueService.findUserRequestByMatchType(userId, MatchType.ONE_ON_ONE)
+                .orElseThrow(() -> new BaseException(ErrorCode.MATCH_REQUEST_NOT_FOUND));
+
+        // 1:1 매칭 요청인지 확인
+        if (item.getMatchType() != MatchType.ONE_ON_ONE) {
+            log.warn("1:1 매칭 취소 대상이 아님. userId={}, requestId={}, matchType={}", userId, item.getRequestId(), item.getMatchType());
+            throw new BaseException(ErrorCode.MATCH_REQUEST_NOT_FOUND);
+        }
+
+        // 요청자 본인인지 확인
+        if (!item.getRequesterUserId().equals(userId)) {
+            log.warn("1:1 매칭 취소 권한 없음. userId={}, requestId={}, owner={}", userId, item.getRequestId(), item.getRequesterUserId());
+            throw new BaseException(ErrorCode.MATCH_REQUEST_NOT_FOUND);
+        }
+
+        // 대기 중인 상태에서만 취소 가능
+        if (!item.isWaiting()) {
+            log.warn("1:1 매칭 취소 불가(상태). userId={}, requestId={}, status={}", userId, item.getRequestId(), item.getStatus());
+            throw new BaseException(ErrorCode.MATCH_ALREADY_HANDLED);
+        }
+
+        // 매칭 취소 처리
+        item.markCanceled();
+
+        // SSE 취소 이벤트 전송
+        OneOnOneMatchResponse response = buildOneOnOneResponse(item, "canceled");
+        eventSender.publish(userId, SseEventType.ONE_ON_ONE_CANCELED, response);
+
+        // 상대방에게도 취소 알림 전송
+        if (item.getRecipientUserId() != null) {
+            eventSender.publish(item.getRecipientUserId(), SseEventType.ONE_ON_ONE_CANCELED, response);
+        }
+
+        log.info("1:1 매칭 취소 완료. userId={}, requestId={}", userId, item.getRequestId());
+        return response;
+    }
+
+    @Override
     public OnlineUserListResponse getRandomOnlineUsers(UUID userId, int limit, LoveDna loveDna) {
         log.debug("온라인 사용자 목록 조회. userId={}, limit={}, loveDna={}", userId, limit, loveDna);
         // 사용자 성별 조회
