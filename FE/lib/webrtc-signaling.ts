@@ -21,6 +21,7 @@ export type SignalingMessage =
   | { type: "balance-start"; conferenceId: string; questionId: string; category: string; question: string; optionA: string; optionB: string; sessionId: string }
   | { type: "balance-selected"; conferenceId: string; userId: string; sessionId: string }
   | { type: "balance-result"; conferenceId: string; questionId: string; category: string; question: string; optionA: string; optionB: string; sameChoice: boolean; selections: Array<{ userId: string; choice: string }>; sessionId: string }
+  | { type: "media-state"; conferenceId: string; userId: string; videoEnabled: boolean; audioMuted: boolean; sessionId?: string }
 
 export type SignalingMessageHandler = (message: SignalingMessage) => void
 
@@ -40,6 +41,8 @@ export interface WebRTCSignalingClient {
   sendBalanceInvite(conferenceId: string, userId: string): void
   sendBalanceResponse(conferenceId: string, userId: string, accepted: boolean): void
   sendBalanceSelect(conferenceId: string, userId: string, choice: "A" | "B"): void
+  /** 내 카메라/마이크 상태를 상대에게 알림 */
+  sendMediaState(conferenceId: string, userId: string, videoEnabled: boolean, audioMuted: boolean): void
   onMessage(handler: SignalingMessageHandler): () => void
   isConnected(): boolean
 }
@@ -67,6 +70,8 @@ interface ServerMessage {
   declinerId?: string
   fromRound?: number
   toRound?: number
+  videoEnabled?: boolean
+  audioMuted?: boolean
 }
 
 function normalizeWsUrl(input: string): string {
@@ -270,6 +275,16 @@ export class WebSocketSignalingClient implements WebRTCSignalingClient {
         sessionId,
       }
     }
+    if (raw.type === "media-state") {
+      return {
+        type: "media-state",
+        conferenceId: raw.conferenceId ?? cid,
+        userId: raw.userId ?? "",
+        videoEnabled: raw.videoEnabled ?? true,
+        audioMuted: raw.audioMuted ?? false,
+        sessionId,
+      }
+    }
     return null
   }
 
@@ -370,6 +385,10 @@ export class WebSocketSignalingClient implements WebRTCSignalingClient {
     this.send({ type: "balance-select", conferenceId, userId, choice })
   }
 
+  sendMediaState(conferenceId: string, userId: string, videoEnabled: boolean, audioMuted: boolean): void {
+    this.send({ type: "media-state", conferenceId, userId, videoEnabled, audioMuted })
+  }
+
   onMessage(handler: SignalingMessageHandler): () => void {
     this.messageHandlers.add(handler)
     return () => {
@@ -453,6 +472,10 @@ export class MockSignalingClient implements WebRTCSignalingClient {
 
   sendBalanceSelect(_conferenceId: string, _userId: string, choice: "A" | "B"): void {
     console.log("[WebRTC] Mock: balance select sent", { choice })
+  }
+
+  sendMediaState(_conferenceId: string, _userId: string, videoEnabled: boolean, audioMuted: boolean): void {
+    console.log("[WebRTC] Mock: media state sent", { videoEnabled, audioMuted })
   }
 
   onMessage(handler: SignalingMessageHandler): () => void {

@@ -723,15 +723,23 @@ export function SessionRoom({
                     className="w-full h-full object-cover transition-all duration-1000 -scale-x-100"
                     style={{ filter: `blur(${blurLevel}px)` }}
                   />
-                  <div className="absolute bottom-4 left-4 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-sm flex items-center gap-2">
+                  <div className="absolute bottom-4 left-4 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-sm flex items-center gap-2 flex-wrap">
                     <span className="text-white text-sm">상대방</span>
-                    {remoteAudioMuted && (
-                      <span className="text-xs text-white/90 bg-red-500/70 px-2 py-0.5 rounded">마이크 꺼짐</span>
+                    {remoteAudioMuted ? (
+                      <span className="text-xs text-red-400 flex items-center gap-1">
+                        <MicOff className="h-3 w-3" /> 마이크 꺼짐
+                      </span>
+                    ) : (
+                      <span className="text-xs text-white/70 flex items-center gap-1">
+                        <Mic className="h-3 w-3" /> 마이크 켜짐
+                      </span>
                     )}
                   </div>
                   {remoteVideoMuted && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/50 transition-opacity duration-200">
-                      <div className="text-white text-sm">상대방 카메라 꺼짐</div>
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/50 transition-opacity duration-200 pointer-events-none">
+                      <div className="text-white text-sm flex items-center gap-2">
+                        <VideoOff className="h-5 w-5" /> 카메라 꺼짐
+                      </div>
                     </div>
                   )}
                   {blurLevel > 0 && (
