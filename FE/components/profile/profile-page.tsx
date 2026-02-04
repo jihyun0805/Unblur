@@ -43,8 +43,8 @@ export function ProfilePage() {
   const [editingBasic, setEditingBasic] = useState(false)
 
   const NICKNAME_MAX_LENGTH = 10
-  const NICKNAME_PATTERN = /^[A-Za-z0-9가-힣]{1,10}$/
-  const normalizeNickname = (value: string) => value.replace(/[^A-Za-z0-9가-힣]/g, "").slice(0, NICKNAME_MAX_LENGTH)
+  const NICKNAME_PATTERN = /^[\p{L}\p{N}]{1,10}$/u
+  const normalizeNickname = (value: string) => value.replace(/[^\p{L}\p{N}]/gu, "").slice(0, NICKNAME_MAX_LENGTH)
   const [editingSurvey, setEditingSurvey] = useState(false)
   const [surveyStep, setSurveyStep] = useState(1)
   const SURVEY_TOTAL_STEPS = 4

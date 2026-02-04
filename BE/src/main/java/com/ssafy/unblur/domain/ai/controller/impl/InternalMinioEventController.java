@@ -3,6 +3,7 @@ package com.ssafy.unblur.domain.ai.controller.impl;
 import com.ssafy.unblur.domain.ai.dto.request.MinioEventRequest;
 import com.ssafy.unblur.common.response.BaseResponse;
 import com.ssafy.unblur.domain.ai.service.AiSummaryPipelineService;
+import io.swagger.v3.oas.annotations.Hidden;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.task.TaskExecutor;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/internal/minio")
 @RequiredArgsConstructor
 @Slf4j
+@Hidden
 public class InternalMinioEventController {
 
     private final AiSummaryPipelineService aiSummaryPipelineService;

@@ -6,6 +6,11 @@ package com.ssafy.unblur.domain.match.model;
 public enum VoteState {
 
     /**
+     * 라운드 진행 중
+     */
+    IN_PROGRESS,
+
+    /**
      * 투표 대기 중 (아무도 투표 안함)
      */
     WAITING,

@@ -55,8 +55,8 @@ export function RegisterStep1({
 
   const NICKNAME_MAX_LENGTH = 10
   const normalizeNickname = (value: string) => {
-    const allowed = value.replace(/[^A-Za-z0-9가-힣]/g, "")
-    return allowed.slice(0, NICKNAME_MAX_LENGTH)
+    const withoutSpecial = value.replace(/[^\p{L}\p{N}]/gu, "")
+    return withoutSpecial.slice(0, NICKNAME_MAX_LENGTH)
   }
 
   return (
