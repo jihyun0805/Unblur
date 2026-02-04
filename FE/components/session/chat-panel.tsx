@@ -30,13 +30,22 @@ export function ChatPanel({
 }: ChatPanelProps) {
   const [newMessage, setNewMessage] = useState("")
   const listRef = useRef<HTMLDivElement | null>(null)
-  const endRef = useRef<HTMLDivElement | null>(null)
   const [isAtBottom, setIsAtBottom] = useState(true)
   const { toast } = useToast()
 
+  const scrollToBottom = () => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const el = listRef.current
+        if (!el) return
+        el.scrollTop = el.scrollHeight - el.clientHeight
+      })
+    })
+  }
+
   useEffect(() => {
     if (!isAtBottom) return
-    endRef.current?.scrollIntoView({ block: "end" })
+    scrollToBottom()
   }, [messages, isAtBottom])
 
   const handleSendMessage = async () => {
@@ -109,7 +118,7 @@ export function ChatPanel({
             </div>
           ))
         )}
-        <div ref={endRef} />
+        <div aria-hidden className="h-px shrink-0" />
       </div>
       <div className="p-4 border-t border-border flex-shrink-0">
         <form

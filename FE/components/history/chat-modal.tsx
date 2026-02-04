@@ -25,19 +25,19 @@ export function ChatModal({ open, onOpenChange, partner, isBlocked = false }: Ch
   const [newMessage, setNewMessage] = useState("")
   const [pendingMessage, setPendingMessage] = useState<ChatMessage | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
-  const endRef = useRef<HTMLDivElement>(null)
   const [isAtBottom, setIsAtBottom] = useState(true)
   const { toast } = useToast()
   const { connectionState } = useChatContext()
   const { user } = useAuth()
 
-  const scrollToBottomRef = useRef<(() => void) | null>(null)
-  scrollToBottomRef.current = () => {
-    endRef.current?.scrollIntoView({ block: "end" })
-  }
   const scrollToBottom = () => {
+    const run = () => {
+      const el = scrollContainerRef.current
+      if (!el) return
+      el.scrollTop = el.scrollHeight - el.clientHeight
+    }
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => scrollToBottomRef.current?.())
+      requestAnimationFrame(run)
     })
   }
 
@@ -87,13 +87,13 @@ export function ChatModal({ open, onOpenChange, partner, isBlocked = false }: Ch
     }
   }, [open, isBlocked, markChatAsRead])
 
-  // 모달이 열릴 때만 맨 아래로 스크롤
+  // 모달이 열릴 때 맨 아래로 스크롤 (레이아웃 반영을 위해 지연 실행)
   useEffect(() => {
-    if (open) {
-      prevLengthRef.current = displayMessages.length
-      scrollToBottom()
-      setIsAtBottom(true)
-    }
+    if (!open) return
+    prevLengthRef.current = displayMessages.length
+    setIsAtBottom(true)
+    const t = setTimeout(() => scrollToBottom(), 0)
+    return () => clearTimeout(t)
   }, [open])
 
   const handleSendMessage = async () => {
@@ -190,7 +190,7 @@ export function ChatModal({ open, onOpenChange, partner, isBlocked = false }: Ch
               </div>
             ))
           )}
-          <div ref={endRef} />
+          <div aria-hidden className="h-px shrink-0" />
         </div>
 
         <div className="p-4 border-t border-border flex-shrink-0">
