@@ -1,6 +1,7 @@
 package com.ssafy.unblur.domain.match.dto.response;
 
 import com.ssafy.unblur.domain.auth.model.Gender;
+import com.ssafy.unblur.domain.auth.model.LoveDna;
 import com.ssafy.unblur.domain.auth.model.Mbti;
 import com.ssafy.unblur.domain.auth.model.Region;
 import com.ssafy.unblur.domain.auth.model.User;
@@ -31,6 +32,9 @@ public record OneOnOneRequesterProfileDto(
         @Schema(description = "MBTI", example = "INTJ")
         Mbti mbti,
 
+        @Schema(description = "연애 성향 유형", example = "EFPD")
+        LoveDna loveDna,
+
         @Schema(description = "한 줄 소개", example = "안녕하세요! 만나서 반가워요.")
         String intro,
 
@@ -51,6 +55,7 @@ public record OneOnOneRequesterProfileDto(
                 user.getGender(),
                 user.getRegion(),
                 user.getMbti(),
+                user.getLoveDna(),
                 user.getIntro(),
                 user.getInterestTags(),
                 user.getClarityScore(),

@@ -15,6 +15,7 @@ public record PartnerProfileResponseDto(
         String gender,
         String region,
         String mbti,
+        String loveDna,
         String intro,
         List<String> interestTags,
         List<RoundSummaryDto> roundSummaries
@@ -39,6 +40,7 @@ public record PartnerProfileResponseDto(
                 user.getGender().name(),
                 user.getRegion() != null ? user.getRegion().name() : null,
                 user.getMbti() != null ? user.getMbti().name() : null,
+                user.getLoveDna() != null ? user.getLoveDna().name() : null,
                 user.getIntro(),
                 user.getInterestTags(),
                 roundSummaries

@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-import { clearAuthToken, getAuthToken } from "@/lib/api"
+import { clearAuthToken, getAuthToken, AUTH_EXPIRED_EVENT, USER_KEY } from "@/lib/api"
 import * as authApi from "@/lib/api/auth"
 import { getMyProfile, withdrawAccount } from "@/lib/api/user"
 
@@ -39,11 +39,14 @@ export interface User {
   surveyData?: SurveyData
 }
 
+/** 로그인/회원가입 결과 (실패 시 BE 메시지 전달) */
+export type AuthResult = { success: true } | { success: false; error: Error }
+
 interface AuthContextType {
   user: User | null
   isLoading: boolean
-  login: (email: string, password: string, rememberMe?: boolean) => Promise<boolean>
-  register: (data: RegisterData) => Promise<boolean>
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<AuthResult>
+  register: (data: RegisterData) => Promise<AuthResult>
   logout: () => Promise<void>
   deleteAccount: (password: string) => Promise<boolean>
   updateUser: (data: Partial<User>) => void
@@ -66,19 +69,47 @@ interface RegisterData {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 
+function getInitialUser(): User | null {
+  if (typeof window === "undefined") return null
+  try {
+    const stored = localStorage.getItem(USER_KEY)
+    return stored ? (JSON.parse(stored) as User) : null
+  } catch {
+    return null
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<User | null>(getInitialUser)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     const loadUser = async () => {
+      if (!getAuthToken()) {
+        setUser(null)
+        setIsLoading(false)
+        return
+      }
       try {
         await authApi.reissueToken()
+        // /session 직접 접근 시 getMyProfile() 401로 로그아웃되는 것 방지: reissue만 하고 localStorage user로 복원
+        const pathname = typeof window !== "undefined" ? window.location.pathname : ""
+        if (pathname === "/session" || pathname.startsWith("/session/")) {
+          try {
+            const stored = localStorage.getItem(USER_KEY)
+            if (stored) setUser(JSON.parse(stored) as User)
+          } catch {
+            setUser(null)
+          }
+          setIsLoading(false)
+          return
+        }
         const userData = await getMyProfile()
         setUser(userData)
-        localStorage.setItem("user", JSON.stringify(userData))
+        localStorage.setItem(USER_KEY, JSON.stringify(userData))
       } catch {
         setUser(null)
+        clearAuthToken()
       } finally {
         setIsLoading(false)
       }
@@ -87,28 +118,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loadUser()
   }, [])
 
-  const login = async (email: string, password: string, rememberMe = false): Promise<boolean> => {
+  // access token 만료 후 refresh 실패 시 api.ts에서 dispatch → 여기서 user null로 로그아웃 반영
+  useEffect(() => {
+    const onAuthExpired = () => setUser(null)
+    window.addEventListener(AUTH_EXPIRED_EVENT, onAuthExpired)
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, onAuthExpired)
+  }, [])
+
+  const login = async (email: string, password: string, rememberMe = false): Promise<AuthResult> => {
     try {
       await authApi.login(email, password, rememberMe)
-      
-      // 로그인 성공 후 사용자 정보 조회
       try {
         const userData = await getMyProfile()
         setUser(userData)
-        localStorage.setItem("user", JSON.stringify(userData))
-        return true
+        localStorage.setItem(USER_KEY, JSON.stringify(userData))
+        return { success: true }
       } catch (error) {
-        // 사용자 정보 조회 실패 시에도 로그인은 성공한 것으로 처리
         console.error("사용자 정보 조회 실패:", error)
-        return true
+        return { success: true }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("로그인 실패:", error)
-      return false
+      return { success: false, error: error instanceof Error ? error : new Error("로그인에 실패했습니다.") }
     }
   }
 
-  const register = async (data: RegisterData): Promise<boolean> => {
+  const register = async (data: RegisterData): Promise<AuthResult> => {
     try {
       // RegisterData를 SignupRequest로 변환
       const signupRequest: authApi.SignupRequest = {
@@ -125,10 +160,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       await authApi.signup(signupRequest)
-      return true
-    } catch (error: any) {
+      return { success: true }
+    } catch (error: unknown) {
       console.error("회원가입 실패:", error)
-      return false
+      return { success: false, error: error instanceof Error ? error : new Error("회원가입에 실패했습니다.") }
     }
   }
 
@@ -147,7 +182,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (user) {
       const updatedUser = { ...user, ...data }
       setUser(updatedUser)
-      localStorage.setItem("user", JSON.stringify(updatedUser))
+      localStorage.setItem(USER_KEY, JSON.stringify(updatedUser))
     }
   }
 
@@ -157,7 +192,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const newTemp = Math.max(0, Math.min(100, user.temperature + delta))
       const updatedUser = { ...user, temperature: Math.round(newTemp) }
       setUser(updatedUser)
-      localStorage.setItem("user", JSON.stringify(updatedUser))
+      localStorage.setItem(USER_KEY, JSON.stringify(updatedUser))
     }
   }
 
@@ -176,7 +211,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout, deleteAccount, updateUser, updateTemperature }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isLoading,
+        login,
+        register,
+        logout,
+        deleteAccount,
+        updateUser,
+        updateTemperature,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   )

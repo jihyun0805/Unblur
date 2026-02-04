@@ -230,9 +230,9 @@ export function RegisterModal({ open, onOpenChange, onSwitchToLogin }: RegisterM
       return
     }
 
-    const success = await submitRegistration()
+    const result = await submitRegistration()
 
-    if (success) {
+    if (result.success) {
       toast({
         title: "회원가입 완료",
         description: "로그인 화면으로 이동합니다.",
@@ -241,6 +241,12 @@ export function RegisterModal({ open, onOpenChange, onSwitchToLogin }: RegisterM
       setStep(1)
       resetForm()
       onSwitchToLogin()
+    } else {
+      toast({
+        title: "회원가입 실패",
+        description: result.error.message,
+        variant: "destructive",
+      })
     }
   }
 

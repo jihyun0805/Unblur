@@ -12,6 +12,10 @@ export type SignalingMessage =
   | { type: "vote-confirm-request"; conferenceId: string; message?: string }
   | { type: "partner-voted"; conferenceId: string; message?: string }
   | { type: "conference-ended"; conferenceId: string; message?: string }
+  | { type: "round-skip-requested"; conferenceId: string; requesterId: string; message?: string }
+  | { type: "round-skip-sent"; conferenceId: string; message?: string }
+  | { type: "round-skipped"; conferenceId: string; fromRound: number; toRound: number; message?: string }
+  | { type: "round-skip-declined"; conferenceId: string; declinerId: string; message?: string }
   | { type: "balance-invite"; conferenceId: string; fromUserId: string; sessionId: string }
   | { type: "balance-declined"; conferenceId: string; fromUserId: string; sessionId: string }
   | { type: "balance-start"; conferenceId: string; questionId: string; category: string; question: string; optionA: string; optionB: string; sessionId: string }
@@ -24,11 +28,14 @@ export type VoteChoice = "PROCEED" | "END"
 
 export interface WebRTCSignalingClient {
   connect(conferenceId: string, userId: string): Promise<void>
-  disconnect(): void
+  /** @param notifyLeave true면 서버에 leave 전송 후 종료(통화 종료 시), false면 전송 없이 종료(새로고침/탭 닫기 시) */
+  disconnect(notifyLeave?: boolean): void
   sendOffer(sdp: RTCSessionDescriptionInit, conferenceId: string, userId: string): void
   sendAnswer(sdp: RTCSessionDescriptionInit, conferenceId: string, userId: string): void
   sendIceCandidate(candidate: RTCIceCandidateInit, conferenceId: string, userId: string): void
   sendVote(conferenceId: string, userId: string, vote: VoteChoice): void
+  sendRoundSkip(conferenceId: string, userId: string): void
+  sendRoundSkipDecline(conferenceId: string, userId: string): void
   sendBalanceInvite(conferenceId: string, userId: string): void
   sendBalanceResponse(conferenceId: string, userId: string, accepted: boolean): void
   sendBalanceSelect(conferenceId: string, userId: string, choice: "A" | "B"): void
@@ -55,6 +62,10 @@ interface ServerMessage {
   optionB?: string
   sameChoice?: boolean
   selections?: Array<{ userId: string; choice: string }>
+  requesterId?: string
+  declinerId?: string
+  fromRound?: number
+  toRound?: number
 }
 
 function normalizeWsUrl(input: string): string {
@@ -83,7 +94,7 @@ export class WebSocketSignalingClient implements WebRTCSignalingClient {
       return
     }
 
-    this.disconnect()
+    this.disconnect(false)
     this.conferenceId = conferenceId
     this.userId = userId
 
@@ -207,6 +218,18 @@ export class WebSocketSignalingClient implements WebRTCSignalingClient {
     if (raw.type === "conference-ended") {
       return { type: "conference-ended", conferenceId: cid, message: raw.message }
     }
+    if (raw.type === "round-skip-requested" && raw.requesterId != null) {
+      return { type: "round-skip-requested", conferenceId: cid, requesterId: raw.requesterId, message: raw.message }
+    }
+    if (raw.type === "round-skip-sent") {
+      return { type: "round-skip-sent", conferenceId: cid, message: raw.message }
+    }
+    if (raw.type === "round-skipped" && raw.fromRound != null && raw.toRound != null) {
+      return { type: "round-skipped", conferenceId: cid, fromRound: raw.fromRound, toRound: raw.toRound, message: raw.message }
+    }
+    if (raw.type === "round-skip-declined" && raw.declinerId != null) {
+      return { type: "round-skip-declined", conferenceId: cid, declinerId: raw.declinerId, message: raw.message }
+    }
     // 밸런스 게임 이벤트
     if (raw.type === "balance-invite") {
       if (process.env.NODE_ENV === "development") {
@@ -258,14 +281,27 @@ export class WebSocketSignalingClient implements WebRTCSignalingClient {
     }, delay)
   }
 
-  disconnect(): void {
+  disconnect(notifyLeave = true): void {
     this.skipReconnect = true
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer)
       this.reconnectTimer = null
     }
-    if (this.ws?.readyState === WebSocket.OPEN && this.conferenceId && this.userId) {
+    if (notifyLeave && this.ws?.readyState === WebSocket.OPEN && this.conferenceId && this.userId) {
       this.send({ type: "leave", conferenceId: this.conferenceId, userId: this.userId })
+      const wsToClose = this.ws
+      this.ws = null
+      this.conferenceId = null
+      this.userId = null
+      this.reconnectAttempts = 0
+      setTimeout(() => {
+        try {
+          wsToClose.close()
+        } catch {
+          // 이미 닫혀 있으면 무시
+        }
+      }, 150)
+      return
     }
     if (this.ws) {
       this.ws.close()
@@ -307,6 +343,14 @@ export class WebSocketSignalingClient implements WebRTCSignalingClient {
 
   sendVote(conferenceId: string, userId: string, vote: VoteChoice): void {
     this.send({ type: "vote", conferenceId, userId, vote })
+  }
+
+  sendRoundSkip(conferenceId: string, userId: string): void {
+    this.send({ type: "round-skip", conferenceId, userId })
+  }
+
+  sendRoundSkipDecline(conferenceId: string, userId: string): void {
+    this.send({ type: "round-skip-decline", conferenceId, userId })
   }
 
   sendBalanceInvite(conferenceId: string, userId: string): void {
@@ -360,7 +404,7 @@ export class MockSignalingClient implements WebRTCSignalingClient {
     return Promise.resolve()
   }
 
-  disconnect(): void {
+  disconnect(_notifyLeave?: boolean): void {
     this.connected = false
     this.mockConferenceId = null
     this.mockUserId = null
@@ -380,6 +424,14 @@ export class MockSignalingClient implements WebRTCSignalingClient {
 
   sendVote(_conferenceId: string, _userId: string, vote: VoteChoice): void {
     console.log("[WebRTC] Mock: vote sent", { vote })
+  }
+
+  sendRoundSkip(_conferenceId: string, _userId: string): void {
+    console.log("[WebRTC] Mock: round-skip sent")
+  }
+
+  sendRoundSkipDecline(_conferenceId: string, _userId: string): void {
+    console.log("[WebRTC] Mock: round-skip-decline sent")
   }
 
   sendBalanceInvite(_conferenceId: string, _userId: string): void {

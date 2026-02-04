@@ -16,6 +16,7 @@ import { HistoryItemCard } from "./history-item-card"
 import { HistoryEmptyState } from "./history-empty-state"
 import { HistoryLoading } from "./history-loading"
 import { HistoryError } from "./history-error"
+import { useToast } from "@/hooks/use-toast"
 import { Search } from "lucide-react"
 
 const formatDuration = (minutes: number): string => {
@@ -61,10 +62,13 @@ const mapRegion = (value?: string | null): string | undefined => {
 export function HistoryPage() {
   const { user } = useAuth()
   const { wsService } = useChatContext()
+  const { toast } = useToast()
   const pageSize = 5
 
   useEffect(() => {
-    wsService.connect().catch(() => {})
+    wsService.connect().catch((err) => {
+      console.warn("[HistoryPage] 채팅 연결 실패", err)
+    })
   }, [wsService])
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedChat, setSelectedChat] = useState<HistoryItem | null>(null)
@@ -105,7 +109,11 @@ export function HistoryPage() {
         }
       })
     } catch (profileError) {
-      console.error("[HistoryPage] 프로필 조회 실패", profileError)
+      toast({
+        title: "프로필 조회 실패",
+        description: profileError instanceof Error ? profileError.message : "잠시 후 다시 시도해 주세요.",
+        variant: "destructive",
+      })
     } finally {
       setIsProfileLoading(false)
     }
@@ -165,8 +173,28 @@ export function HistoryPage() {
                   item={item}
                   onProfileClick={handleProfileClick}
                   onChatClick={setSelectedChat}
-                  onBlock={(target) => blockPartner(target.id, target.partnerId)}
-                  onUnblock={(target) => unblockPartner(target.id, target.partnerId)}
+                  onBlock={async (target) => {
+                    try {
+                      await blockPartner(target.id, target.partnerId)
+                    } catch {
+                      toast({
+                        title: "차단 실패",
+                        description: "잠시 후 다시 시도해 주세요.",
+                        variant: "destructive",
+                      })
+                    }
+                  }}
+                  onUnblock={async (target) => {
+                    try {
+                      await unblockPartner(target.id, target.partnerId)
+                    } catch {
+                      toast({
+                        title: "차단 해제 실패",
+                        description: "잠시 후 다시 시도해 주세요.",
+                        variant: "destructive",
+                      })
+                    }
+                  }}
                   isBlocked={blockedIds.includes(item.id)}
                   isChatOpen={selectedChat?.id === item.id}
                   setItemUnreadCount={setItemUnreadCount}

@@ -118,11 +118,29 @@ export function useRegisterForm() {
 
   const normalizePassword = (value: string) => value.replace(/[^A-Za-z0-9!*^?_]/g, "")
 
+  const NICKNAME_PATTERN = /^[A-Za-z0-9가-힣]{1,10}$/
   const checkNickname = async () => {
-    if (formData.nickname.length < 2) {
+    const nickname = formData.nickname.trim()
+    if (nickname.length < 2) {
       toast({
         title: "닉네임 오류",
         description: "닉네임은 2자 이상이어야 합니다.",
+        variant: "destructive",
+      })
+      return
+    }
+    if (nickname.length > 10) {
+      toast({
+        title: "닉네임 오류",
+        description: "닉네임은 최대 10자까지 가능합니다.",
+        variant: "destructive",
+      })
+      return
+    }
+    if (!NICKNAME_PATTERN.test(nickname)) {
+      toast({
+        title: "닉네임 오류",
+        description: "닉네임은 한글/영문/숫자만 사용할 수 있습니다.",
         variant: "destructive",
       })
       return
@@ -187,10 +205,10 @@ export function useRegisterForm() {
     return age
   }
 
-  const submitRegistration = async () => {
+  const submitRegistration = async (): Promise<{ success: true } | { success: false; error: Error }> => {
     setIsLoading(true)
     const age = calculateAge(formData.birthYear, formData.birthMonth, formData.birthDay)
-    const success = await register({
+    const result = await register({
       nickname: formData.nickname,
       email: formData.email,
       password: formData.password,
@@ -220,7 +238,7 @@ export function useRegisterForm() {
       },
     })
     setIsLoading(false)
-    return success
+    return result
   }
 
   return {

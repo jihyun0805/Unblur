@@ -128,6 +128,110 @@ public final class RoundMessages {
     }
 
     /**
+     * 라운드 스킵 요청 메시지
+     */
+    @Builder
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record RoundSkipRequested(
+            String type,
+            String conferenceId,
+            String requesterId,
+            String message
+    ) {
+        public RoundSkipRequested {
+            if (type == null) {
+                type = "round-skip-requested";
+            }
+        }
+
+        public static RoundSkipRequested of(String conferenceId, String requesterId) {
+            return RoundSkipRequested.builder()
+                    .conferenceId(conferenceId)
+                    .requesterId(requesterId)
+                    .message("상대방이 라운드 스킵을 요청했습니다.")
+                    .build();
+        }
+    }
+
+    /**
+     * 라운드 스킵 요청 전송 완료 메시지 (요청자용)
+     */
+    @Builder
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record RoundSkipSent(
+            String type,
+            String conferenceId,
+            String message
+    ) {
+        public RoundSkipSent {
+            if (type == null) {
+                type = "round-skip-sent";
+            }
+        }
+
+        public static RoundSkipSent of(String conferenceId) {
+            return RoundSkipSent.builder()
+                    .conferenceId(conferenceId)
+                    .message("상대방에게 라운드 스킵 요청을 보냈습니다.")
+                    .build();
+        }
+    }
+
+    /**
+     * 라운드 스킵 거절 메시지
+     */
+    @Builder
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record RoundSkipDeclined(
+            String type,
+            String conferenceId,
+            String declinerId,
+            String message
+    ) {
+        public RoundSkipDeclined {
+            if (type == null) {
+                type = "round-skip-declined";
+            }
+        }
+
+        public static RoundSkipDeclined of(String conferenceId, String declinerId) {
+            return RoundSkipDeclined.builder()
+                    .conferenceId(conferenceId)
+                    .declinerId(declinerId)
+                    .message("상대방이 라운드 스킵을 거절했습니다.")
+                    .build();
+        }
+    }
+
+    /**
+     * 라운드 스킵 완료 메시지
+     */
+    @Builder
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record RoundSkipped(
+            String type,
+            String conferenceId,
+            int fromRound,
+            int toRound,
+            String message
+    ) {
+        public RoundSkipped {
+            if (type == null) {
+                type = "round-skipped";
+            }
+        }
+
+        public static RoundSkipped of(String conferenceId, int fromRound, int toRound) {
+            return RoundSkipped.builder()
+                    .conferenceId(conferenceId)
+                    .fromRound(fromRound)
+                    .toRound(toRound)
+                    .message("라운드가 스킵되어 다음 라운드로 이동합니다.")
+                    .build();
+        }
+    }
+
+    /**
      * 세션 종료 메시지
      */
     @Builder

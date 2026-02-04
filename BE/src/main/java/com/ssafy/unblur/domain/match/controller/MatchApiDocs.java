@@ -568,6 +568,81 @@ public interface MatchApiDocs {
     );
 
     /**
+     * 1:1 매칭 취소 API
+     */
+    @Operation(
+            summary = "1:1 매칭 취소",
+            description = "요청자가 상대에게 보낸 1:1 매칭 요청을 취소합니다."
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "취소 성공",
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = BaseResponse.class),
+                    examples = @ExampleObject(value = """
+                            {
+                              "isSuccess": true,
+                              "statusCode": 200,
+                              "message": "OK",
+                              "data": {
+                                "requestId": "queue-id",
+                                "status": "canceled",
+                                "queueType": "one-on-one",
+                                "targetUserId": "0f4d8f6a-8df6-4fa9-9b9d-2b3bcd0b7b8f",
+                                "targetStatus": "canceled",
+                                "estimatedWaitSeconds": null,
+                                "queuedAt": "2024-01-14T14:30:00"
+                              }
+                            }"""))
+    )
+    @ApiResponse(
+            responseCode = "400",
+            description = "매칭 요청을 찾을 수 없음",
+            content = @Content(
+                    schema = @Schema(implementation = BaseResponse.class),
+                    examples = @ExampleObject(value = """
+                            {
+                              "isSuccess": false,
+                              "statusCode": 400,
+                              "message": "매칭 요청을 찾을 수 없습니다.",
+                              "errorCode": "MATCH-001"
+                            }""")
+            )
+    )
+    @ApiResponse(
+            responseCode = "401",
+            description = "로그인이 필요합니다.",
+            content = @Content(
+                    schema = @Schema(implementation = BaseResponse.class),
+                    examples = @ExampleObject(value = """
+                            {
+                              "isSuccess": false,
+                              "statusCode": 401,
+                              "message": "로그인이 필요합니다.",
+                              "errorCode": "AUTH-007"
+                            }""")
+            )
+    )
+    @ApiResponse(
+            responseCode = "409",
+            description = "이미 처리된 매칭 요청",
+            content = @Content(
+                    schema = @Schema(implementation = BaseResponse.class),
+                    examples = @ExampleObject(value = """
+                            {
+                              "isSuccess": false,
+                              "statusCode": 409,
+                              "message": "이미 처리된 매칭 요청입니다.",
+                              "errorCode": "MATCH-004"
+                            }""")
+            )
+    )
+    ResponseEntity<BaseResponse<OneOnOneMatchResponse>> cancelOneOnOneMatch(
+            @Parameter(hidden = true) @AuthenticationPrincipal CustomUserDetails userDetails
+    );
+
+    /**
      * 현재 온라인인 랜덤 사용자 목록을 조회하는 API
      */
     @Operation(

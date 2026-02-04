@@ -1,5 +1,6 @@
 package com.ssafy.unblur.common.security.jwt;
 
+import com.ssafy.unblur.common.exception.ErrorCode;
 import com.ssafy.unblur.common.security.auth.CustomUserDetails;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -8,6 +9,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -43,6 +45,8 @@ public class JWTFilter extends OncePerRequestFilter {
 
         try {
             if (jwtUtil.isTokenExpired(token)) {
+                MDC.put("status", String.valueOf(HttpServletResponse.SC_UNAUTHORIZED));
+                MDC.put("errorCode", ErrorCode.EXPIRED_TOKEN.getCode());
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 response.getWriter().write("AccessToken Expired");
                 return;
@@ -52,6 +56,8 @@ public class JWTFilter extends OncePerRequestFilter {
             String userId = jwtUtil.getUserId(token);
 
             if (userId == null) {
+                MDC.put("status", String.valueOf(HttpServletResponse.SC_UNAUTHORIZED));
+                MDC.put("errorCode", ErrorCode.INVALID_TOKEN.getCode());
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 response.getWriter().write("Invalid Token");
                 return;
@@ -63,6 +69,8 @@ public class JWTFilter extends OncePerRequestFilter {
             SecurityContextHolder.getContext().setAuthentication(authToken);
 
         } catch (Exception e) {
+            MDC.put("status", String.valueOf(HttpServletResponse.SC_UNAUTHORIZED));
+            MDC.put("errorCode", ErrorCode.INVALID_TOKEN.getCode());
             log.error("JWT 검증 실패: {}", e.getMessage());
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.getWriter().write("Invalid Token");

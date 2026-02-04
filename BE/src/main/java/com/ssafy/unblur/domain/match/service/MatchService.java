@@ -68,6 +68,14 @@ public interface MatchService {
     OneOnOneMatchResponse declineOneOnOneMatch(UUID userId, String requestId);
 
     /**
+     * 1:1 매칭 요청을 취소하는 메서드
+     *
+     * @param userId 요청자 사용자 ID
+     * @return 1:1 매칭 응답
+     */
+    OneOnOneMatchResponse cancelOneOnOneMatch(UUID userId);
+
+    /**
      * 현재 온라인인 사용자 중 반대 성별인 랜덤 사용자 목록을 반환하는 메서드
      *
      * @param userId 요청 사용자 ID

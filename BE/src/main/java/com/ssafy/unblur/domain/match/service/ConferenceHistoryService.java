@@ -129,6 +129,7 @@ public class ConferenceHistoryService {
                 partnerUser != null ? partnerUser.getNickname() : null,
                 partnerUser != null ? partnerUser.getProfileImageUrl() : null,
                 partnerUser != null ? partnerUser.getClarityScore() : null,
+                partnerUser != null && partnerUser.getLoveDna() != null ? partnerUser.getLoveDna().name() : null,
                 isOnline,
                 isBlocked
         );

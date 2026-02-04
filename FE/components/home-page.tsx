@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { useMatchSse } from "@/contexts/match-sse-context"
+import { useSessionId } from "@/contexts/session-id-context"
 import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
@@ -19,6 +20,7 @@ export function HomePage() {
   const router = useRouter()
   const { toast } = useToast()
   const { subscribe } = useMatchSse()
+  const { enterSession } = useSessionId()
   const [showMatching, setShowMatching] = useState(false)
   const [showOneOnOne, setShowOneOnOne] = useState(false)
   const [waitingRequestId, setWaitingRequestId] = useState<string | null>(null)
@@ -50,7 +52,7 @@ export function HomePage() {
 
   const handleMatchFound = (sessionId: string) => {
     setShowMatching(false)
-    router.push(`/session/${sessionId}`)
+    enterSession(sessionId)
   }
 
   /** 1:1 요청은 OneOnOneModal에서 API 호출 후 처리. 수락 시 MatchRequestToaster가 세션으로 이동시킴. */

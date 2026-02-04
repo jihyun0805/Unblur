@@ -19,8 +19,8 @@ export function EndCallConfirmModal({ open, onConfirm, onCancel }: EndCallConfir
           <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
             <AlertTriangle className="w-8 h-8 text-amber-600" />
           </div>
-          <h2 className="text-xl font-bold mb-2">정말 나가시겠습니까?</h2>
-          <p className="text-muted-foreground mb-6">나가시면 현재 대화가 종료됩니다.</p>
+          <h2 className="text-xl font-bold mb-2">세션을 나가시겠습니까?</h2>
+          <p className="text-muted-foreground mb-6">나가시면 홈으로 이동합니다.</p>
 
           <div className="space-y-3">
             <Button onClick={onCancel} className="w-full py-6 bg-primary text-primary-foreground hover:bg-primary/90">

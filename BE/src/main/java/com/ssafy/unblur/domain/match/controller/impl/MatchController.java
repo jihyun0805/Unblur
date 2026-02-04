@@ -115,6 +115,19 @@ public class MatchController implements MatchApiDocs {
         );
     }
 
+    @Override
+    @DeleteMapping("/one-on-one")
+    public ResponseEntity<BaseResponse<OneOnOneMatchResponse>> cancelOneOnOneMatch(
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        log.info("API 1:1 매칭 취소. userId={}", userDetails.getUserId());
+
+        OneOnOneMatchResponse response = matchService.cancelOneOnOneMatch(userDetails.getUserId());
+        return ResponseEntity.ok(
+            BaseResponse.onSuccess("1:1 매칭 요청이 성공적으로 취소되었습니다.", response)
+        );
+    }
+
     @GetMapping("/online-users")
     public ResponseEntity<BaseResponse<OnlineUserListResponse>> getOnlineUsers(
             @AuthenticationPrincipal CustomUserDetails userDetails,

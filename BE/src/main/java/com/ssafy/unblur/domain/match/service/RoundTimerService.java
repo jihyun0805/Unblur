@@ -67,9 +67,9 @@ public class RoundTimerService {
     public void startRoundTimer(UUID conferenceId, int roundNumber, List<UUID> participantIds) {
         Duration duration = durationPolicy.getDuration(roundNumber);
 
-        // 무제한이면 타이머 설정 안함
-        if (durationPolicy.isUnlimited(roundNumber)) {
+        if (durationPolicy.isUnlimited(roundNumber)) { // 시간 제한이 없는 경우
             log.info("라운드 {} 시작 (무제한). conferenceId={}", roundNumber, conferenceId);
+            voteStore.setVoteState(conferenceId, VoteState.WAITING);
             return;
         }
 
@@ -78,6 +78,7 @@ public class RoundTimerService {
 
         // 투표 상태 초기화
         voteStore.resetVotes(conferenceId);
+        voteStore.setVoteState(conferenceId, VoteState.IN_PROGRESS);
 
         log.info("라운드 {} 시작. conferenceId={}, duration={}분", roundNumber, conferenceId, duration.toMinutes());
 
@@ -105,6 +106,7 @@ public class RoundTimerService {
 
         // 투표 상태를 대기로 설정
         voteStore.setVoteState(conferenceId, VoteState.WAITING);
+        voteStore.resetSkips(conferenceId);
 
         // 시간 종료 메시지 생성
         RoundMessages.RoundTimeUp message = RoundMessages.RoundTimeUp.of(conferenceId.toString(), roundNumber);

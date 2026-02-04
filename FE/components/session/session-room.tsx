@@ -17,6 +17,7 @@ import {
   AlertCircle,
   Video,
   VideoOff,
+  SkipForward,
 } from "lucide-react"
 import { BalanceGameOverlay } from "@/components/session/balance-game-overlay"
 import {
@@ -43,6 +44,8 @@ import { ChatPanel } from "@/components/session/chat-panel"
 interface SessionRoomProps {
   sessionId: string
   onLeave: () => void
+  /** 종료되었거나 유효하지 않은 세션에 (재)진입 시 호출 → /home으로 이동용 */
+  onInvalidOrEndedSession?: () => void
   externalShowEndConfirm?: boolean
   onExternalConfirmLeave?: () => void
   onExternalCancelLeave?: () => void
@@ -61,6 +64,7 @@ const SILENCE_VOLUME_THRESHOLD = 15
 export function SessionRoom({ 
   sessionId, 
   onLeave,
+  onInvalidOrEndedSession,
   externalShowEndConfirm = false,
   onExternalConfirmLeave,
   onExternalCancelLeave,
@@ -78,6 +82,8 @@ export function SessionRoom({
   const [showConfirmLeave, setShowConfirmLeave] = useState(false)
   const [showEndConfirm, setShowEndConfirm] = useState(false)
   const [showQuestionBank, setShowQuestionBank] = useState(false)
+  const [showSkipRequestModal, setShowSkipRequestModal] = useState(false)
+  const [skipRequestPending, setSkipRequestPending] = useState(false)
   const [pendingLeave, setPendingLeave] = useState(false)
   const [pendingExternalLeave, setPendingExternalLeave] = useState(false)
   const disconnectRatingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -126,9 +132,12 @@ export function SessionRoom({
     remoteVideoRef,
     enabled: !!sessionId && !!user?.id,
     useMock: false,
+    onInvalidSession: onInvalidOrEndedSession,
     onDisconnected: () => {
       setShowVote(false)
       setShowConfirmLeave(false)
+      setShowSkipRequestModal(false)
+      setSkipRequestPending(false)
       setPendingLeave(false)
       toast({
         title: "상대방과의 연결이 종료되었습니다.",
@@ -165,6 +174,8 @@ export function SessionRoom({
     onConferenceEnded: () => {
       setShowVote(false)
       setShowConfirmLeave(false)
+      setShowSkipRequestModal(false)
+      setSkipRequestPending(false)
       setPendingLeave(false)
       setShowRating(true)
     },
@@ -205,15 +216,44 @@ export function SessionRoom({
 
     const handleMessage = (message: import("@/lib/webrtc-signaling").SignalingMessage) => {
       if ("sessionId" in message && message.sessionId !== sessionId) return
+      if ("conferenceId" in message && message.conferenceId && message.conferenceId !== sessionId) return
 
       if (process.env.NODE_ENV === "development") {
         console.log("[BalanceGame] 메시지 수신:", message.type, message)
       }
 
       switch (message.type) {
+        case "round-skip-requested":
+          if (message.requesterId !== user.id) {
+            setShowSkipRequestModal(true)
+          }
+          break
+        case "round-skip-sent":
+          setSkipRequestPending(true)
+          toast({
+            title: "라운드 스킵 요청을 보냈습니다.",
+            description: "상대방의 응답을 기다려 주세요.",
+          })
+          break
+        case "round-skipped":
+          setShowSkipRequestModal(false)
+          setSkipRequestPending(false)
+          toast({
+            title: "라운드가 스킵되었습니다.",
+            description: "다음 라운드로 이동합니다.",
+          })
+          break
+        case "round-skip-declined":
+          setShowSkipRequestModal(false)
+          setSkipRequestPending(false)
+          toast({
+            title: "상대방이 라운드 스킵을 거절했습니다.",
+            description: "현재 라운드를 계속 진행합니다.",
+          })
+          break
         case "balance-invite":
-          // 초대 받음 - 확인 다이얼로그 표시
-          if (message.fromUserId !== user.id) {
+          // 초대 받음 - 확인 다이얼로그 표시 (이미 게임 오버레이가 열려 있으면 무시)
+          if (message.fromUserId !== user.id && !showGame) {
             console.log("[BalanceGame] 초대 받음, 확인 다이얼로그 표시")
             // 기존 타임아웃 정리
             if (balanceInviteTimeoutRef.current) {
@@ -600,6 +640,31 @@ export function SessionRoom({
             </Tooltip>
           </div>
           <div className="flex items-center gap-2">
+            {hasRoundStarted && currentRound < 3 && !showVote && !showRating && !showConfirmLeave && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => signalingClient?.sendRoundSkip(sessionId, user?.id ?? "")}
+                    disabled={skipRequestPending}
+                    className="text-white hover:bg-white/20 flex items-center gap-1.5"
+                  >
+                    <SkipForward className="w-5 h-5" />
+                    <span className="hidden sm:inline text-sm">{skipRequestPending ? "요청 중..." : "라운드 스킵"}</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="bottom"
+                  sideOffset={8}
+                  align="center"
+                  showArrow={false}
+                  className="bg-white text-foreground text-xs font-medium rounded-md px-3 py-1.5"
+                >
+                  상대와 동의 시 현재 라운드를 건너뜁니다
+                </TooltipContent>
+              </Tooltip>
+            )}
             <Button
               variant="ghost"
               size="sm"
@@ -873,6 +938,40 @@ export function SessionRoom({
               }}
             >
               참가하기
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 라운드 스킵 요청 수락/거절 모달 */}
+      <AlertDialog open={showSkipRequestModal} onOpenChange={setShowSkipRequestModal}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>라운드 스킵 요청</AlertDialogTitle>
+            <AlertDialogDescription>
+              상대방이 라운드 스킵을 요청했습니다. 함께 스킵하시겠습니까?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                if (signalingClient && user?.id) {
+                  signalingClient.sendRoundSkipDecline(sessionId, user.id)
+                }
+                setShowSkipRequestModal(false)
+              }}
+            >
+              거절
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (signalingClient && user?.id) {
+                  signalingClient.sendRoundSkip(sessionId, user.id)
+                }
+                setShowSkipRequestModal(false)
+              }}
+            >
+              스킵하기
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
