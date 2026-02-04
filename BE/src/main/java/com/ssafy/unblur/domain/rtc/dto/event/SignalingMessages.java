@@ -129,6 +129,34 @@ public final class SignalingMessages {
     }
 
     /**
+     * 상대방 미디어 상태 (카메라/마이크 켜짐·꺼짐)
+     */
+    @Builder
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record MediaState(
+            String type,
+            String conferenceId,
+            String userId,
+            Boolean videoEnabled,
+            Boolean audioMuted
+    ) {
+        public MediaState {
+            if (type == null) {
+                type = "media-state";
+            }
+        }
+
+        public static MediaState of(String conferenceId, String userId, boolean videoEnabled, boolean audioMuted) {
+            return MediaState.builder()
+                    .conferenceId(conferenceId)
+                    .userId(userId)
+                    .videoEnabled(videoEnabled)
+                    .audioMuted(audioMuted)
+                    .build();
+        }
+    }
+
+    /**
      * 오류 메시지
      */
     @Builder
