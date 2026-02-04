@@ -567,7 +567,10 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
 
         // MediaState 메시지 생성
         SignalingMessages.MediaState mediaMessage = SignalingMessages.MediaState.of(
-                conferenceId.toString(), userId.toString(), videoEnabled, audioMuted);
+                conferenceId.toString(), 
+                userId.toString(), 
+                videoEnabled, 
+                audioMuted);
 
         // 같은 회의의 다른 참가자들에게 미디어 상태 브로드캐스트
         List<UUID> participants = participantStore.getParticipantIds(conferenceId);
