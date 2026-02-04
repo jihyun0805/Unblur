@@ -106,6 +106,7 @@ export function HistoryPage() {
           region: mapRegion(profile.region) ?? prev.region,
           bio: profile.intro ?? prev.bio,
           mbti: profile.mbti ?? prev.mbti,
+          loveDna: profile.loveDna ?? prev.loveDna,
           interests: profile.interestTags ?? prev.interests,
           roundSummaries: profile.roundSummaries?.map((round) => round.summaryText) ?? prev.roundSummaries,
         }
@@ -282,6 +283,7 @@ export function HistoryPage() {
             region: selectedProfile.region,
             bio: selectedProfile.bio,
             mbti: selectedProfile.mbti,
+            loveDna: selectedProfile.loveDna,
             interests: selectedProfile.interests,
             roundSummaries: selectedProfile.roundSummaries,
           }}

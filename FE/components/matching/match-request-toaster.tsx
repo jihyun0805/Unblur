@@ -60,6 +60,7 @@ export function MatchRequestToaster() {
     gender?: string | null
     region?: string | null
     mbti?: string | null
+    loveDna?: string | null
     intro?: string | null
     interestTags?: string[] | null
     clarityScore?: number | null
@@ -72,6 +73,7 @@ export function MatchRequestToaster() {
       gender: profile.gender ? profile.gender.toLowerCase() : undefined,
       region,
       mbti: profile.mbti ?? undefined,
+      loveDna: profile.loveDna ?? undefined,
       bio: profile.intro ?? undefined,
       interests: profile.interestTags ?? [],
     }
@@ -138,6 +140,7 @@ export function MatchRequestToaster() {
           gender?: string | null
           region?: string | null
           mbti?: string | null
+          loveDna?: string | null
           intro?: string | null
           interestTags?: string[] | null
           clarityScore?: number | null
