@@ -20,7 +20,11 @@ export const metadata: Metadata = {
   description:
     "블러 처리된 화면에서 시작하는 특별한 소개팅. 시간이 지날수록 서로를 알아가며, 진정한 대화를 나눠보세요.",
   icons: {
-    icon: "/favicon.ico",
+    icon: [
+      { url: "/favicon.ico", media: "(prefers-color-scheme: light)" },
+      { url: "/favicon-back.ico", media: "(prefers-color-scheme: dark)" },
+      { url: "/favicon.ico" },
+    ],
   },
 }
 
