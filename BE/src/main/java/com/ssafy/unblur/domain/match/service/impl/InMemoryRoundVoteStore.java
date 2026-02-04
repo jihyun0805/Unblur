@@ -3,6 +3,7 @@ package com.ssafy.unblur.domain.match.service.impl;
 import com.ssafy.unblur.domain.match.model.VoteChoice;
 import com.ssafy.unblur.domain.match.model.VoteState;
 import com.ssafy.unblur.domain.match.service.RoundVoteStore;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
@@ -13,6 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * 인메모리 라운드 투표 저장소 구현체
  */
+@Slf4j
 @Component
 public class InMemoryRoundVoteStore implements RoundVoteStore {
 
@@ -32,6 +34,8 @@ public class InMemoryRoundVoteStore implements RoundVoteStore {
         } else {
             data.endVoterIds.add(userId);
         }
+
+        log.debug("라운드 투표 저장. conferenceId={}, userId={}, vote={}", conferenceId, userId, vote);
     }
 
     @Override
@@ -72,13 +76,16 @@ public class InMemoryRoundVoteStore implements RoundVoteStore {
             data.endVoterIds.clear();
             data.skipVoterIds.clear();
             data.state = VoteState.WAITING;
+            log.debug("라운드 투표 초기화. conferenceId={}", conferenceId);
         }
     }
 
     @Override
     public boolean requestSkip(UUID conferenceId, UUID userId) {
         ConferenceVoteData data = conferenceVotes.computeIfAbsent(conferenceId, k -> new ConferenceVoteData());
-        return data.skipVoterIds.add(userId);
+        boolean added = data.skipVoterIds.add(userId);
+        log.debug("라운드 스킵 요청 저장. conferenceId={}, userId={}, added={}", conferenceId, userId, added);
+        return added;
     }
 
     @Override
@@ -92,6 +99,7 @@ public class InMemoryRoundVoteStore implements RoundVoteStore {
         ConferenceVoteData data = conferenceVotes.get(conferenceId);
         if (data != null) {
             data.skipVoterIds.clear();
+            log.debug("라운드 스킵 투표 초기화. conferenceId={}", conferenceId);
         }
     }
 
@@ -111,11 +119,13 @@ public class InMemoryRoundVoteStore implements RoundVoteStore {
     public void setVoteState(UUID conferenceId, VoteState state) {
         ConferenceVoteData data = conferenceVotes.computeIfAbsent(conferenceId, k -> new ConferenceVoteData());
         data.state = state;
+        log.debug("라운드 투표 상태 변경. conferenceId={}, state={}", conferenceId, state);
     }
 
     @Override
     public void clear(UUID conferenceId) {
         conferenceVotes.remove(conferenceId);
+        log.debug("라운드 투표 저장소 정리. conferenceId={}", conferenceId);
     }
 
     /**
