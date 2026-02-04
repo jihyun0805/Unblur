@@ -133,6 +133,19 @@ export interface SignupResponse {
   email: string
 }
 
+export interface PasswordResetCodeRequest {
+  email: string
+}
+
+export interface PasswordResetConfirmRequest {
+  email: string
+  code: string
+}
+
+export interface PasswordResetRequest extends PasswordResetConfirmRequest {
+  newPassword: string
+}
+
 /**
  * 로그인 API
  * @param email 이메일
@@ -343,5 +356,86 @@ export async function logout(): Promise<void> {
 
   if (!response.ok) {
     throw new Error(`로그아웃 실패: ${response.status}`)
+  }
+}
+
+/**
+ * 비밀번호 재설정 인증 코드 요청
+ */
+export async function requestPasswordResetCode(email: string): Promise<void> {
+  const response = await fetch(resolveApiUrl("/api/v1/auth/password/reset/code"), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email } satisfies PasswordResetCodeRequest),
+  })
+
+  if (!response.ok) {
+    const err = await parseApiError(response)
+    throw err
+  }
+
+  const baseResponse: BaseResponse<null> = await response.json()
+  if (!baseResponse.isSuccess) {
+    throw new ApiError(
+      baseResponse.errorCode ?? "COMMON-002",
+      baseResponse.message ?? "인증 코드 전송에 실패했습니다.",
+      baseResponse.statusCode
+    )
+  }
+}
+
+/**
+ * 비밀번호 재설정 인증 코드 확인
+ */
+export async function confirmPasswordResetCode(email: string, code: string): Promise<void> {
+  const response = await fetch(resolveApiUrl("/api/v1/auth/password/reset/confirm"), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email, code } satisfies PasswordResetConfirmRequest),
+  })
+
+  if (!response.ok) {
+    const err = await parseApiError(response)
+    throw err
+  }
+
+  const baseResponse: BaseResponse<null> = await response.json()
+  if (!baseResponse.isSuccess) {
+    throw new ApiError(
+      baseResponse.errorCode ?? "COMMON-002",
+      baseResponse.message ?? "인증 코드 확인에 실패했습니다.",
+      baseResponse.statusCode
+    )
+  }
+}
+
+/**
+ * 비밀번호 재설정
+ */
+export async function resetPassword(email: string, code: string, newPassword: string): Promise<void> {
+  const response = await fetch(resolveApiUrl("/api/v1/auth/password/reset"), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email, code, newPassword } satisfies PasswordResetRequest),
+  })
+
+  if (!response.ok) {
+    const err = await parseApiError(response)
+    throw err
+  }
+
+  const baseResponse: BaseResponse<null> = await response.json()
+  if (!baseResponse.isSuccess) {
+    throw new ApiError(
+      baseResponse.errorCode ?? "COMMON-002",
+      baseResponse.message ?? "비밀번호 재설정에 실패했습니다.",
+      baseResponse.statusCode
+    )
   }
 }

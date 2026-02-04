@@ -4,6 +4,8 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { LoginModal } from "@/components/auth/login-modal"
 import { RegisterModal } from "@/components/auth/register/register-modal"
+import { PasswordResetModal } from "@/components/auth/password-reset-modal"
+import { EmailVerificationModal } from "@/components/auth/email-verification-modal"
 import { Users, Clock, Shield, Eye, MessageCircle, Heart, Zap, User2 } from "lucide-react"
 import Image from "next/image"
 import { Header } from "@/components/common/header"
@@ -12,6 +14,9 @@ import { BackgroundLayout } from "@/components/common/background-layout"
 export function LandingPage() {
   const [showLogin, setShowLogin] = useState(false)
   const [showRegister, setShowRegister] = useState(false)
+  const [showPasswordReset, setShowPasswordReset] = useState(false)
+  const [showEmailVerification, setShowEmailVerification] = useState(false)
+  const [passwordResetEmail, setPasswordResetEmail] = useState("")
   const [showIntro, setShowIntro] = useState(true)
   const [introSharp, setIntroSharp] = useState(false)
   const [heroParallax, setHeroParallax] = useState({ x: 0, y: 0 })
@@ -370,12 +375,33 @@ export function LandingPage() {
             setShowLogin(false)
             setShowRegister(true)
           }}
+          onOpenPasswordReset={() => {
+            setShowLogin(false)
+            setShowPasswordReset(true)
+          }}
         />
         <RegisterModal
           open={showRegister}
           onOpenChange={setShowRegister}
           onSwitchToLogin={() => {
             setShowRegister(false)
+            setShowLogin(true)
+          }}
+        />
+        <PasswordResetModal
+          open={showPasswordReset}
+          onOpenChange={setShowPasswordReset}
+          onOpenVerification={(email) => {
+            setPasswordResetEmail(email)
+            setShowEmailVerification(true)
+          }}
+        />
+        <EmailVerificationModal
+          open={showEmailVerification}
+          onOpenChange={setShowEmailVerification}
+          email={passwordResetEmail}
+          onComplete={() => {
+            setShowEmailVerification(false)
             setShowLogin(true)
           }}
         />
