@@ -7,7 +7,6 @@ import com.ssafy.unblur.domain.auth.model.User;
 import com.ssafy.unblur.domain.auth.repository.EmailVerificationCodeRepository;
 import com.ssafy.unblur.domain.auth.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -16,7 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class EmailVerificationService {
@@ -35,10 +33,8 @@ public class EmailVerificationService {
 
     @Transactional
     public void sendPasswordResetCode(String email) {
-        log.info("비밀번호 재설정 코드 요청 수신. email={}", email);
         validateEmailFormat(email);
         if (userRepository.findByEmail(email).isEmpty()) {
-            log.info("비밀번호 재설정 코드 요청: 사용자 미존재로 종료. email={}", email);
             return;
         }
 
@@ -50,52 +46,41 @@ public class EmailVerificationService {
                 EmailVerificationCode.create(email, code, expiresAt)
         );
 
-        log.info("비밀번호 재설정 코드 저장 완료. email={}, expiresAt={}", email, expiresAt);
         emailService.sendPasswordResetCode(email, code);
-        log.info("비밀번호 재설정 코드 메일 발송 완료 요청. email={}", email);
     }
 
     @Transactional
     public void confirmPasswordResetCode(String email, String code) {
-        log.info("비밀번호 재설정 코드 검증 요청 수신. email={}, code={}", email, code);
         EmailVerificationCode verificationCode = getLatestCode(email);
 
         if (verificationCode.isExpired(LocalDateTime.now())) {
-            log.warn("비밀번호 재설정 코드 만료. email={}", email);
             throw new BaseException(ErrorCode.EMAIL_VERIFICATION_CODE_EXPIRED);
         }
 
         if (!verificationCode.getCode().equals(code)) {
-            log.warn("비밀번호 재설정 코드 불일치. email={}", email);
             throw new BaseException(ErrorCode.EMAIL_VERIFICATION_CODE_INVALID);
         }
 
         verificationCode.markVerified(LocalDateTime.now());
-        log.info("비밀번호 재설정 코드 검증 완료. email={}", email);
     }
 
     @Transactional
     public void resetPassword(String email, String code, String newPassword) {
-        log.info("비밀번호 재설정 요청 수신. email={}, code={}", email, code);
         EmailVerificationCode verificationCode = getLatestCode(email);
 
         if (verificationCode.isExpired(LocalDateTime.now())) {
-            log.warn("비밀번호 재설정 코드 만료. email={}", email);
             throw new BaseException(ErrorCode.EMAIL_VERIFICATION_CODE_EXPIRED);
         }
 
         if (!verificationCode.getCode().equals(code)) {
-            log.warn("비밀번호 재설정 코드 불일치. email={}", email);
             throw new BaseException(ErrorCode.EMAIL_VERIFICATION_CODE_INVALID);
         }
 
         if (!verificationCode.isVerified()) {
-            log.warn("비밀번호 재설정 코드 미검증 상태. email={}", email);
             throw new BaseException(ErrorCode.EMAIL_VERIFICATION_NOT_CONFIRMED);
         }
 
         if (verificationCode.isUsed()) {
-            log.warn("비밀번호 재설정 코드 이미 사용됨. email={}", email);
             throw new BaseException(ErrorCode.EMAIL_VERIFICATION_ALREADY_USED);
         }
 
@@ -104,7 +89,6 @@ public class EmailVerificationService {
 
         user.updatePassword(passwordEncoder.encode(newPassword));
         verificationCode.markUsed(LocalDateTime.now());
-        log.info("비밀번호 재설정 완료. email={}, userId={}", email, user.getId());
     }
 
     private EmailVerificationCode getLatestCode(String email) {

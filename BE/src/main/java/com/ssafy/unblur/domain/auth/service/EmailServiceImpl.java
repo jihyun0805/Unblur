@@ -26,7 +26,6 @@ public class EmailServiceImpl implements EmailService {
     @Override
     public void sendPasswordResetCode(String email, String code) {
         try {
-            log.info("메일 발송 시작. to={}, from={}", email, fromEmail);
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, StandardCharsets.UTF_8.name());
 
@@ -38,7 +37,6 @@ public class EmailServiceImpl implements EmailService {
             helper.setFrom(new InternetAddress(fromEmail, "UNBLUR"));
 
             mailSender.send(message);
-            log.info("메일 발송 완료. to={}", email);
         } catch (Exception e) {
             log.error("이메일 발송 실패: {}", e.getMessage(), e);
             throw new BaseException(ErrorCode.INTERNAL_SERVER_ERROR);
