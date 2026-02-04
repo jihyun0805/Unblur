@@ -137,6 +137,14 @@ export function RegisterStep2({ formData, updateFormData, onNext, onPrev }: Regi
     }
     onNext()
   }
+  const isStepComplete =
+    birthInput.length === 6 &&
+    !birthError &&
+    !!formData.birthYear &&
+    !!formData.birthMonth &&
+    !!formData.birthDay &&
+    !!formData.gender &&
+    !!formData.region
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 mt-4">
@@ -193,7 +201,14 @@ export function RegisterStep2({ formData, updateFormData, onNext, onPrev }: Regi
         <Button type="button" variant="outline" onClick={onPrev} className="flex-1">
           이전
         </Button>
-        <Button type="submit" className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90">
+        <Button
+          type="submit"
+          className={`flex-1 transition ${
+            isStepComplete
+              ? "bg-primary text-primary-foreground hover:bg-primary/90"
+              : "bg-primary/40 text-primary-foreground hover:bg-primary/50"
+          }`}
+        >
           다음
         </Button>
       </div>

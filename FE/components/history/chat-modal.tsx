@@ -25,14 +25,15 @@ export function ChatModal({ open, onOpenChange, partner, isBlocked = false }: Ch
   const [newMessage, setNewMessage] = useState("")
   const [pendingMessage, setPendingMessage] = useState<ChatMessage | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const endRef = useRef<HTMLDivElement>(null)
+  const [isAtBottom, setIsAtBottom] = useState(true)
   const { toast } = useToast()
   const { connectionState } = useChatContext()
   const { user } = useAuth()
 
   const scrollToBottomRef = useRef<(() => void) | null>(null)
   scrollToBottomRef.current = () => {
-    const el = scrollContainerRef.current
-    if (el) el.scrollTop = 0 
+    endRef.current?.scrollIntoView({ block: "end" })
   }
   const scrollToBottom = () => {
     requestAnimationFrame(() => {
@@ -46,7 +47,7 @@ export function ChatModal({ open, onOpenChange, partner, isBlocked = false }: Ch
     isSending: isSendingMessage,
     sendMessage: sendChatMessage,
     markAsRead: markChatAsRead,
-    refreshMessages,
+    loadAllMessages,
   } = useChat({
     conferenceId: partner.id,
     enabled: open && !isBlocked,
@@ -54,12 +55,12 @@ export function ChatModal({ open, onOpenChange, partner, isBlocked = false }: Ch
     panelOpen: open,
   })
 
-  // 모달 열릴 때마다 최신 메시지 다시 가져오기 
+  // 모달 열릴 때마다 전체 메시지 로드
   useEffect(() => {
     if (open && !isBlocked) {
-      refreshMessages()
+      loadAllMessages()
     }
-  }, [open, isBlocked, refreshMessages])
+  }, [open, isBlocked, loadAllMessages])
 
   // 표시용 메시지 목록: 낙관적 메시지 추가, 서버 메시지와 중복 시 pending 제외
   const displayMessages: ChatMessage[] = useMemo(() => {
@@ -77,8 +78,8 @@ export function ChatModal({ open, onOpenChange, partner, isBlocked = false }: Ch
   useEffect(() => {
     if (!open || displayMessages.length <= prevLengthRef.current) return
     prevLengthRef.current = displayMessages.length
-    scrollToBottom()
-  }, [open, displayMessages.length])
+    if (isAtBottom) scrollToBottom()
+  }, [open, displayMessages.length, isAtBottom])
 
   useEffect(() => {
     if (open && !isBlocked) {
@@ -91,6 +92,7 @@ export function ChatModal({ open, onOpenChange, partner, isBlocked = false }: Ch
     if (open) {
       prevLengthRef.current = displayMessages.length
       scrollToBottom()
+      setIsAtBottom(true)
     }
   }, [open])
 
@@ -149,7 +151,13 @@ export function ChatModal({ open, onOpenChange, partner, isBlocked = false }: Ch
 
         <div
           ref={scrollContainerRef}
-          className="flex-1 flex flex-col-reverse overflow-y-auto p-4 space-y-3 space-y-reverse min-h-0"
+          onScroll={() => {
+            if (!scrollContainerRef.current) return
+            const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current
+            const distanceFromBottom = scrollHeight - (scrollTop + clientHeight)
+            setIsAtBottom(distanceFromBottom < 40)
+          }}
+          className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0"
         >
           {isLoadingMessages && displayMessages.length === 0 ? (
             <div className="flex items-center justify-center py-8 flex-shrink-0">
@@ -164,7 +172,7 @@ export function ChatModal({ open, onOpenChange, partner, isBlocked = false }: Ch
               </div>
             </div>
           ) : (
-            [...displayMessages].reverse().map((msg) => (
+            displayMessages.map((msg) => (
               <div
                 key={msg.id}
                 className={`flex items-end gap-2 flex-shrink-0 ${msg.isMine ? "justify-end" : "justify-start"}`}
@@ -182,6 +190,7 @@ export function ChatModal({ open, onOpenChange, partner, isBlocked = false }: Ch
               </div>
             ))
           )}
+          <div ref={endRef} />
         </div>
 
         <div className="p-4 border-t border-border flex-shrink-0">

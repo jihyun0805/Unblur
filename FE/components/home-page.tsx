@@ -135,7 +135,10 @@ export function HomePage() {
         </div>
 
         <div className="rounded-2xl bg-white border border-border shadow-sm p-4 sm:p-6">
-          <h3 className="font-semibold mb-4">소개팅 팁</h3>
+          <h3 className="font-semibold mb-2">소개팅 팁</h3>
+          <p className="mb-4 text-xs sm:text-sm text-red-400">
+            카메라 및 마이크 권한을 해제해야 매칭이 원활하게 진행되며, 권한이 막혀 있으면 매칭이 취소될 수 있습니다.
+          </p>
           <ul className="space-y-3 text-sm text-muted-foreground">
             <li className="flex items-start gap-2">
               <span className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -147,7 +150,7 @@ export function HomePage() {
               <span className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
                 <span className="text-xs font-medium">2</span>
               </span>
-              <span className="text-xs sm:text-sm">어색할 때는 밸런스 게임을 활용해보세요. 자연스럽게 대화가 이어져요.</span>
+              <span className="text-xs sm:text-sm">어색할 때는 밸런스 게임 및 질문사전을 활용해보세요. 자연스럽게 대화가 이어져요.</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">

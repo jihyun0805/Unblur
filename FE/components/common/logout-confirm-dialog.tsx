@@ -37,7 +37,7 @@ export function LogoutConfirmDialog({
             </Button>
             <Button
               onClick={handleConfirm}
-              className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+              className="flex-1 !bg-primary/40 text-primary-foreground hover:!bg-primary/90 transition"
             >
               로그아웃
             </Button>

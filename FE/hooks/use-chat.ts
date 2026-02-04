@@ -30,6 +30,7 @@ interface UseChatReturn {
   lastReadAt: Date | null
   sendMessage: (content: string) => Promise<void>
   loadMoreMessages: () => Promise<void>
+  loadAllMessages: () => Promise<void>
   markAsRead: () => void
   refreshMessages: () => Promise<void>
 }
@@ -171,6 +172,53 @@ export function useChat({
   }, [hasMore, isLoading, currentPage, loadMessages])
 
   /**
+   * 전체 메시지 로드 (모든 페이지)
+   */
+  const loadAllMessages = useCallback(async () => {
+    if (isLoadingRef.current) return
+
+    try {
+      isLoadingRef.current = true
+      setIsLoading(true)
+      setError(null)
+
+      let page = 0
+      let totalPages = 1
+      const allMessages: ChatMessage[] = []
+      const seen = new Set<string>()
+
+      do {
+        const response = await chatApi.getChatMessages(conferenceId, page, pageSize)
+        const pageMessages = response.items.map(convertToChatMessage)
+        for (const message of pageMessages) {
+          if (seen.has(message.id)) continue
+          seen.add(message.id)
+          allMessages.push(message)
+        }
+        totalPages = response.totalPages
+        page += 1
+      } while (page < totalPages)
+
+      const sorted = allMessages.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+      setMessages(sorted)
+      setCurrentPage(Math.max(0, totalPages - 1))
+      setHasMore(false)
+    } catch (err: any) {
+      console.error("전체 메시지 로드 실패:", err)
+      if (err.message === "AUTH_FORBIDDEN" || err.message?.includes("AUTH_FORBIDDEN")) {
+        setMessages([])
+        setError(null)
+        setHasMore(false)
+      } else {
+        setError(err.message || "메시지를 불러오는데 실패했습니다")
+      }
+    } finally {
+      isLoadingRef.current = false
+      setIsLoading(false)
+    }
+  }, [conferenceId, pageSize, convertToChatMessage])
+
+  /**
    * 메시지 새로고침
    */
   const refreshMessages = useCallback(async () => {
@@ -282,6 +330,7 @@ export function useChat({
     lastReadAt,
     sendMessage,
     loadMoreMessages,
+    loadAllMessages,
     markAsRead,
     refreshMessages,
   }

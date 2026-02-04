@@ -121,7 +121,11 @@ export function LoginModal({ open, onOpenChange, onSwitchToRegister }: LoginModa
 
           <Button
             type="submit"
-            className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+            className={`w-full transition ${
+              email.trim() && password.trim()
+                ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                : "bg-primary/40 text-primary-foreground hover:bg-primary/50"
+            }`}
             disabled={isLoading}
           >
             {isLoading ? (

@@ -18,6 +18,9 @@ export function RegisterStep3({ formData, updateFormData, onNext, onPrev }: Regi
     e.preventDefault()
     onNext()
   }
+  const isStepComplete = Boolean(
+    formData.dateStyle && formData.contactStyle && formData.conflictStyle && formData.spending
+  )
 
   return (
     <RegisterFormWrapper
@@ -25,6 +28,7 @@ export function RegisterStep3({ formData, updateFormData, onNext, onPrev }: Regi
       description="매칭시에 사용되는 정보입니다. 타인에게는 노출되지 않습니다."
       onSubmit={handleSubmit}
       onPrev={onPrev}
+      submitEmphasized={isStepComplete}
     >
       <RadioGroupField
         label={SURVEY_QUESTIONS.dateStyle.question}

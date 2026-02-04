@@ -52,6 +52,15 @@ export function RegisterStep1({
     onNext()
   }
   const isEmailValid = formData.email ? validateEmail(formData.email) : true
+  const isStepComplete =
+    nicknameAvailable === true &&
+    emailAvailable === true &&
+    passwordValidation.isValid &&
+    !!formData.passwordConfirm &&
+    formData.password === formData.passwordConfirm &&
+    isEmailValid &&
+    !!formData.nickname.trim() &&
+    !!formData.email.trim()
 
   const NICKNAME_MAX_LENGTH = 10
   const normalizeNickname = (value: string) => {
@@ -186,7 +195,14 @@ export function RegisterStep1({
           <p className="text-sm text-destructive">비밀번호가 일치하지 않습니다.</p>
         )}
       </div>
-      <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
+      <Button
+        type="submit"
+        className={`w-full transition ${
+          isStepComplete
+            ? "bg-primary text-primary-foreground hover:bg-primary/90"
+            : "bg-primary/40 text-primary-foreground hover:bg-primary/50"
+        }`}
+      >
         다음
       </Button>
       <div className="text-center text-sm text-muted-foreground">

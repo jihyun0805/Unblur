@@ -18,6 +18,7 @@ export function RegisterStep7({ formData, updateFormData, onNext, onPrev }: Regi
     e.preventDefault()
     onNext()
   }
+  const isStepComplete = formData.interests.length > 0
 
   return (
     <RegisterFormWrapper
@@ -26,6 +27,7 @@ export function RegisterStep7({ formData, updateFormData, onNext, onPrev }: Regi
       onSubmit={handleSubmit}
       onPrev={onPrev}
       className="space-y-4 mt-4"
+      submitEmphasized={isStepComplete}
     >
       <CheckboxGroupField
         label={SURVEY_QUESTIONS.interests.question}
