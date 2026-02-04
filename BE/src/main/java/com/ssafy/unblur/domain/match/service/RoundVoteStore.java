@@ -68,6 +68,38 @@ public interface RoundVoteStore {
     void resetVotes(UUID conferenceId);
 
     /**
+     * 스킵 투표를 등록하는 메서드
+     *
+     * @param conferenceId 세션 ID
+     * @param userId       사용자 ID
+     * @return 신규 등록이면 true
+     */
+    boolean requestSkip(UUID conferenceId, UUID userId);
+
+    /**
+     * 스킵 투표자 수를 조회하는 메서드
+     *
+     * @param conferenceId 세션 ID
+     * @return 스킵 투표자 수
+     */
+    int getSkipVoterCount(UUID conferenceId);
+
+    /**
+     * 스킵 투표를 초기화하는 메서드
+     *
+     * @param conferenceId 세션 ID
+     */
+    void resetSkips(UUID conferenceId);
+
+    /**
+     * 스킵 투표자 ID 목록을 조회하는 메서드
+     *
+     * @param conferenceId 세션 ID
+     * @return 스킵 투표자 ID 목록
+     */
+    Set<UUID> getSkipVoterIds(UUID conferenceId);
+
+    /**
      * 세션의 투표 상태를 조회하는 메서드
      *
      * @param conferenceId 세션 ID

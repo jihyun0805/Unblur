@@ -70,8 +70,35 @@ public class InMemoryRoundVoteStore implements RoundVoteStore {
         if (data != null) {
             data.proceedVoterIds.clear();
             data.endVoterIds.clear();
+            data.skipVoterIds.clear();
             data.state = VoteState.WAITING;
         }
+    }
+
+    @Override
+    public boolean requestSkip(UUID conferenceId, UUID userId) {
+        ConferenceVoteData data = conferenceVotes.computeIfAbsent(conferenceId, k -> new ConferenceVoteData());
+        return data.skipVoterIds.add(userId);
+    }
+
+    @Override
+    public int getSkipVoterCount(UUID conferenceId) {
+        ConferenceVoteData data = conferenceVotes.get(conferenceId);
+        return data == null ? 0 : data.skipVoterIds.size();
+    }
+
+    @Override
+    public void resetSkips(UUID conferenceId) {
+        ConferenceVoteData data = conferenceVotes.get(conferenceId);
+        if (data != null) {
+            data.skipVoterIds.clear();
+        }
+    }
+
+    @Override
+    public Set<UUID> getSkipVoterIds(UUID conferenceId) {
+        ConferenceVoteData data = conferenceVotes.get(conferenceId);
+        return data == null ? Set.of() : Set.copyOf(data.skipVoterIds);
     }
 
     @Override
@@ -105,6 +132,11 @@ public class InMemoryRoundVoteStore implements RoundVoteStore {
          * END 투표자 ID 목록
          */
         final Set<UUID> endVoterIds = ConcurrentHashMap.newKeySet();
+
+        /**
+         * 스킵 투표자 ID 목록
+         */
+        final Set<UUID> skipVoterIds = ConcurrentHashMap.newKeySet();
 
         /**
          * 투표 상태

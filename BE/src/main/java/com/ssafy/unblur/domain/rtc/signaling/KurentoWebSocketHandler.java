@@ -107,6 +107,8 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
                 case "balance-response" -> handleBalanceResponse(session, payload);
                 case "balance-select" -> handleBalanceSelect(session, payload);
                 case "vote" -> handleVote(session, payload);
+                case "round-skip" -> handleRoundSkip(session, payload);
+                case "round-skip-decline" -> handleRoundSkipDecline(session, payload);
                 case "leave" -> handleLeave(session, payload);
                 default -> {
                     SignalingMessages.Error errorMessage = SignalingMessages.Error.builder()
@@ -445,6 +447,44 @@ public class KurentoWebSocketHandler extends TextWebSocketHandler {
                 .build();
 
         webSocketMessageSender.send(session, voteReceivedMessage);
+    }
+
+    /**
+     * 라운드 스킵 요청을 처리하는 메서드
+     *
+     * @param session WebSocket 세션
+     * @param payload 요청 페이로드
+     * @throws IOException 전송 중 오류
+     */
+    private void handleRoundSkip(WebSocketSession session, JsonNode payload) throws IOException {
+        // 방 ID 및 사용자 ID 추출
+        UUID conferenceId = parseUuid(session, payload, "conferenceId");
+        UUID userId = parseUuid(session, payload, "userId");
+        if (conferenceId == null || userId == null) {
+            return;
+        }
+
+        // 라운드 스킵 요청 처리
+        roundVoteService.requestSkip(conferenceId, userId);
+    }
+
+    /**
+     * 라운드 스킵 거절 요청을 처리하는 메서드
+     *
+     * @param session WebSocket 세션
+     * @param payload 요청 페이로드
+     * @throws IOException 전송 중 오류
+     */
+    private void handleRoundSkipDecline(WebSocketSession session, JsonNode payload) throws IOException {
+        // 방 ID 및 사용자 ID 추출
+        UUID conferenceId = parseUuid(session, payload, "conferenceId");
+        UUID userId = parseUuid(session, payload, "userId");
+        if (conferenceId == null || userId == null) {
+            return;
+        }
+
+        // 라운드 스킵 거절 처리
+        roundVoteService.declineSkip(conferenceId, userId);
     }
 
     /**

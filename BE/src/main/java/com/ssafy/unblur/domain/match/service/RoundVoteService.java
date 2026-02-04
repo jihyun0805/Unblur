@@ -106,6 +106,13 @@ public class RoundVoteService {
 
             log.info("투표 처리. conferenceId={}, userId={}, vote={}, state={}", conferenceId, userId, vote, currentState);
 
+            // 라운드 진행 중인 상태인 경우
+            if (currentState == VoteState.IN_PROGRESS) {
+                log.warn("라운드 진행 중 투표 시도. conferenceId={}, userId={}", conferenceId, userId);
+                return;
+            }
+
+            // 이미 완료된 상태인 경우
             if (currentState == VoteState.COMPLETED) {
                 log.info("이미 투표 완료 상태입니다. conferenceId={}", conferenceId);
                 return;
@@ -124,10 +131,164 @@ public class RoundVoteService {
             if (voteCount == 1) {
                 voteStore.setVoteState(conferenceId, VoteState.PENDING);
 
+                // 상대방에게 투표 완료 알림
+                RoundMessages.PartnerVoted message = RoundMessages.PartnerVoted.of(conferenceId.toString());
+                for (UUID participantId : participants) {
+                    if (!participantId.equals(userId)) {
+                        eventSender.publish(participantId, WsEventType.PARTNER_VOTED, message);
+                    }
+                }
+
             } else if (voteCount >= 2) {
                 voteStore.setVoteState(conferenceId, VoteState.COMPLETED);
                 processVoteResult(conferenceId, participants);
             }
+
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    /**
+     * 라운드 스킵 요청 처리하는 메서드
+     *
+     * @param conferenceId 세션 ID
+     * @param userId       사용자 ID
+     */
+    public void requestSkip(UUID conferenceId, UUID userId) {
+        // 동시성 제어를 위한 락 획득
+        ReentrantLock lock = voteLocks.computeIfAbsent(conferenceId, id -> new ReentrantLock());
+        lock.lock();
+
+        try {
+            // 현재 투표 상태 확인
+            VoteState currentState = voteStore.getVoteState(conferenceId);
+            if (currentState != VoteState.IN_PROGRESS) {
+                log.warn("스킵 요청 불가(상태). conferenceId={}, userId={}, state={}", conferenceId, userId, currentState);
+                return;
+            }
+
+            // 세션 정보 조회
+            Conference conference = conferenceRepository.findById(conferenceId).orElse(null);
+            if (conference == null) {
+                log.warn("세션을 찾을 수 없습니다. conferenceId={}", conferenceId);
+                return;
+            }
+
+            // 현재 라운드 확인
+            int currentRound = conference.getCurrentRound();
+            if (currentRound >= MAX_ROUND) {
+                log.info("스킵 요청 불가(라운드). conferenceId={}, round={}", conferenceId, currentRound);
+                return;
+            }
+
+            // 참가자 확인
+            List<UUID> participants = timerService.getParticipants(conferenceId);
+            if (participants.isEmpty() || !participants.contains(userId)) {
+                log.warn("스킵 요청 대상 아님. conferenceId={}, userId={}", conferenceId, userId);
+                return;
+            }
+
+            // 스킵 요청 등록
+            boolean added = voteStore.requestSkip(conferenceId, userId);
+            if (!added) {
+                log.debug("이미 스킵 요청한 사용자. conferenceId={}, userId={}", conferenceId, userId);
+                return;
+            }
+
+            // 스킵 요청 메시지 생성
+            RoundMessages.RoundSkipRequested skipRequested = RoundMessages.RoundSkipRequested.of(
+                    conferenceId.toString(),
+                    userId.toString()
+            );
+
+            // 스킵 요청 전송 메시지 생성
+            RoundMessages.RoundSkipSent skipSent = RoundMessages.RoundSkipSent.of(conferenceId.toString());
+
+            // 모든 참가자에게 알림 전송
+            for (UUID participantId : participants) {
+                if (participantId.equals(userId)) {
+                    eventSender.publish(participantId, WsEventType.ROUND_SKIP_SENT, skipSent);
+                } else {
+                    eventSender.publish(participantId, WsEventType.ROUND_SKIP_REQUESTED, skipRequested);
+                }
+            }
+
+            // 스킵 찬성자 수 확인
+            int skipCount = voteStore.getSkipVoterCount(conferenceId);
+            if (skipCount >= participants.size()) {
+                // 타이머 취소 및 다음 라운드로 진행
+                timerService.cancelTimer(conferenceId);
+
+                // 스킵 처리 메시지 생성
+                RoundMessages.RoundSkipped skippedMessage = RoundMessages.RoundSkipped.of(
+                        conferenceId.toString(),
+                        currentRound,
+                        currentRound + 1
+                );
+
+                // 모든 참가자에게 라운드 스킵 알림 전송
+                for (UUID participantId : participants) {
+                    eventSender.publish(participantId, WsEventType.ROUND_SKIPPED, skippedMessage);
+                }
+
+                // 다음 라운드로 진행
+                advanceToNextRound(conferenceId, participants);
+            }
+
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    /**
+     * 라운드 스킵 거절 처리하는 메서드
+     *
+     * @param conferenceId 세션 ID
+     * @param userId       사용자 ID
+     */
+    public void declineSkip(UUID conferenceId, UUID userId) {
+        // 동시성 제어를 위한 락 획득
+        ReentrantLock lock = voteLocks.computeIfAbsent(conferenceId, id -> new ReentrantLock());
+        lock.lock();
+
+        try {
+            // 현재 투표 상태 확인
+            VoteState currentState = voteStore.getVoteState(conferenceId);
+            if (currentState != VoteState.IN_PROGRESS) {
+                log.warn("스킵 거절 불가(상태). conferenceId={}, userId={}, state={}", conferenceId, userId, currentState);
+                return;
+            }
+
+            // 참가자 확인
+            List<UUID> participants = timerService.getParticipants(conferenceId);
+            if (participants.isEmpty() || !participants.contains(userId)) {
+                log.warn("스킵 거절 대상 아님. conferenceId={}, userId={}", conferenceId, userId);
+                return;
+            }
+
+            // 스킵 거절 대상자 조회
+            Set<UUID> skipVoterIds = voteStore.getSkipVoterIds(conferenceId);
+            if (skipVoterIds.isEmpty() || (skipVoterIds.size() == 1 && skipVoterIds.contains(userId))) {
+                log.warn("스킵 거절 대상 요청 없음. conferenceId={}, userId={}", conferenceId, userId);
+                return;
+            }
+
+            // 스킵 거절 메시지 생성
+            RoundMessages.RoundSkipDeclined declinedMessage = RoundMessages.RoundSkipDeclined.of(
+                    conferenceId.toString(),
+                    userId.toString()
+            );
+
+            // 스킵 거절 알림 전송
+            for (UUID participantId : participants) {
+                if (!participantId.equals(userId)) {
+                    eventSender.publish(participantId, WsEventType.ROUND_SKIP_DECLINED, declinedMessage);
+                }
+            }
+
+            // 스킵 투표 초기화
+            voteStore.resetSkips(conferenceId);
 
         } finally {
             lock.unlock();
@@ -264,6 +425,10 @@ public class RoundVoteService {
         // 종료 선택자에게 재확인 요청
         RoundMessages.VoteConfirmRequest endVoterMessage = RoundMessages.VoteConfirmRequest.of(conferenceId.toString());
         eventSender.publish(endVoter, WsEventType.VOTE_CONFIRM_REQUEST, endVoterMessage);
+
+        // 진행 선택자에게 대기 안내
+        RoundMessages.VoteWaitingConfirm proceedVoterMessage = RoundMessages.VoteWaitingConfirm.of(conferenceId.toString());
+        eventSender.publish(proceedVoter, WsEventType.VOTE_WAITING_CONFIRM, proceedVoterMessage);
     }
 
     /**
