@@ -47,12 +47,17 @@ export function RegisterStep1({
   onNext,
   onSwitchToLogin,
 }: RegisterStep1Props) {
-  const [showNicknameLimit, setShowNicknameLimit] = useState(false)
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     onNext()
   }
   const isEmailValid = formData.email ? validateEmail(formData.email) : true
+
+  const NICKNAME_MAX_LENGTH = 10
+  const normalizeNickname = (value: string) => {
+    const allowed = value.replace(/[^A-Za-z0-9가-힣]/g, "")
+    return allowed.slice(0, NICKNAME_MAX_LENGTH)
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 mt-4">
@@ -61,20 +66,14 @@ export function RegisterStep1({
         <div className="flex gap-2">
           <Input
             id="nickname"
-            placeholder="소개팅에서 사용할 닉네임"
+            placeholder="한글/영문/숫자만 사용 가능, 최대 10자"
             value={formData.nickname}
             onChange={(e) => {
-              const newValue = e.target.value
-              if (newValue.length <= 10) {
-                updateFormData({ nickname: newValue })
-                if (showNicknameLimit) {
-                  setShowNicknameLimit(false)
-                }
-                return
-              }
-              setShowNicknameLimit(true)
+              const newValue = normalizeNickname(e.target.value)
+              updateFormData({ nickname: newValue })
             }}
             className="bg-input flex-1"
+            maxLength={NICKNAME_MAX_LENGTH}
           />
           <Button type="button" variant="outline" onClick={checkNickname} disabled={checkingNickname}>
             {checkingNickname ? <Loader2 className="w-4 h-4 animate-spin" /> : "중복확인"}
@@ -85,7 +84,6 @@ export function RegisterStep1({
             {nicknameAvailable ? "사용 가능한 닉네임입니다." : "이미 사용 중인 닉네임입니다."}
           </p>
         )}
-        {showNicknameLimit ? <p className="text-sm text-destructive">닉네임은 최대 10자까지 입력할 수 있습니다.</p> : null}
       </div>
       <div className="space-y-2">
         <Label htmlFor="reg-email">이메일</Label>

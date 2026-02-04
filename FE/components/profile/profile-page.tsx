@@ -40,8 +40,11 @@ export function ProfilePage() {
   const [deletePassword, setDeletePassword] = useState("")
   const [nicknameAvailable, setNicknameAvailable] = useState<boolean | null>(null)
   const [checkingNickname, setCheckingNickname] = useState(false)
-  const [showNicknameLimit, setShowNicknameLimit] = useState(false)
   const [editingBasic, setEditingBasic] = useState(false)
+
+  const NICKNAME_MAX_LENGTH = 10
+  const NICKNAME_PATTERN = /^[A-Za-z0-9가-힣]{1,10}$/
+  const normalizeNickname = (value: string) => value.replace(/[^A-Za-z0-9가-힣]/g, "").slice(0, NICKNAME_MAX_LENGTH)
   const [editingSurvey, setEditingSurvey] = useState(false)
   const [surveyStep, setSurveyStep] = useState(1)
   const SURVEY_TOTAL_STEPS = 4
@@ -179,7 +182,8 @@ export function ProfilePage() {
 
 
   const checkNickname = async () => {
-    if (basicData.nickname.trim().length < 2) {
+    const nickname = basicData.nickname.trim()
+    if (nickname.length < 2) {
       toast({
         title: "닉네임 오류",
         description: "닉네임은 2자 이상이어야 합니다.",
@@ -187,10 +191,18 @@ export function ProfilePage() {
       })
       return
     }
-    if (basicData.nickname.trim().length > 10) {
+    if (nickname.length > 10) {
       toast({
         title: "닉네임 오류",
         description: "닉네임은 최대 10자까지 입력할 수 있습니다.",
+        variant: "destructive",
+      })
+      return
+    }
+    if (!NICKNAME_PATTERN.test(nickname)) {
+      toast({
+        title: "닉네임 오류",
+        description: "닉네임은 한글/영문/숫자만 사용할 수 있습니다.",
         variant: "destructive",
       })
       return
@@ -291,7 +303,8 @@ export function ProfilePage() {
   }
 
   const handleSaveBasic = async () => {
-    if (basicData.nickname.trim().length < 2) {
+    const nickname = basicData.nickname.trim()
+    if (nickname.length < 2) {
       toast({
         title: "닉네임 오류",
         description: "닉네임은 2자 이상이어야 합니다.",
@@ -299,11 +312,18 @@ export function ProfilePage() {
       })
       return
     }
-
-    if (basicData.nickname.trim().length > 10) {
+    if (nickname.length > 10) {
       toast({
         title: "닉네임 오류",
         description: "닉네임은 최대 10자까지 입력할 수 있습니다.",
+        variant: "destructive",
+      })
+      return
+    }
+    if (!NICKNAME_PATTERN.test(nickname)) {
+      toast({
+        title: "닉네임 오류",
+        description: "닉네임은 한글/영문/숫자만 사용할 수 있습니다.",
         variant: "destructive",
       })
       return
@@ -386,7 +406,6 @@ export function ProfilePage() {
     setBirthError("")
     setNicknameAvailable(null)
     setCheckingNickname(false)
-    setShowNicknameLimit(false)
     setEditingBasic(false)
   }
 
@@ -644,20 +663,15 @@ export function ProfilePage() {
               <div className="flex gap-2">
                 <Input
                   id="nickname"
+                  placeholder="한글/영문/숫자만, 최대 10자"
                   value={basicData.nickname}
                   onChange={(e) => {
-                    const newValue = e.target.value
-                    if (newValue.length <= 10) {
-                      setBasicData({ ...basicData, nickname: newValue })
-                      setNicknameAvailable(null)
-                      if (showNicknameLimit) {
-                        setShowNicknameLimit(false)
-                      }
-                      return
-                    }
-                    setShowNicknameLimit(true)
+                    const newValue = normalizeNickname(e.target.value)
+                    setBasicData({ ...basicData, nickname: newValue })
+                    setNicknameAvailable(null)
                   }}
                   className="flex-1 border-2 border-gray-200"
+                  maxLength={NICKNAME_MAX_LENGTH}
                 />
                 <Button type="button" variant="outline" onClick={checkNickname} disabled={checkingNickname}>
                   {checkingNickname ? <Loader2 className="w-4 h-4 animate-spin" /> : "중복확인"}
@@ -668,7 +682,6 @@ export function ProfilePage() {
                   {nicknameAvailable ? "사용 가능한 닉네임입니다." : "이미 사용 중인 닉네임입니다."}
                 </p>
               )}
-              {showNicknameLimit ? <p className="text-sm text-destructive">닉네임은 최대 10자까지 입력할 수 있습니다.</p> : null}
             </div>
 
             {/* 생년월일 */}
