@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/api"
+import { ApiError } from "@/lib/error-codes"
 
 const MATCH_BASE = "/api/v1/match"
 
@@ -6,12 +7,14 @@ const MATCH_BASE = "/api/v1/match"
 
 /**
  * 매칭 SSE 스트림을 서버에서 종료한다.
- * 로그아웃·세션 입장 시 disconnect()에서 호출하여 서버에 연결 해제를 알린다.
+ * 401(이미 끊김/비인증 등)이 나와도 로그아웃하지 않음.
  */
 export async function closeMatchStream(): Promise<void> {
-  const response = await apiFetch(`${MATCH_BASE}/stream`, { method: "DELETE" })
+  const response = await apiFetch(`${MATCH_BASE}/stream`, {
+    method: "DELETE",
+    skipAuthClearOn401: true,
+  })
   if (!response.ok) {
-    // 204가 아니어도 로컬에서는 abort 하므로 무시
     return
   }
 }
@@ -67,9 +70,7 @@ async function parseMatchResponse<T>(response: Response): Promise<T> {
   const base: BaseResponse<T> = await response.json()
   if (!base.isSuccess || base.data === undefined) {
     const msg = base.message || "요청에 실패했습니다."
-    const err = new Error(msg) as Error & { errorCode?: string }
-    err.errorCode = base.errorCode
-    throw err
+    throw new ApiError(base.errorCode ?? "COMMON-002", msg, base.statusCode)
   }
   return base.data as T
 }
@@ -104,10 +105,6 @@ export async function cancelQuickMatch(requestId: string): Promise<void> {
     `${MATCH_BASE}/queue/${encodeURIComponent(requestId)}`,
     { method: "DELETE" }
   )
-  if (!response.ok) {
-    const base: BaseResponse<unknown> = await response.json().catch(() => ({}))
-    throw new Error(base.message || "매칭 취소에 실패했습니다.")
-  }
 }
 
 /**
@@ -190,17 +187,13 @@ export async function evaluateClarity(
   conferenceId: string,
   score: number
 ): Promise<void> {
-  const response = await apiFetch(
+  await apiFetch(
     `/api/v1/conferences/${encodeURIComponent(conferenceId)}/clarity-evaluations`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ score } satisfies ClarityEvaluationRequest),
+      skipAuthClearOn401: true, // 세션 종료 후 평가 시 401이 나와도 로그아웃하지 않음
     }
   )
-
-  if (!response.ok) {
-    const base: BaseResponse<unknown> = await response.json().catch(() => ({}))
-    throw new Error(base.message || "선명도 평가에 실패했습니다.")
-  }
 }
