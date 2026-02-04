@@ -33,7 +33,6 @@ import java.util.regex.Pattern;
 public class AiSummaryPipelineService {
 
     private static final Pattern FILENAME_PATTERN = Pattern.compile("^(.+)_([0-9]+)\\.[^./]+$");
-    private static final String DEFAULT_SUMMARY_WHEN_EMPTY = "대화 내용이 없습니다.";
 
     private final S3Client s3Client;
     @Qualifier("openAiRestClient")
@@ -55,9 +54,7 @@ public class AiSummaryPipelineService {
             tempFile = Files.createTempFile("ai-summary-", "-" + filename);
             downloadFromMinio(bucket, decodedKey, tempFile);
             String transcript = transcribe(tempFile);
-            String summary = (transcript == null || transcript.isBlank())
-                    ? DEFAULT_SUMMARY_WHEN_EMPTY
-                    : summarize(transcript);
+            String summary = summarize(transcript);
             transactionTemplate.executeWithoutResult(status -> {
                 ConferenceRound round = conferenceRoundRepository
                         .findByConference_IdAndRoundNumber(meta.conferenceId(), meta.roundNumber())
@@ -128,8 +125,7 @@ public class AiSummaryPipelineService {
                 .body(OpenAiTranscriptionResponse.class);
 
         if (response == null || response.text() == null || response.text().isBlank()) {
-            log.info("STT 결과가 비어 있음(짧은 대화). 기본 요약문으로 저장합니다.");
-            return "";
+            throw new BaseException(ErrorCode.INTERNAL_SERVER_ERROR);
         }
         return response.text();
     }
