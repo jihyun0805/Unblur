@@ -16,6 +16,7 @@ public record ConferenceHistoryItemDto(
         String nickname,
         String profileImageUrl,
         Integer clarityScore,
+        String loveDna,
         Boolean isOnline,
         Boolean isBlocked
 ) {
