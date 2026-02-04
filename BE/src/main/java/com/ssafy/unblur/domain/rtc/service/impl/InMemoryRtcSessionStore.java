@@ -3,8 +3,10 @@ package com.ssafy.unblur.domain.rtc.service.impl;
 import com.ssafy.unblur.domain.rtc.service.RtcSessionStore;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.WebSocketSession;
 
+import java.io.IOException;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -56,7 +58,22 @@ public class InMemoryRtcSessionStore implements RtcSessionStore {
 
         // 이전 세션이 있다면 해당 세션과의 연결을 끊음
         if (previousSessionId != null && !previousSessionId.equals(sessionId)) {
+            // 이전 세션과의 매핑 제거
             sessionUsers.remove(previousSessionId);
+            sessionConferences.remove(previousSessionId);
+
+            // 이전 세션 종료 시도
+            WebSocketSession previousSession = sessions.get(previousSessionId);
+            if (previousSession != null && previousSession.isOpen()) {
+                try {
+                    previousSession.close(CloseStatus.NORMAL);
+                    log.info("RTC 이전 세션 종료. userId={}, previousSessionId={}", userId, previousSessionId);
+
+                } catch (IOException e) {
+                    log.warn("RTC 이전 세션 종료 실패. userId={}, previousSessionId={}, error={}", userId, previousSessionId, e.toString());
+                }
+            }
+
             log.debug("RTC 이전 세션 언바인딩. userId={}, previousSessionId={}", userId, previousSessionId);
         }
 
