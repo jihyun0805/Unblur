@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { X, Send } from "lucide-react"
@@ -29,7 +29,15 @@ export function ChatPanel({
   className = "",
 }: ChatPanelProps) {
   const [newMessage, setNewMessage] = useState("")
+  const listRef = useRef<HTMLDivElement | null>(null)
+  const endRef = useRef<HTMLDivElement | null>(null)
+  const [isAtBottom, setIsAtBottom] = useState(true)
   const { toast } = useToast()
+
+  useEffect(() => {
+    if (!isAtBottom) return
+    endRef.current?.scrollIntoView({ block: "end" })
+  }, [messages, isAtBottom])
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() || isSendingMessage) return
@@ -60,7 +68,16 @@ export function ChatPanel({
           )}
         </div>
       )}
-      <div className="flex-1 flex flex-col-reverse overflow-y-auto p-4 space-y-3 space-y-reverse">
+      <div
+        ref={listRef}
+        onScroll={() => {
+          if (!listRef.current) return
+          const { scrollTop, scrollHeight, clientHeight } = listRef.current
+          const distanceFromBottom = scrollHeight - (scrollTop + clientHeight)
+          setIsAtBottom(distanceFromBottom < 40)
+        }}
+        className="flex-1 overflow-y-auto p-4 space-y-3"
+      >
         {isLoadingMessages && messages.length === 0 ? (
           <div className="flex items-center justify-center py-8 flex-shrink-0">
             <div className="text-sm text-muted-foreground">메시지를 불러오는 중...</div>
@@ -74,7 +91,7 @@ export function ChatPanel({
             </div>
           </div>
         ) : (
-          [...messages].reverse().map((msg) => (
+          messages.map((msg) => (
             <div
               key={msg.id}
               className={`flex items-end gap-2 flex-shrink-0 ${msg.isMine ? "justify-end" : "justify-start"}`}
@@ -92,6 +109,7 @@ export function ChatPanel({
             </div>
           ))
         )}
+        <div ref={endRef} />
       </div>
       <div className="p-4 border-t border-border flex-shrink-0">
         <form
