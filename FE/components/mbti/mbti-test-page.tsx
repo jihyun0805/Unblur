@@ -239,6 +239,8 @@ export function MBTITestPage({ onBack, onComplete, existingMbti, onViewResult, a
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
                 12문항을 통해 연애 성향을 알아볼 수 있어요.
+                <br />
+                결과 이미지는 프로필 사진으로 자동 적용됩니다.
               </p>
               {existingMbti ? (
                 <div className="space-y-3">
