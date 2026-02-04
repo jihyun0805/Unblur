@@ -52,6 +52,8 @@ export type ApiFetchInit = RequestInit & {
   idempotencyKey?: string
   /** 401 시 토큰 정리/로그아웃 알림 생략 (세션 종료 후 평가 등 비즈니스 401용) */
   skipAuthClearOn401?: boolean
+  /** true이면 !response.ok 시 토스트 생략 (호출부에서 메시지 표시할 때 사용) */
+  skipToastOnError?: boolean
 }
 
 /**
@@ -77,7 +79,7 @@ export const apiFetch = async (
   retried = false
 ): Promise<Response> => {
   const token = getAuthToken()
-  const { idempotencyKey, skipAuthClearOn401, ...restInit } = init
+  const { idempotencyKey, skipAuthClearOn401, skipToastOnError, ...restInit } = init
   const headers = new Headers(restInit.headers)
 
   if (token) {
@@ -123,7 +125,7 @@ export const apiFetch = async (
       }
       if (!retryResponse.ok) {
         const err = await parseApiError(retryResponse)
-        toast({ title: err.message, variant: "destructive" })
+        if (!skipToastOnError) toast({ title: err.message, variant: "destructive" })
         throw err
       }
       return retryResponse
@@ -152,7 +154,7 @@ export const apiFetch = async (
 
   if (!response.ok) {
     const err = await parseApiError(response)
-    toast({ title: err.message, variant: "destructive" })
+    if (!skipToastOnError) toast({ title: err.message, variant: "destructive" })
     throw err
   }
 

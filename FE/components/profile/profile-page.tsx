@@ -167,7 +167,11 @@ export function ProfilePage() {
           interests: user.surveyData?.interests || prev.interests || [],
         }))
       } catch (error) {
-        console.error("설문조사 조회 실패:", error)
+        toast({
+          title: "설문조사 조회 실패",
+          description: error instanceof Error ? error.message : "잠시 후 다시 시도해 주세요.",
+          variant: "destructive",
+        })
       }
     }
 

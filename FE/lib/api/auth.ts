@@ -235,27 +235,9 @@ export async function signup(data: SignupRequest): Promise<SignupResponse> {
  * @returns 중복 여부 (true: 중복됨, false: 사용 가능)
  */
 export async function checkEmail(email: string): Promise<boolean> {
-  const response = await fetch(resolveApiUrl(`/api/v1/auth/check-email?email=${encodeURIComponent(email)}`), {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    credentials: "include",
+  const response = await apiFetch(`/api/v1/auth/check-email?email=${encodeURIComponent(email)}`, {
+    skipToastOnError: true,
   })
-
-  if (!response.ok) {
-    try {
-      const errorData: BaseResponse<unknown> = await response.json()
-      throw new ApiError(
-        errorData.errorCode ?? `HTTP_${response.status}`,
-        errorData.message ?? "이메일 확인에 실패했습니다.",
-        response.status
-      )
-    } catch (e) {
-      if (e instanceof ApiError) throw e
-      throw new ApiError(`HTTP_${response.status}`, `이메일 확인 실패: ${response.status}`, response.status)
-    }
-  }
 
   const baseResponse: BaseResponse<boolean> = await response.json()
 
@@ -276,27 +258,9 @@ export async function checkEmail(email: string): Promise<boolean> {
  * @returns 중복 여부 (true: 중복됨, false: 사용 가능)
  */
 export async function checkNickname(nickname: string): Promise<boolean> {
-  const response = await fetch(resolveApiUrl(`/api/v1/auth/check-nickname?nickname=${encodeURIComponent(nickname)}`), {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    credentials: "include",
+  const response = await apiFetch(`/api/v1/auth/check-nickname?nickname=${encodeURIComponent(nickname)}`, {
+    skipToastOnError: true,
   })
-
-  if (!response.ok) {
-    try {
-      const errorData: BaseResponse<unknown> = await response.json()
-      throw new ApiError(
-        errorData.errorCode ?? `HTTP_${response.status}`,
-        errorData.message ?? "닉네임 확인에 실패했습니다.",
-        response.status
-      )
-    } catch (e) {
-      if (e instanceof ApiError) throw e
-      throw new ApiError(`HTTP_${response.status}`, `닉네임 확인 실패: ${response.status}`, response.status)
-    }
-  }
 
   const baseResponse: BaseResponse<boolean> = await response.json()
 

@@ -262,7 +262,9 @@ export function useChat({
     if (lastLoadedConferenceIdRef.current === conferenceId) return
 
     lastLoadedConferenceIdRef.current = conferenceId
-    loadMessages(0, false).catch(() => {})
+    loadMessages(0, false).catch((err) => {
+      console.warn("[useChat] loadMessages 실패", err)
+    })
   }, [autoLoadMessages, canLoadMessages, enabled, conferenceId, user?.id, loadMessages])
 
   const unreadCount = messages.filter(

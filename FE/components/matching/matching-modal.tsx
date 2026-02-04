@@ -130,7 +130,9 @@ export function MatchingModal({ open, onOpenChange, onMatchFound }: MatchingModa
   // 모달 닫을 때 진행 중인 빠른 매칭 취소
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen && requestId) {
-      matchApi.cancelQuickMatch(requestId).catch(() => {})
+      matchApi.cancelQuickMatch(requestId).catch((err) => {
+      console.warn("[MatchingModal] 취소 요청 실패", err)
+    })
       setRequestId(null)
     }
     if (!isOpen) {

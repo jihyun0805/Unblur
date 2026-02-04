@@ -209,7 +209,9 @@ export function MatchRequestToaster() {
         credentials: "include",
         keepalive: true,
         headers,
-      }).catch(() => {})
+      }).catch((err) => {
+        console.warn("[MatchRequestToaster] beforeunload 요청 실패", err)
+      })
     }
     window.addEventListener("beforeunload", handleBeforeUnload)
     return () => window.removeEventListener("beforeunload", handleBeforeUnload)

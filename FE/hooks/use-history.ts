@@ -48,8 +48,8 @@ export function useHistory({ page, size, search }: UseHistoryOptions) {
   }, [fetchHistory])
 
   const blockPartner = useCallback(async (localId: string, apiId?: string) => {
+    const targetIds = apiId ? history.filter((item) => item.partnerId === apiId).map((item) => item.id) : [localId]
     setBlockedIds((prev) => {
-      const targetIds = apiId ? history.filter((item) => item.partnerId === apiId).map((item) => item.id) : [localId]
       const next = new Set(prev)
       for (const id of targetIds) {
         next.add(id)
@@ -60,20 +60,20 @@ export function useHistory({ page, size, search }: UseHistoryOptions) {
     try {
       await apiBlockPartner(apiId)
     } catch (error) {
-      console.error("[useHistory] 차단 요청 실패", error)
+      setBlockedIds((prev) => prev.filter((id) => !targetIds.includes(id)))
+      throw error
     }
   }, [history])
 
   const unblockPartner = useCallback(async (localId: string, apiId?: string) => {
-    setBlockedIds((prev) => {
-      const targetIds = apiId ? history.filter((item) => item.partnerId === apiId).map((item) => item.id) : [localId]
-      return prev.filter((id) => !targetIds.includes(id))
-    })
+    const targetIds = apiId ? history.filter((item) => item.partnerId === apiId).map((item) => item.id) : [localId]
+    setBlockedIds((prev) => prev.filter((id) => !targetIds.includes(id)))
     if (!apiId) return
     try {
       await apiUnblockPartner(apiId)
     } catch (error) {
-      console.error("[useHistory] 차단 해제 요청 실패", error)
+      setBlockedIds((prev) => [...new Set([...prev, ...targetIds])])
+      throw error
     }
   }, [history])
 

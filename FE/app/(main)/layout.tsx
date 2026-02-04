@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
+import { ErrorBoundary } from "react-error-boundary"
 import { useAuth } from "@/contexts/auth-context"
 import { useMatchSse } from "@/contexts/match-sse-context"
 import { useSessionId } from "@/contexts/session-id-context"
@@ -10,6 +11,24 @@ import { BackgroundLayout } from "@/components/common/background-layout"
 import { MainLayout } from "@/components/common/main-layout"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+
+function ErrorFallback({ error, resetErrorBoundary }: { error: unknown; resetErrorBoundary: () => void }) {
+  const message = error instanceof Error ? error.message : "잠시 후 다시 시도해 주세요."
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="text-center space-y-4 max-w-sm">
+        <p className="font-medium text-destructive">문제가 발생했어요</p>
+        <p className="text-sm text-muted-foreground">{message}</p>
+        <div className="flex gap-3 justify-center">
+          <Button onClick={resetErrorBoundary}>다시 시도</Button>
+          <Button variant="outline" onClick={() => window.location.assign("/")}>
+            홈으로
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function MainRouteLayout({ children }: { children: React.ReactNode }) {
   const { user, logout, isLoading } = useAuth()
@@ -84,13 +103,15 @@ export default function MainRouteLayout({ children }: { children: React.ReactNod
 
   return (
     <>
-      {isSessionOrMbti ? (
-        pathname?.startsWith("/test") ? <BackgroundLayout>{children}</BackgroundLayout> : children
-      ) : (
-        <MainLayout onLogout={() => setShowLogoutConfirm(true)} hideFloatingTestButton={hideFloatingTestButton}>
-          {children}
-        </MainLayout>
-      )}
+      <ErrorBoundary FallbackComponent={ErrorFallback}>
+        {isSessionOrMbti ? (
+          pathname?.startsWith("/test") ? <BackgroundLayout>{children}</BackgroundLayout> : children
+        ) : (
+          <MainLayout onLogout={() => setShowLogoutConfirm(true)} hideFloatingTestButton={hideFloatingTestButton}>
+            {children}
+          </MainLayout>
+        )}
+      </ErrorBoundary>
 
       <Dialog open={showLogoutConfirm} onOpenChange={setShowLogoutConfirm}>
         <DialogContent className="sm:max-w-sm bg-background">
