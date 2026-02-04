@@ -35,6 +35,12 @@ public class GlobalExceptionHandler {
             logWarn(e.getErrorCode(), request, e.getMessage());
         }
 
+        if (isSseRequest(request)) {
+            log.warn("SSE 요청 예외: status={}, errorCode={}, uri={}, message={}",
+                    httpStatus.value(), e.getErrorCode().getCode(), request.getRequestURI(), e.getMessage());
+            return ResponseEntity.status(httpStatus).build();
+        }
+
         BaseResponse response = BaseResponse.onFailure(e.getErrorCode());
         return ResponseEntity
                 .status(httpStatus)
@@ -69,6 +75,12 @@ public class GlobalExceptionHandler {
         setErrorMdc(ErrorCode.INVALID_INPUT_VALUE, HttpStatus.BAD_REQUEST);
         logInfo(request, logDetail);
 
+        if (isSseRequest(request)) {
+            log.warn("SSE 요청 유효성 오류: status=400, errorCode={}, uri={}, message={}",
+                    ErrorCode.INVALID_INPUT_VALUE.getCode(), request.getRequestURI(), logDetail);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+
         BaseResponse response = BaseResponse.onFailure(ErrorCode.INVALID_INPUT_VALUE);
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
@@ -79,6 +91,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<BaseResponse> handleAccessDenied(AccessDeniedException e, HttpServletRequest request) {
         setErrorMdc(ErrorCode.ACCESS_DENIED, ErrorCode.ACCESS_DENIED.getHttpStatus());
         logWarn(ErrorCode.ACCESS_DENIED, request, e.getMessage());
+
+        if (isSseRequest(request)) {
+            log.warn("SSE 요청 접근 거부: status={}, errorCode={}, uri={}, message={}",
+                    ErrorCode.ACCESS_DENIED.getHttpStatus().value(), ErrorCode.ACCESS_DENIED.getCode(),
+                    request.getRequestURI(), e.getMessage());
+            return ResponseEntity.status(ErrorCode.ACCESS_DENIED.getHttpStatus()).build();
+        }
 
         BaseResponse response = BaseResponse.onFailure(ErrorCode.ACCESS_DENIED);
         return ResponseEntity
@@ -93,6 +112,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<BaseResponse> handleDataIntegrityViolation(Exception e, HttpServletRequest request) {
         setErrorMdc(ErrorCode.INTERNAL_SERVER_ERROR, HttpStatus.INTERNAL_SERVER_ERROR);
         logError(ErrorCode.INTERNAL_SERVER_ERROR, request, e.getMessage(), e);
+
+        if (isSseRequest(request)) {
+            log.warn("SSE 요청 DB 제약 오류: status=500, errorCode={}, uri={}, message={}",
+                    ErrorCode.INTERNAL_SERVER_ERROR.getCode(), request.getRequestURI(), e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
 
         BaseResponse response = BaseResponse.onFailure(ErrorCode.INTERNAL_SERVER_ERROR);
         return ResponseEntity
@@ -118,6 +143,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<BaseResponse> handleException(Exception e, HttpServletRequest request) {
         setErrorMdc(ErrorCode.INTERNAL_SERVER_ERROR, HttpStatus.INTERNAL_SERVER_ERROR);
         logError(ErrorCode.INTERNAL_SERVER_ERROR, request, e.getMessage(), e);
+
+        if (isSseRequest(request)) {
+            log.warn("SSE 요청 예외(처리 불가): status=500, errorCode={}, uri={}, message={}",
+                    ErrorCode.INTERNAL_SERVER_ERROR.getCode(), request.getRequestURI(), e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
 
         BaseResponse response = BaseResponse.onFailure(ErrorCode.INTERNAL_SERVER_ERROR);
         return ResponseEntity
@@ -165,5 +196,15 @@ public class GlobalExceptionHandler {
     private static void setErrorMdc(ErrorCode errorCode, HttpStatus status) {
         MDC.put("status", String.valueOf(status.value()));
         MDC.put("errorCode", errorCode.getCode());
+    }
+
+    private static boolean isSseRequest(HttpServletRequest request) {
+        String uri = request.getRequestURI();
+        if ("/api/v1/match/stream".equals(uri)) {
+            return true;
+        }
+
+        String accept = request.getHeader("Accept");
+        return accept != null && accept.contains("text/event-stream");
     }
 }
