@@ -157,18 +157,6 @@ export function HistoryPage() {
     }
   }, [currentPage, totalPages])
 
-  useEffect(() => {
-    console.log("[HistoryPage] 상태", {
-      isLoading,
-      historyLength: history.length,
-      searchTerm,
-      debouncedSearch,
-      currentPage,
-      totalPages,
-      error: error?.message ?? null,
-    })
-  }, [isLoading, history.length, searchTerm, debouncedSearch, currentPage, totalPages, error])
-
   return (
     <>
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
