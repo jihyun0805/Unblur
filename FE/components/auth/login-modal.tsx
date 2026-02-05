@@ -16,9 +16,10 @@ interface LoginModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSwitchToRegister: () => void
+  onOpenPasswordReset: () => void
 }
 
-export function LoginModal({ open, onOpenChange, onSwitchToRegister }: LoginModalProps) {
+export function LoginModal({ open, onOpenChange, onSwitchToRegister, onOpenPasswordReset }: LoginModalProps) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -137,6 +138,13 @@ export function LoginModal({ open, onOpenChange, onSwitchToRegister }: LoginModa
               "로그인"
             )}
           </Button>
+
+          <div className="text-center text-sm text-muted-foreground">
+            비밀번호를 잊으셨나요?{" "}
+            <button type="button" onClick={onOpenPasswordReset} className="text-foreground font-medium hover:underline">
+              비밀번호 찾기
+            </button>
+          </div>
 
           <div className="text-center text-sm text-muted-foreground">
             계정이 없으신가요?{" "}

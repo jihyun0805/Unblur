@@ -76,6 +76,8 @@ export function HistoryPage() {
   const [isProfileLoading, setIsProfileLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
+  const [hasLoaded, setHasLoaded] = useState(false)
+  const [showLoading, setShowLoading] = useState(false)
   const { history, summary, totalPages, isLoading, error, refetch, blockPartner, unblockPartner, blockedIds, setItemUnreadCount } =
     useHistory({ page: currentPage - 1, size: pageSize, search: debouncedSearch })
 
@@ -104,6 +106,7 @@ export function HistoryPage() {
           region: mapRegion(profile.region) ?? prev.region,
           bio: profile.intro ?? prev.bio,
           mbti: profile.mbti ?? prev.mbti,
+          loveDna: profile.loveDna ?? prev.loveDna,
           interests: profile.interestTags ?? prev.interests,
           roundSummaries: profile.roundSummaries?.map((round) => round.summaryText) ?? prev.roundSummaries,
         }
@@ -130,9 +133,24 @@ export function HistoryPage() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchTerm)
-    }, 500)
+    }, 800)
     return () => clearTimeout(timer)
   }, [searchTerm])
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null
+    if (isLoading) {
+      timer = setTimeout(() => {
+        setShowLoading(true)
+      }, 300)
+    } else {
+      setShowLoading(false)
+      setHasLoaded(true)
+    }
+    return () => {
+      if (timer) clearTimeout(timer)
+    }
+  }, [isLoading])
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -163,7 +181,7 @@ export function HistoryPage() {
         <div className="grid grid-cols-1 gap-3">
           {error ? (
             <HistoryError onRetry={refetch} />
-          ) : isLoading && history.length === 0 ? (
+          ) : showLoading && history.length === 0 ? (
             <HistoryLoading />
           ) : (
             <>
@@ -211,10 +229,20 @@ export function HistoryPage() {
           )}
         </div>
 
-        {!isLoading && !error && history.length === 0 && !searchTerm && <HistoryEmptyState />}
-        {!isLoading && !error && history.length === 0 && searchTerm && (
-          <div className="py-8 text-center text-sm text-muted-foreground">검색 결과가 없습니다.</div>
-        )}
+        {!isLoading &&
+          !error &&
+          hasLoaded &&
+          history.length === 0 &&
+          searchTerm.trim().length === 0 &&
+          searchTerm === debouncedSearch && <HistoryEmptyState />}
+        {!isLoading &&
+          !error &&
+          hasLoaded &&
+          history.length === 0 &&
+          searchTerm.trim().length > 0 &&
+          searchTerm === debouncedSearch && (
+            <div className="py-8 text-center text-sm text-muted-foreground">검색 결과가 없습니다.</div>
+          )}
         <HistoryPagination
           className="mt-6"
           currentPage={safePage - 1}
@@ -255,6 +283,7 @@ export function HistoryPage() {
             region: selectedProfile.region,
             bio: selectedProfile.bio,
             mbti: selectedProfile.mbti,
+            loveDna: selectedProfile.loveDna,
             interests: selectedProfile.interests,
             roundSummaries: selectedProfile.roundSummaries,
           }}
