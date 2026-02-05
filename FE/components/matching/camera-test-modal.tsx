@@ -358,53 +358,64 @@ export function CameraTestModal({ open, onOpenChange, onReady }: CameraTestModal
             </div>
 
             {/* Beauty Filter Settings */}
-            <div className="space-y-4 p-4 rounded-xl bg-card flex-shrink-0">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-pink-500" />
-                <Label className="text-sm font-medium">뷰티 필터</Label>
-              </div>
-              <Switch
-                checked={beautyFilter.enabled}
-                onCheckedChange={(checked) => setBeautyFilter((prev) => ({ ...prev, enabled: checked }))}
-                disabled={!isFinalRound}
-              />
-            </div>
-
-            {!isFinalRound && (
-              <p className="text-xs text-muted-foreground">뷰티 필터는 최종 라운드에서만 확인할 수 있어요.</p>
-            )}
-
-            {beautyFilter.enabled && isFinalRound && (
-              <div className="space-y-4 pt-2">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs text-muted-foreground">피부 보정</Label>
-                    <span className="text-xs text-muted-foreground">{beautyFilter.smoothness}%</span>
+            <div className="space-y-4 p-4 rounded-xl bg-pink-100/50 flex-shrink-0">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-pink-500/20 flex items-center justify-center">
+                    <Sparkles className={`w-5 h-5 ${isFinalRound ? "text-pink-500" : "text-pink-500/40"}`} />
                   </div>
-                  <Slider
-                    value={[beautyFilter.smoothness]}
-                    onValueChange={([value]) => setBeautyFilter((prev) => ({ ...prev, smoothness: value }))}
-                    max={100}
-                    step={1}
-                    className="w-full"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs text-muted-foreground">입술 색감</Label>
-                    <span className="text-xs text-muted-foreground">{beautyFilter.lipIntensity}%</span>
+                  <div>
+                    <p
+                      className={`font-medium text-sm max-[400px]:text-xs ${
+                        isFinalRound ? "text-pink-900" : "text-pink-900/40"
+                      }`}
+                    >
+                      뷰티 필터
+                    </p>
+                    {!isFinalRound && (
+                      <p className="text-xs max-[400px]:text-[11px] text-muted-foreground">
+                        최종 라운드에서만 확인할 수 있어요
+                      </p>
+                    )}
                   </div>
-                  <Slider
-                    value={[beautyFilter.lipIntensity]}
-                    onValueChange={([value]) => setBeautyFilter((prev) => ({ ...prev, lipIntensity: value }))}
-                    max={100}
-                    step={1}
-                    className="w-full"
-                  />
                 </div>
+                <Switch
+                  checked={beautyFilter.enabled}
+                  onCheckedChange={(checked) => setBeautyFilter((prev) => ({ ...prev, enabled: checked }))}
+                  disabled={!isFinalRound}
+                />
               </div>
-            )}
+
+              {beautyFilter.enabled && isFinalRound && (
+                <div className="space-y-4 pt-2">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs text-muted-foreground">피부 보정</Label>
+                      <span className="text-xs text-muted-foreground">{beautyFilter.smoothness}%</span>
+                    </div>
+                    <Slider
+                      value={[beautyFilter.smoothness]}
+                      onValueChange={([value]) => setBeautyFilter((prev) => ({ ...prev, smoothness: value }))}
+                      max={100}
+                      step={1}
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs text-muted-foreground">입술 색감</Label>
+                      <span className="text-xs text-muted-foreground">{beautyFilter.lipIntensity}%</span>
+                    </div>
+                    <Slider
+                      value={[beautyFilter.lipIntensity]}
+                      onValueChange={([value]) => setBeautyFilter((prev) => ({ ...prev, lipIntensity: value }))}
+                      max={100}
+                      step={1}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Status */}
@@ -419,8 +430,8 @@ export function CameraTestModal({ open, onOpenChange, onReady }: CameraTestModal
                     <Video className="w-5 h-5 text-green-600" />
                   </div>
                   <div>
-                    <p className="font-medium text-green-600">카메라 준비 완료</p>
-                    <p className="text-sm text-muted-foreground">카메라가 정상적으로 작동합니다</p>
+                    <p className="font-medium text-sm max-[400px]:text-xs text-green-600">카메라 준비 완료</p>
+                    <p className="text-xs max-[400px]:text-[11px] text-muted-foreground">카메라가 정상적으로 작동합니다</p>
                   </div>
                 </>
               ) : hasCamera === false ? (
@@ -429,8 +440,8 @@ export function CameraTestModal({ open, onOpenChange, onReady }: CameraTestModal
                     <VideoOff className="w-5 h-5 text-destructive" />
                   </div>
                   <div>
-                    <p className="font-medium text-destructive">카메라 접근 불가</p>
-                    <p className="text-sm text-muted-foreground">카메라 권한이 필요합니다. 브라우저 설정을 확인해주세요.</p>
+                    <p className="font-medium text-sm max-[400px]:text-xs text-destructive">카메라 접근 불가</p>
+                    <p className="text-xs max-[400px]:text-[11px] text-muted-foreground">카메라 권한이 필요합니다. 브라우저 설정을 확인해주세요.</p>
                   </div>
                 </>
               ) : (
@@ -439,8 +450,8 @@ export function CameraTestModal({ open, onOpenChange, onReady }: CameraTestModal
                     <Video className="w-5 h-5 text-muted-foreground" />
                   </div>
                   <div>
-                    <p className="font-medium">카메라 연결 중...</p>
-                    <p className="text-sm text-muted-foreground">잠시만 기다려주세요</p>
+                    <p className="font-medium text-sm max-[400px]:text-xs">카메라 연결 중...</p>
+                    <p className="text-xs max-[400px]:text-[11px] text-muted-foreground">잠시만 기다려주세요</p>
                   </div>
                 </>
               )}
@@ -456,8 +467,8 @@ export function CameraTestModal({ open, onOpenChange, onReady }: CameraTestModal
                     <Mic className="w-5 h-5 text-green-600" />
                   </div>
                   <div>
-                    <p className="font-medium text-green-600">마이크 준비 완료</p>
-                    <p className="text-sm text-muted-foreground">마이크가 정상적으로 작동합니다</p>
+                    <p className="font-medium text-sm max-[400px]:text-xs text-green-600">마이크 준비 완료</p>
+                    <p className="text-xs max-[400px]:text-[11px] text-muted-foreground">마이크가 정상적으로 작동합니다</p>
                   </div>
                 </>
               ) : hasMicrophone === false ? (
@@ -466,8 +477,8 @@ export function CameraTestModal({ open, onOpenChange, onReady }: CameraTestModal
                     <MicOff className="w-5 h-5 text-destructive" />
                   </div>
                   <div>
-                    <p className="font-medium text-destructive">마이크 접근 불가</p>
-                    <p className="text-sm text-muted-foreground">마이크 권한이 필요합니다. 브라우저 설정을 확인해주세요.</p>
+                    <p className="font-medium text-sm max-[400px]:text-xs text-destructive">마이크 접근 불가</p>
+                    <p className="text-xs max-[400px]:text-[11px] text-muted-foreground">마이크 권한이 필요합니다. 브라우저 설정을 확인해주세요.</p>
                   </div>
                 </>
               ) : (
@@ -476,8 +487,8 @@ export function CameraTestModal({ open, onOpenChange, onReady }: CameraTestModal
                     <Mic className="w-5 h-5 text-muted-foreground" />
                   </div>
                   <div>
-                    <p className="font-medium">마이크 연결 중...</p>
-                    <p className="text-sm text-muted-foreground">잠시만 기다려주세요</p>
+                    <p className="font-medium text-sm max-[400px]:text-xs">마이크 연결 중...</p>
+                    <p className="text-xs max-[400px]:text-[11px] text-muted-foreground">잠시만 기다려주세요</p>
                   </div>
                 </>
               )}
