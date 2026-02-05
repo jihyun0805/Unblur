@@ -38,7 +38,7 @@ public class EmailServiceImpl implements EmailService {
 
             mailSender.send(message);
         } catch (Exception e) {
-            log.error("이메일 발송 실패: {}", e.getMessage(), e);
+            log.error("이메일 발송 실패: email={}, error={}", email, e.getMessage(), e);
             throw new BaseException(ErrorCode.INTERNAL_SERVER_ERROR);
         }
     }
