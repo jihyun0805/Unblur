@@ -62,7 +62,6 @@ public class AiSummaryPipelineService {
                 round.updateSummary(summary);
             });
             log.info("AI 요약 완료: conferenceId={}, round={}", meta.conferenceId(), meta.roundNumber());
-            deleteFromMinio(bucket, decodedKey);
         } catch (IOException e) {
             log.error("AI pipeline IO error", e);
             throw new BaseException(ErrorCode.INTERNAL_SERVER_ERROR);
@@ -90,6 +89,7 @@ public class AiSummaryPipelineService {
         }
     }
 
+    // minio의 저장 데이터 삭제 로직. 현재 미사용
     private void deleteFromMinio(String bucket, String objectKey) {
         try {
             DeleteObjectRequest request = DeleteObjectRequest.builder()

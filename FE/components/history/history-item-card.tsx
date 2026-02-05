@@ -44,7 +44,8 @@ export function HistoryItemCard({ item, onProfileClick, onChatClick, onBlock, on
     panelOpen: isChatOpen,
   })
   const effectiveUnread = Math.max(item.unreadCount ?? 0, unreadCount)
-  const hasUnread = !isChatOpen && effectiveUnread > 0
+  // 차단된 사용자는 채팅이 와도 빨간불(읽지 않음 뱃지) 표시 안 함
+  const hasUnread = !isChatOpen && !isBlocked && effectiveUnread > 0
   useEffect(() => {
     if (unreadCount > (item.unreadCount ?? 0)) {
       setItemUnreadCount?.(item.id, unreadCount)
