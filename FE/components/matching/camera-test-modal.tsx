@@ -359,54 +359,63 @@ export function CameraTestModal({ open, onOpenChange, onReady }: CameraTestModal
 
             {/* Beauty Filter Settings */}
             <div className="space-y-4 p-4 rounded-xl bg-pink-100/50 flex-shrink-0">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                <Sparkles className={`w-5 h-5 ${isFinalRound ? "text-pink-500" : "text-pink-500/40"}`} />
-                  <Label className={`text-sm font-medium ${isFinalRound ? "text-pink-900" : "text-pink-900/40"}`}>
-                    뷰티 필터
-                  </Label>
-                </div>
-              <Switch
-                checked={beautyFilter.enabled}
-                onCheckedChange={(checked) => setBeautyFilter((prev) => ({ ...prev, enabled: checked }))}
-                disabled={!isFinalRound}
-              />
-            </div>
-
-            {!isFinalRound && (
-              <p className="text-xs text-muted-foreground">뷰티 필터는 최종 라운드에서만 확인할 수 있어요.</p>
-            )}
-
-            {beautyFilter.enabled && isFinalRound && (
-              <div className="space-y-4 pt-2">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs text-muted-foreground">피부 보정</Label>
-                    <span className="text-xs text-muted-foreground">{beautyFilter.smoothness}%</span>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-pink-500/20 flex items-center justify-center">
+                    <Sparkles className={`w-5 h-5 ${isFinalRound ? "text-pink-500" : "text-pink-500/40"}`} />
                   </div>
-                  <Slider
-                    value={[beautyFilter.smoothness]}
-                    onValueChange={([value]) => setBeautyFilter((prev) => ({ ...prev, smoothness: value }))}
-                    max={100}
-                    step={1}
-                    className="w-full"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs text-muted-foreground">입술 색감</Label>
-                    <span className="text-xs text-muted-foreground">{beautyFilter.lipIntensity}%</span>
+                  <div>
+                    <p
+                      className={`font-medium text-sm max-[400px]:text-xs ${
+                        isFinalRound ? "text-pink-900" : "text-pink-900/40"
+                      }`}
+                    >
+                      뷰티 필터
+                    </p>
+                    {!isFinalRound && (
+                      <p className="text-xs max-[400px]:text-[11px] text-muted-foreground">
+                        최종 라운드에서만 확인할 수 있어요
+                      </p>
+                    )}
                   </div>
-                  <Slider
-                    value={[beautyFilter.lipIntensity]}
-                    onValueChange={([value]) => setBeautyFilter((prev) => ({ ...prev, lipIntensity: value }))}
-                    max={100}
-                    step={1}
-                    className="w-full"
-                  />
                 </div>
+                <Switch
+                  checked={beautyFilter.enabled}
+                  onCheckedChange={(checked) => setBeautyFilter((prev) => ({ ...prev, enabled: checked }))}
+                  disabled={!isFinalRound}
+                />
               </div>
-            )}
+
+              {beautyFilter.enabled && isFinalRound && (
+                <div className="space-y-4 pt-2">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs text-muted-foreground">피부 보정</Label>
+                      <span className="text-xs text-muted-foreground">{beautyFilter.smoothness}%</span>
+                    </div>
+                    <Slider
+                      value={[beautyFilter.smoothness]}
+                      onValueChange={([value]) => setBeautyFilter((prev) => ({ ...prev, smoothness: value }))}
+                      max={100}
+                      step={1}
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs text-muted-foreground">입술 색감</Label>
+                      <span className="text-xs text-muted-foreground">{beautyFilter.lipIntensity}%</span>
+                    </div>
+                    <Slider
+                      value={[beautyFilter.lipIntensity]}
+                      onValueChange={([value]) => setBeautyFilter((prev) => ({ ...prev, lipIntensity: value }))}
+                      max={100}
+                      step={1}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Status */}
