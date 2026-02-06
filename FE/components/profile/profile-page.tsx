@@ -17,6 +17,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { StepProgress } from "@/components/auth/register/step-progress"
 import { RadioGroupField } from "@/components/auth/register/radio-group-field"
 import { CheckboxGroupField } from "@/components/auth/register/checkbox-group-field"
+import { checkNickname as checkNicknameApi } from "@/lib/api/auth"
 import { getMySurvey, updateMyProfile, updateMySurvey } from "@/lib/api/user"
 import { getLoveDnaImage } from "@/lib/profile-image"
 
@@ -218,9 +219,19 @@ export function ProfilePage() {
     }
 
     setCheckingNickname(true)
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    setNicknameAvailable(basicData.nickname !== "테스트")
-    setCheckingNickname(false)
+    try {
+      const isDuplicate = await checkNicknameApi(nickname)
+      setNicknameAvailable(!isDuplicate)
+    } catch (error) {
+      toast({
+        title: "닉네임 확인 실패",
+        description: error instanceof Error ? error.message : "닉네임 중복 확인에 실패했습니다.",
+        variant: "destructive",
+      })
+      setNicknameAvailable(null)
+    } finally {
+      setCheckingNickname(false)
+    }
   }
 
   const normalizeBirthValue = (value: string) => value.replace(/\D/g, "").slice(0, 6)
