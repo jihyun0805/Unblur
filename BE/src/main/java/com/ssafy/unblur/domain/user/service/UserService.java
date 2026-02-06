@@ -59,6 +59,13 @@ public class UserService {
     public UserProfileResponseDto updateMyProfile(UserProfileUpdateRequestDto dto) {
         User user = getLoginUserAndCheckActive();
 
+        String newNickname = dto.nickname();
+        if (newNickname != null && !newNickname.isBlank()
+                && !newNickname.equals(user.getNickname())
+                && userRepository.existsByNickname(newNickname)) {
+            throw new BaseException(ErrorCode.DUPLICATE_NICKNAME);
+        }
+
         user.updateProfile(dto);
 
         return UserProfileResponseDto.from(user);
