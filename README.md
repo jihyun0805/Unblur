@@ -178,16 +178,11 @@
 
 ---
 
-# 📊 서비스 운영 결과
-
-<img width="1346" height="600" alt="스크린샷 2026-05-29 144827" src="https://github.com/user-attachments/assets/818c7052-9e81-4d58-9c72-7feb661a30c5" />
-
-SSAFY 14기 교육생을 대상으로 실제 서비스를 배포하고 운영하였습니다. 서비스 홍보 게시물을 통해 사용자 유입을 확보하였고, 실제 사용자들이 매칭 기능과 화상 소개팅 기능을 이용할 수 있도록 제공하였습니다.
-
 ### 📈 Google Analytics 분석
 <img width="1032" height="560" alt="스크린샷 2026-05-29 144954" src="https://github.com/user-attachments/assets/66ffca38-31eb-4aac-a2b2-4d6508df585a" />
 
-Google Analytics를 연동하여 사용자 유입과 서비스 이용 현황을 분석하였습니다. 실시간 사용자 수, 페이지 조회수, 지역별 접속 현황 등을 확인하며 서비스 운영 데이터를 수집하였습니다.
+Google Analytics를 연동하여 사용자 유입과 서비스 이용 현황을 분석하였습니다. 
+실시간 사용자 수, 페이지 조회수, 지역별 접속 현황 등을 확인하며 서비스 운영 데이터를 수집하였습니다.
 
 ---
 
