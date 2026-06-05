@@ -7,7 +7,8 @@
 블러 처리된 화면에서 대화를 시작하고,  
 대화가 이어질수록 상대방의 모습이 점차 드러나는 새로운 방식의 소개팅 플랫폼입니다.
 
-<img width="2836" height="1452" alt="image (24)" src="https://github.com/user-attachments/assets/73e33b1c-52eb-4272-a292-7e53372dacfe" />
+<img width="2807" height="1452" alt="image (20)" src="https://github.com/user-attachments/assets/9e620de7-465b-4d39-9e2f-cd4e726513cd" />
+
 
 </div>
 
