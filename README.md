@@ -39,7 +39,7 @@
 # ✨ 주요 기능
 
 ## 🏠 랜딩 페이지
-<img width="2862" height="1415" alt="image (25)" src="https://github.com/user-attachments/assets/36b3a2d6-f8cb-4e25-85a7-3090541115bc" />
+<img width="2836" height="1415" alt="image (18)" src="https://github.com/user-attachments/assets/cbb70a6d-5993-4096-98b2-0fc7bd2c7ee3" />
 
 ### 주요 기능
 - 서비스 소개 제공
@@ -103,7 +103,7 @@
 - 성향 기반 매칭 활용
 
 ### 🐶 연애 유형 결과
-<img width="2874" height="1419" alt="image (20)" src="https://github.com/user-attachments/assets/cca66f17-c367-4ed1-9fd2-f9aef5a75498" />
+<img width="2823" height="1419" alt="image (19)" src="https://github.com/user-attachments/assets/795c5499-8f31-4bd7-b946-91124634bd7b" />
 
 ### 주요 기능
 - 유형별 캐릭터 제공
